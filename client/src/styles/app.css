@@ -965,6 +965,66 @@ body {
   max-width: 360px;
 }
 
+/* ── how to play ───────────────────────────────────────────────────────── */
+
+.landing .howto-btn,
+.howto-row .howto-btn {
+  width: 100%;
+}
+
+.howto-row {
+  margin: 4px 0 16px;
+}
+
+.overlay-card.howto-card {
+  max-width: 580px;
+  max-height: min(82vh, 660px);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.howto-card h2 {
+  text-align: center;
+  margin: 0 0 8px;
+}
+
+.howto-body {
+  overflow-y: auto;
+  padding-right: 8px;
+  margin-bottom: 16px;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+.howto-body section + section {
+  margin-top: 14px;
+}
+
+.howto-body h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--accent);
+}
+
+.howto-body p {
+  margin: 6px 0;
+}
+
+.howto-body ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.howto-body li {
+  margin: 4px 0;
+}
+
+.howto-close {
+  align-self: center;
+  min-width: 140px;
+}
+
 /* ── result overlay ────────────────────────────────────────────────────── */
 
 .overlay {

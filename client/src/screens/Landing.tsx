@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createParty, joinParty } from '../socket';
 import { loadNickname } from '../session';
 import { IconTile } from '../components/icons';
+import HowToPlay from '../components/HowToPlay';
 import { useStore } from '../store';
 
 export default function Landing() {
@@ -74,6 +75,9 @@ export default function Landing() {
         </div>
 
         {error && <div className="error">{error}</div>}
+
+        <div className="divider">new to the game?</div>
+        <HowToPlay />
       </div>
     </div>
   );

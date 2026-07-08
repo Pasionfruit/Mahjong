@@ -14,6 +14,7 @@ import CenterDiscards from '../components/CenterDiscards';
 import Leaderboard from '../components/Leaderboard';
 import WallStrip from '../components/WallStrip';
 import VolumeControl from '../components/VolumeControl';
+import HowToPlay from '../components/HowToPlay';
 import { IconMenu, IconPause, IconWall } from '../components/icons';
 import { FlowerRow, MeldRow } from '../components/rows';
 
@@ -124,6 +125,7 @@ export default function GameTable() {
           </button>
           {menuOpen && (
             <div className="hud-dropdown">
+              <HowToPlay />
               {isHost ? (
                 <>
                   {game.paused ? (

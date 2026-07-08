@@ -12,6 +12,7 @@ import {
 } from '@shared/settings';
 import { addBot, leaveParty, removeBot, startGame, updateSettings } from '../socket';
 import { IconBot, IconClose, IconTrophy } from '../components/icons';
+import HowToPlay from '../components/HowToPlay';
 import { useStore } from '../store';
 
 export default function Lobby() {
@@ -192,6 +193,11 @@ export default function Lobby() {
               ))}
             </select>
           </label>
+        </div>
+
+        <h2 className="section-title">Instructions</h2>
+        <div className="howto-row">
+          <HowToPlay />
         </div>
 
         {!isHost && <p className="hint">Waiting for the host to start the game…</p>}
