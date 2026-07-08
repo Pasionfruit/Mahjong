@@ -105,6 +105,47 @@ function Dots({ rank }: { rank: number }) {
   );
 }
 
+/** The traditional 1-of-bamboo: a perched bird rather than a single stick. */
+function BambooBird() {
+  return (
+    <>
+      {/* perch */}
+      <rect x="15" y="64.5" width="30" height="4" rx="2" fill={GREEN} opacity="0.5" />
+      {/* tail feathers */}
+      <path
+        d="M44 43 L54 35 M45 47.5 L56 45 M44.5 52 L54 55"
+        stroke={RED}
+        strokeWidth="3"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* body + head */}
+      <ellipse cx="33" cy="48" rx="12.5" ry="10.5" fill={GREEN} />
+      <circle cx="24" cy="33" r="8" fill={GREEN} />
+      {/* wing */}
+      <path
+        d="M27 46 Q35 42.5 41 49"
+        stroke="rgba(0,0,0,0.3)"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* beak */}
+      <path d="M16 30 L7 33.5 L16 37 Z" fill={RED} />
+      {/* eye */}
+      <circle cx="22.5" cy="31" r="1.7" fill="var(--tile-face, #f7f2e5)" />
+      {/* legs */}
+      <path
+        d="M30 58 L28.5 65 M36 58 L36.5 65"
+        stroke={RED}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </>
+  );
+}
+
 function Sticks({ rank }: { rank: number }) {
   const h = rank <= 4 ? 20 : rank <= 6 ? 17 : 15;
   const w = rank <= 6 ? 7 : 6;
@@ -152,7 +193,7 @@ function Face({ kind }: { kind: TileKind }) {
     if (suit === 'b') {
       return (
         <>
-          <Sticks rank={rank} />
+          {rank === 1 ? <BambooBird /> : <Sticks rank={rank} />}
           {cornerRank(rank)}
         </>
       );

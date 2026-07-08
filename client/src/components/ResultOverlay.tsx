@@ -1,6 +1,7 @@
 import type { ClientGameView } from '@shared/view';
 import { backToLobby, nextRound } from '../socket';
 import Tile from './Tile';
+import { IconTrophy } from './icons';
 import { MeldRow, FlowerRow } from './rows';
 
 export default function ResultOverlay({ game, isHost }: { game: ClientGameView; isHost: boolean }) {
@@ -43,7 +44,9 @@ export default function ResultOverlay({ game, isHost }: { game: ClientGameView; 
               .map((p) => (
                 <tr key={p.seat}>
                   <td>{p.nickname}</td>
-                  <td className="score-wins">{p.wins} 🏆</td>
+                  <td className="score-wins">
+                    {p.wins} <IconTrophy />
+                  </td>
                 </tr>
               ))}
           </tbody>

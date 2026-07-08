@@ -8,6 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "socket.io-client": "^4.8.1",

@@ -1,6 +1,9 @@
 export const THEMES = ['jade', 'crimson', 'ocean', 'classic'] as const;
 export type ThemeId = (typeof THEMES)[number];
 
+export const BOT_DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
+export type BotDifficulty = (typeof BOT_DIFFICULTIES)[number];
+
 export const TURN_TIMER_CHOICES = [0, 15, 30, 60] as const;
 export type TurnTimerSeconds = (typeof TURN_TIMER_CHOICES)[number];
 
@@ -55,5 +58,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
 };
 
 export const CLAIM_WINDOW_MS = 7000;
+/** Extra time granted while someone has several ways to pong/kong/chow the discard. */
+export const CLAIM_WINDOW_COMPLEX_BONUS_MS = 5000;
 export const DISCONNECT_TURN_GRACE_MS = 30_000;
 export const DISCONNECT_CLAIM_GRACE_MS = 3_000;

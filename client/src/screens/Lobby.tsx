@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  BOT_DIFFICULTIES,
   MAX_PLAYERS,
   MIN_PLAYERS,
   THEMES,
@@ -9,7 +10,8 @@ import {
   type ThemeId,
   type TurnTimerSeconds,
 } from '@shared/settings';
-import { leaveParty, startGame, updateSettings } from '../socket';
+import { addBot, leaveParty, removeBot, startGame, updateSettings } from '../socket';
+import { IconBot, IconClose, IconTrophy } from '../components/icons';
 import { useStore } from '../store';
 
 export default function Lobby() {
@@ -62,14 +64,49 @@ export default function Lobby() {
             <li key={p.seat} className="player-row">
               <span className={`conn-dot ${p.connected ? 'on' : 'off'}`} />
               <span className="player-name">
+                {p.isBot && (
+                  <span className="bot-glyph">
+                    <IconBot />
+                  </span>
+                )}
                 {p.nickname}
                 {p.seat === lobby.yourSeat && <span className="you-tag"> (you)</span>}
               </span>
               {p.isHost && <span className="host-badge">host</span>}
-              {anyWins && <span className="win-count">{p.wins} 🏆</span>}
+              {anyWins && (
+                <span className="win-count">
+                  {p.wins} <IconTrophy />
+                </span>
+              )}
+              {isHost && p.isBot && (
+                <button
+                  className="btn bot-remove-btn"
+                  title="Remove bot"
+                  onClick={() =>
+                    void removeBot(p.seat).then((r) => setError(r.ok ? null : r.error))
+                  }
+                >
+                  <IconClose />
+                </button>
+              )}
             </li>
           ))}
         </ul>
+
+        {isHost && lobby.players.length < MAX_PLAYERS && (
+          <div className="add-bot-row">
+            <span className="hint">Add a bot:</span>
+            {BOT_DIFFICULTIES.map((d) => (
+              <button
+                key={d}
+                className="btn bot-add-btn"
+                onClick={() => void addBot(d).then((r) => setError(r.ok ? null : r.error))}
+              >
+                + {d}
+              </button>
+            ))}
+          </div>
+        )}
 
         <h2 className="section-title">Rules</h2>
         <div className="settings">
@@ -121,7 +158,7 @@ export default function Lobby() {
           </label>
 
           <label className="setting-row">
-            <span>Sets to win</span>
+            <span>Triples to win</span>
             <select
               disabled={!isHost}
               value={lobby.settings.setsToWin ?? 'auto'}
@@ -135,7 +172,7 @@ export default function Lobby() {
               </option>
               {[2, 3, 4, 5].map((n) => (
                 <option key={n} value={n}>
-                  {n} sets + pair (or {n + 2} pairs + set)
+                  {n} triples + double (or {n + 2} doubles + triple)
                 </option>
               ))}
             </select>

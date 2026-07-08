@@ -1,4 +1,4 @@
-import type { GameSettings } from './settings';
+import type { BotDifficulty, GameSettings } from './settings';
 import type { ClientGameView, GameEvent, LobbyState } from './view';
 import type { TileKind } from './tiles';
 
@@ -27,6 +27,8 @@ export interface ClientToServerEvents {
   'room:rejoin': (p: { roomCode: string; token: string }, ack: Ack<JoinInfo>) => void;
   'room:leave': () => void;
   'lobby:settings': (p: Partial<GameSettings>, ack: Ack) => void;
+  'lobby:addBot': (p: { difficulty: BotDifficulty }, ack: Ack) => void;
+  'lobby:removeBot': (p: { seat: number }, ack: Ack) => void;
   'lobby:start': (ack: Ack) => void;
   'game:action': (a: PlayerAction, ack: Ack) => void;
   'game:nextRound': (ack: Ack) => void;

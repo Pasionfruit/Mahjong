@@ -1,4 +1,5 @@
 import type { PublicPlayer } from '@shared/view';
+import { IconTrophy } from './icons';
 
 export default function Leaderboard({
   players,
@@ -10,7 +11,9 @@ export default function Leaderboard({
   const sorted = [...players].sort((a, b) => b.wins - a.wins || a.seat - b.seat);
   return (
     <div className="leaderboard">
-      <div className="leaderboard-title">🏆 Wins</div>
+      <div className="leaderboard-title">
+        <IconTrophy /> Wins
+      </div>
       {sorted.map((p) => (
         <div key={p.seat} className={`leader-row${p.seat === turnSeat ? ' current' : ''}`}>
           <span className={`conn-dot ${p.connected ? 'on' : 'off'}`} />

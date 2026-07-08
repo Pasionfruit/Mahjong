@@ -9,6 +9,7 @@ import {
   MIN_SETS_TO_WIN,
   THEMES,
   TURN_TIMER_CHOICES,
+  type BotDifficulty,
   type GameSettings,
 } from '@shared/settings';
 import type { GameEvent, LobbyState } from '@shared/view';
@@ -25,6 +26,7 @@ import {
   startRound,
   type GameState,
 } from '../engine/game';
+import { botDelayMs, chooseClaimAction, chooseTurnAction } from '../engine/bot';
 import { deadlineHintMs, redactFor, type SeatMeta } from '../engine/redact';
 
 export interface SocketData {
@@ -43,6 +45,8 @@ interface RoomPlayer {
   connected: boolean;
   disconnectedAt: number | null;
   wins: number;
+  isBot: boolean;
+  botDifficulty?: BotDifficulty;
 }
 
 const LOBBY_DISCONNECT_DROP_MS = 60_000;
@@ -68,6 +72,7 @@ export class Room {
   private timer: NodeJS.Timeout | null = null;
   private paused = false;
   private pausedRemainingMs: number | null = null;
+  private botTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(code: string) {
     this.code = code;
@@ -86,6 +91,7 @@ export class Room {
       connected: true,
       disconnectedAt: null,
       wins: 0,
+      isBot: false,
     };
     this.players.push(player);
     if (!this.hostToken) this.hostToken = player.token;
@@ -127,7 +133,9 @@ export class Room {
     }
     this.players = this.players.filter((p) => p !== player);
     this.players.forEach((p, i) => (p.seat = i));
-    if (this.hostToken === player.token) this.hostToken = this.players[0]?.token ?? null;
+    if (this.hostToken === player.token) {
+      this.hostToken = this.players.find((p) => !p.isBot)?.token ?? null;
+    }
     this.broadcastLobby();
   }
 
@@ -147,10 +155,50 @@ export class Room {
       this.settleDisconnectedClaims(events);
       this.armDeadline();
       this.broadcastGame(events);
+      this.scheduleBotMoves();
     }
   }
 
   // ── lobby ─────────────────────────────────────────────────────────────────
+
+  addBot(socket: IoSocket, difficulty: BotDifficulty): Result<null> {
+    const player = this.bySocket(socket);
+    if (!player) return err('not in this room');
+    if (player.token !== this.hostToken) return err('only the host can add bots');
+    if (this.phase !== 'lobby') return err('game already in progress');
+    if (this.players.length >= MAX_PLAYERS) return err('party is full');
+    const base = `${difficulty[0]!.toUpperCase()}${difficulty.slice(1)} Bot`;
+    let nickname = base;
+    for (let n = 2; this.players.some((p) => p.nickname === nickname); n++) {
+      nickname = `${base} ${n}`;
+    }
+    this.players.push({
+      token: randomUUID(),
+      nickname,
+      seat: this.players.length,
+      socket: null,
+      connected: true,
+      disconnectedAt: null,
+      wins: 0,
+      isBot: true,
+      botDifficulty: difficulty,
+    });
+    this.broadcastLobby();
+    return ok(null);
+  }
+
+  removeBot(socket: IoSocket, seat: number): Result<null> {
+    const player = this.bySocket(socket);
+    if (!player) return err('not in this room');
+    if (player.token !== this.hostToken) return err('only the host can remove bots');
+    if (this.phase !== 'lobby') return err('game already in progress');
+    const bot = this.players.find((p) => p.seat === seat && p.isBot);
+    if (!bot) return err('no bot at that seat');
+    this.players = this.players.filter((p) => p !== bot);
+    this.players.forEach((p, i) => (p.seat = i));
+    this.broadcastLobby();
+    return ok(null);
+  }
 
   updateSettings(socket: IoSocket, patch: Partial<GameSettings>): Result<null> {
     const player = this.bySocket(socket);
@@ -172,7 +220,7 @@ export class Room {
     this.players = this.players.filter((p) => p.connected);
     this.players.forEach((p, i) => (p.seat = i));
     if (!this.players.some((p) => p.token === this.hostToken)) {
-      this.hostToken = this.players[0]?.token ?? null;
+      this.hostToken = this.players.find((p) => !p.isBot)?.token ?? null;
     }
     if (this.players.length < MIN_PLAYERS || this.players.length > MAX_PLAYERS) {
       return err(`need ${MIN_PLAYERS}-${MAX_PLAYERS} connected players`);
@@ -203,6 +251,7 @@ export class Room {
     this.paused = false;
     this.pausedRemainingMs = null;
     this.clearTimer();
+    this.clearBotTimers();
     this.broadcastLobby();
     return ok(null);
   }
@@ -217,6 +266,7 @@ export class Room {
     this.paused = true;
     if (this.deadline !== null) this.pausedRemainingMs = Math.max(this.deadline - Date.now(), 0);
     this.clearTimer();
+    this.clearBotTimers();
     this.broadcastGame([]);
     return ok(null);
   }
@@ -236,6 +286,7 @@ export class Room {
       this.armDeadline();
     }
     this.broadcastGame([]);
+    this.scheduleBotMoves();
     return ok(null);
   }
 
@@ -294,7 +345,81 @@ export class Room {
     }
     this.armDeadline();
     this.broadcastGame(events);
+    this.scheduleBotMoves();
     if (this.game?.phase.t === 'roundOver') this.broadcastLobby();
+  }
+
+  // ── bots ──────────────────────────────────────────────────────────────────
+
+  /** (Re)arm think timers for every bot that currently owes a move. */
+  private scheduleBotMoves(): void {
+    const game = this.game;
+    const due = new Map<string, { bot: RoomPlayer; kind: 'turn' | 'claim' }>();
+    if (game && this.phase === 'playing' && !this.paused && game.phase.t !== 'roundOver') {
+      if (game.phase.t === 'awaitingDiscard') {
+        const bot = this.players[game.phase.seat];
+        if (bot?.isBot) due.set(`turn:${bot.seat}`, { bot, kind: 'turn' });
+      } else if (game.phase.t === 'claimWindow') {
+        for (const seat of game.phase.eligible.keys()) {
+          if (game.phase.responses.has(seat)) continue;
+          const bot = this.players[seat];
+          if (bot?.isBot) due.set(`claim:${seat}`, { bot, kind: 'claim' });
+        }
+      }
+    }
+    for (const [key, timer] of this.botTimers) {
+      if (!due.has(key)) {
+        clearTimeout(timer);
+        this.botTimers.delete(key);
+      }
+    }
+    for (const [key, { bot, kind }] of due) {
+      if (this.botTimers.has(key)) continue;
+      const timer = setTimeout(() => {
+        this.botTimers.delete(key);
+        this.runBotMove(bot, kind);
+      }, botDelayMs(bot.botDifficulty!, kind));
+      this.botTimers.set(key, timer);
+    }
+  }
+
+  private runBotMove(bot: RoomPlayer, kind: 'turn' | 'claim'): void {
+    const game = this.game;
+    if (!game || this.phase !== 'playing' || this.paused) return;
+    // Re-check the bot still owes this move — the state may have changed.
+    if (kind === 'turn') {
+      if (game.phase.t !== 'awaitingDiscard' || game.phase.seat !== bot.seat) return;
+    } else if (
+      game.phase.t !== 'claimWindow' ||
+      !game.phase.eligible.has(bot.seat) ||
+      game.phase.responses.has(bot.seat)
+    ) {
+      return;
+    }
+
+    const fallback = (): PlayerAction => {
+      if (kind === 'claim') return { t: 'pass' };
+      const hand = game.players[bot.seat]!.hand;
+      return { t: 'discard', tileId: hand[hand.length - 1]!.id };
+    };
+    let action: PlayerAction;
+    try {
+      action =
+        kind === 'turn'
+          ? chooseTurnAction(game, bot.seat, bot.botDifficulty!)
+          : chooseClaimAction(game, bot.seat, bot.botDifficulty!);
+    } catch {
+      action = fallback();
+    }
+    let res = applyPlayerAction(game, bot.seat, action);
+    if (!res.ok) res = applyPlayerAction(game, bot.seat, fallback());
+    if (!res.ok) return; // the deadline timer will unstick the game
+    this.afterEngineStep(res.events);
+  }
+
+  private clearBotTimers(): void {
+    for (const timer of this.botTimers.values()) clearTimeout(timer);
+    this.botTimers.clear();
   }
 
   /** Disconnected players never hold up a claim window. */
@@ -356,6 +481,7 @@ export class Room {
       nickname: p.nickname,
       connected: p.connected,
       isHost: p.token === this.hostToken,
+      isBot: p.isBot,
       wins: p.wins,
     }));
   }
@@ -369,6 +495,7 @@ export class Room {
         nickname: p.nickname,
         connected: p.connected,
         isHost: p.token === this.hostToken,
+        isBot: p.isBot,
         wins: p.wins,
       })),
       settings: this.settings,
@@ -406,21 +533,24 @@ export class Room {
     if (this.players.length !== before) {
       this.players.forEach((p, i) => (p.seat = i));
       if (!this.players.some((p) => p.token === this.hostToken)) {
-        this.hostToken = this.players[0]?.token ?? null;
+        this.hostToken = this.players.find((p) => !p.isBot)?.token ?? null;
       }
       this.broadcastLobby();
     }
   }
 
+  /** Bots don't keep a room alive: only human presence counts. */
   isAbandoned(now: number): boolean {
-    if (this.players.length === 0) return true;
-    return this.players.every(
+    const humans = this.players.filter((p) => !p.isBot);
+    if (humans.length === 0) return true;
+    return humans.every(
       (p) => !p.connected && now - (p.disconnectedAt ?? now) > ROOM_ABANDON_MS,
     );
   }
 
   close(reason: string): void {
     this.clearTimer();
+    this.clearBotTimers();
     for (const p of this.players) p.socket?.emit('room:closed', reason);
     this.players = [];
   }

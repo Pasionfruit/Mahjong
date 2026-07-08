@@ -1,5 +1,6 @@
 import type { PublicPlayer } from '@shared/view';
 import Tile from './Tile';
+import { IconBot, IconTrophy } from './icons';
 import { FlowerRow, MeldRow } from './rows';
 
 export default function OpponentPanel({
@@ -13,9 +14,22 @@ export default function OpponentPanel({
     <div className={`opponent-panel${isTurn ? ' active-turn' : ''}`}>
       <div className="panel-header">
         <span className={`conn-dot ${player.connected ? 'on' : 'off'}`} />
-        <span className="player-name">{player.nickname}</span>
+        <span className="player-name">
+          {player.isBot && (
+            <span className="bot-glyph">
+              <IconBot />
+            </span>
+          )}
+          {player.nickname}
+        </span>
         {player.isDealer && <span className="dealer-badge">dealer</span>}
-        <span className="win-count">{player.wins > 0 ? `${player.wins} 🏆` : ''}</span>
+        <span className="win-count">
+          {player.wins > 0 && (
+            <>
+              {player.wins} <IconTrophy />
+            </>
+          )}
+        </span>
       </div>
       <div className="opponent-hand">
         {player.hand

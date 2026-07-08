@@ -14,6 +14,7 @@ import CenterDiscards from '../components/CenterDiscards';
 import Leaderboard from '../components/Leaderboard';
 import WallStrip from '../components/WallStrip';
 import VolumeControl from '../components/VolumeControl';
+import { IconMenu, IconPause, IconWall } from '../components/icons';
 import { FlowerRow, MeldRow } from '../components/rows';
 
 export default function GameTable() {
@@ -108,16 +109,18 @@ export default function GameTable() {
       <div className="hud">
         <div className="hud-line">
           <span className="hud-round">Round {game.round}</span>
-          <span className="hud-wall">🀫 {game.wallCount}</span>
+          <span className="hud-wall">
+            <IconWall /> {game.wallCount}
+          </span>
         </div>
         <div className="hud-goal">
-          {game.setsToWin} sets · {game.setsToWin + 2} pairs
+          {game.setsToWin} triples · {game.setsToWin + 2} doubles
         </div>
         <TimerBar deadline={game.paused ? null : game.deadline} tickAudible={tickAudible} />
         <VolumeControl />
         <div className="hud-menu">
           <button className="btn hud-btn" onClick={() => setMenuOpen((o) => !o)}>
-            ☰ Menu
+            <IconMenu /> Menu
           </button>
           {menuOpen && (
             <div className="hud-dropdown">
@@ -246,7 +249,9 @@ export default function GameTable() {
       {game.paused && !game.result && (
         <div className="overlay">
           <div className="overlay-card pause-card">
-            <h2>⏸ Game paused</h2>
+            <h2>
+              <IconPause /> Game paused
+            </h2>
             {isHost ? (
               <button className="btn btn-primary" onClick={() => void resumeGame()}>
                 Resume

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createParty, joinParty } from '../socket';
 import { loadNickname } from '../session';
+import { IconTile } from '../components/icons';
 import { useStore } from '../store';
 
 export default function Landing() {
@@ -33,7 +34,10 @@ export default function Landing() {
     <div className="landing">
       <div className="landing-card">
         <h1 className="landing-title">
-          <span className="landing-glyph">🀄</span> Mahjong Party
+          <span className="landing-glyph">
+            <IconTile />
+          </span>{' '}
+          Mahjong Party
         </h1>
         <p className="landing-sub">Create a private table and share the code with friends.</p>
 

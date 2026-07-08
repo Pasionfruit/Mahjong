@@ -323,7 +323,7 @@ function doDiscard(state: GameState, seat: number, handIndex: number, events: Ga
 function maybeResolveClaims(state: GameState, events: GameEvent[]): void {
   const phase = state.phase;
   if (phase.t !== 'claimWindow') return;
-  const decision = decideClaims(phase.eligible, phase.responses, phase.discarderSeat, state.playerCount);
+  const decision = decideClaims(phase.eligible, phase.responses);
   if (!decision.decided) return;
 
   if (!decision.claim) {

@@ -6,7 +6,7 @@ import type {
   Result,
   ServerToClientEvents,
 } from '@shared/protocol';
-import type { GameSettings } from '@shared/settings';
+import type { BotDifficulty, GameSettings } from '@shared/settings';
 import { useStore } from './store';
 import { clearSession, loadSession, saveSession } from './session';
 import { play } from './audio';
@@ -107,6 +107,14 @@ export function leaveParty(): void {
 
 export function updateSettings(patch: Partial<GameSettings>): Promise<Result<null>> {
   return new Promise((resolve) => socket.emit('lobby:settings', patch, resolve));
+}
+
+export function addBot(difficulty: BotDifficulty): Promise<Result<null>> {
+  return new Promise((resolve) => socket.emit('lobby:addBot', { difficulty }, resolve));
+}
+
+export function removeBot(seat: number): Promise<Result<null>> {
+  return new Promise((resolve) => socket.emit('lobby:removeBot', { seat }, resolve));
 }
 
 export function startGame(): Promise<Result<null>> {

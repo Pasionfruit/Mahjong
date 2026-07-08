@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { getAudioState, setAudio } from '../audio';
+import { IconMute, IconVolume } from './icons';
 
 export default function VolumeControl() {
   const [state, setState] = useState(getAudioState());
@@ -19,7 +20,7 @@ export default function VolumeControl() {
         onClick={() => update({ muted: !state.muted })}
         aria-label={silent ? 'Unmute' : 'Mute'}
       >
-        {silent ? '🔇' : '🔊'}
+        {silent ? <IconMute /> : <IconVolume />}
       </button>
       <input
         type="range"

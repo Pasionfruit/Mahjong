@@ -22,6 +22,7 @@ export interface PublicPlayer {
   nickname: string;
   connected: boolean;
   isHost: boolean;
+  isBot?: boolean;
   isDealer: boolean;
   handCount: number;
   /** Present only in open-hands mode (your own hand is in ClientGameView.hand). */
@@ -89,6 +90,7 @@ export interface LobbyPlayer {
   nickname: string;
   connected: boolean;
   isHost: boolean;
+  isBot?: boolean;
   wins: number;
 }
 

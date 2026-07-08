@@ -1,4 +1,5 @@
 import type { PlayerAction, Result } from '@shared/protocol';
+import { BOT_DIFFICULTIES, type BotDifficulty } from '@shared/settings';
 import { RoomManager } from '../rooms/RoomManager';
 import { normalizeCode } from '../rooms/codes';
 import type { IoServer, IoSocket } from '../rooms/Room';
@@ -96,6 +97,28 @@ export function registerHandlers(io: IoServer): void {
       const room = roomOf(socket);
       if (!room) return ack(fail('not in a room'));
       ack(room.updateSettings(socket, patch ?? {}));
+    });
+
+    socket.on('lobby:addBot', (payload, ack) => {
+      if (typeof ack !== 'function') return;
+      const room = roomOf(socket);
+      if (!room) return ack(fail('not in a room'));
+      const difficulty = payload?.difficulty;
+      if (
+        typeof difficulty !== 'string' ||
+        !(BOT_DIFFICULTIES as readonly string[]).includes(difficulty)
+      ) {
+        return ack(fail('invalid difficulty'));
+      }
+      ack(room.addBot(socket, difficulty as BotDifficulty));
+    });
+
+    socket.on('lobby:removeBot', (payload, ack) => {
+      if (typeof ack !== 'function') return;
+      const room = roomOf(socket);
+      if (!room) return ack(fail('not in a room'));
+      if (typeof payload?.seat !== 'number') return ack(fail('invalid seat'));
+      ack(room.removeBot(socket, payload.seat));
     });
 
     socket.on('lobby:start', (ack) => {

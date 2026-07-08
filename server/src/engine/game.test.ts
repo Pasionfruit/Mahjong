@@ -149,6 +149,33 @@ describe('claim priority', () => {
     expect(result!.winningTile!.kind).toBe('c3');
   });
 
+  it('faster click gets the tile: a chow resolves without waiting on a pong-eligible seat', () => {
+    const wall = rigWall({
+      playerCount: 3,
+      hands: [
+        'd111 d222 d333 b5',
+        'b4 b6 c123 c45 c8 wE wE',
+        'b55 d456 wS wS wW gR gG',
+      ],
+      fronts: 'wN',
+    });
+    const { state } = startRoundWithWall(testSettings(), 3, 0, 1, wall);
+    discardKind(state, 0, 'b5');
+
+    expect(state.phase.t).toBe('claimWindow');
+    if (state.phase.t !== 'claimWindow') return;
+    // Both seats are eligible (1 chow, 2 pong) and neither can win.
+    expect([...state.phase.eligible.keys()].sort()).toEqual([1, 2]);
+    const chows = state.phase.eligible.get(1)!.chows;
+    const tileIds = chows[0]!.map((t) => t.id) as [number, number];
+
+    const res = applyPlayerAction(state, 1, { t: 'claim', claim: 'chow', tileIds });
+    expect(res.ok).toBe(true);
+    // Resolves immediately — seat 2's pending pong does not outrank the first click.
+    expect(state.players[1]!.melds[0]!.tiles.map((t) => t.kind)).toEqual(['b4', 'b5', 'b6']);
+    expect(state.phase).toMatchObject({ t: 'awaitingDiscard', seat: 1 });
+  });
+
   it('resolves to the pong when the win-eligible seat passes', () => {
     const wall = rigWall({
       playerCount: 3,

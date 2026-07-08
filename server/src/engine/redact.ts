@@ -1,5 +1,5 @@
 import { sortTiles } from '@shared/tiles';
-import { CLAIM_WINDOW_MS } from '@shared/settings';
+import { CLAIM_WINDOW_COMPLEX_BONUS_MS, CLAIM_WINDOW_MS } from '@shared/settings';
 import type { ClientGameView, Meld, MeldView, PublicPlayer, YourOptions } from '@shared/view';
 import { addedKongOptions, concealedKongOptions, type GameState } from './game';
 import { isWinningHand } from './win';
@@ -8,6 +8,7 @@ export interface SeatMeta {
   nickname: string;
   connected: boolean;
   isHost: boolean;
+  isBot?: boolean;
   wins: number;
 }
 
@@ -48,6 +49,7 @@ export function redactFor(
       nickname: meta.nickname,
       connected: meta.connected,
       isHost: meta.isHost,
+      isBot: meta.isBot,
       isDealer: p.seat === state.dealerSeat,
       handCount: p.hand.length,
       hand: revealAll ? sortTiles(p.hand) : undefined,
@@ -115,8 +117,16 @@ export function deadlineHintMs(state: GameState): number | null {
   switch (state.phase.t) {
     case 'awaitingDiscard':
       return state.settings.turnTimerSeconds > 0 ? state.settings.turnTimerSeconds * 1000 : null;
-    case 'claimWindow':
-      return CLAIM_WINDOW_MS;
+    case 'claimWindow': {
+      // More thinking time while a pending seat has several ways to claim
+      // (pong + chow, multiple chow shapes, ...) — a win click needs no extra.
+      const phase = state.phase;
+      const complex = [...phase.eligible.entries()].some(([seat, o]) => {
+        if (phase.responses.has(seat)) return false;
+        return (o.pong ? 1 : 0) + (o.kong ? 1 : 0) + o.chows.length >= 2;
+      });
+      return CLAIM_WINDOW_MS + (complex ? CLAIM_WINDOW_COMPLEX_BONUS_MS : 0);
+    }
     case 'roundOver':
       return null;
   }

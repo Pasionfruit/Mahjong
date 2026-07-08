@@ -111,4 +111,26 @@ describe('deadlineHintMs', () => {
     ).state;
     expect(deadlineHintMs(untimed)).toBeNull();
   });
+
+  it('grants 5 extra seconds while a seat has multiple ways to claim', () => {
+    const wall = rigWall({
+      playerCount: 3,
+      hands: [
+        'd111 d222 d333 b5',
+        'b4 b6 b7 c123 d44 wE wE',
+        'b55 d567 wS wS wW gR gG',
+      ],
+      fronts: 'wN',
+    });
+    const { state } = startRoundWithWall(testSettings(), 3, 0, 1, wall);
+    const b5 = state.players[0]!.hand.find((t) => t.kind === 'b5')!;
+    applyPlayerAction(state, 0, { t: 'discard', tileId: b5.id });
+
+    // Seat 1 can chow two ways (b4+b6 or b6+b7) → extended window.
+    expect(deadlineHintMs(state)).toBe(12_000);
+
+    // Once seat 1 passes, only seat 2's single-way pong is pending → normal window.
+    applyPlayerAction(state, 1, { t: 'pass' });
+    expect(deadlineHintMs(state)).toBe(7000);
+  });
 });

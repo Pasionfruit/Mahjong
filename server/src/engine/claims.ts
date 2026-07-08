@@ -43,56 +43,34 @@ export function computeClaimOptions(
   return out;
 }
 
-function priorityOf(r: ClaimResponse): number {
-  switch (r.r) {
-    case 'win':
-      return 3;
-    case 'kong':
-    case 'pong':
-      return 2;
-    case 'chow':
-      return 1;
-    case 'pass':
-      return 0;
-  }
-}
-
-function potentialOf(o: ClaimOptions): number {
-  if (o.win) return 3;
-  if (o.pong || o.kong) return 2;
-  return 1;
-}
-
 /**
- * Resolve the claim window as soon as the outcome is decided: the best response
- * so far wins if no still-pending seat could beat it (win > kong/pong > chow;
- * win ties break toward the seat nearest after the discarder).
+ * Resolve the claim window: a win always takes the tile (first win response on
+ * a tie), otherwise the first pong/kong/chow response wins the race — clicking
+ * speed decides between competing claims. A non-win claim is only granted once
+ * no win-eligible seat is still pending, so a slow "Win!" is never stolen.
  */
 export function decideClaims(
   eligible: Map<number, ClaimOptions>,
   responses: Map<number, ClaimResponse>,
-  discarderSeat: number,
-  playerCount: number,
 ): { decided: false } | { decided: true; claim: { seat: number; response: ClaimResponse } | null } {
-  const dist = (seat: number) => (seat - discarderSeat + playerCount) % playerCount;
+  // Map iteration preserves insertion order, i.e. the order the clicks arrived.
+  for (const [seat, response] of responses) {
+    if (response.r === 'win') return { decided: true, claim: { seat, response } };
+  }
 
-  let best: { seat: number; response: ClaimResponse; pri: number } | null = null;
-  for (const [seat, resp] of responses) {
-    const pri = priorityOf(resp);
-    if (pri === 0) continue;
-    if (!best || pri > best.pri || (pri === best.pri && dist(seat) < dist(best.seat))) {
-      best = { seat, response: resp, pri };
+  let first: { seat: number; response: ClaimResponse } | null = null;
+  for (const [seat, response] of responses) {
+    if (response.r !== 'pass') {
+      first = { seat, response };
+      break;
     }
   }
 
   for (const [seat, opts] of eligible) {
     if (responses.has(seat)) continue;
-    if (!best) return { decided: false };
-    const pot = potentialOf(opts);
-    if (pot > best.pri || (pot === best.pri && dist(seat) < dist(best.seat))) {
-      return { decided: false };
-    }
+    if (opts.win) return { decided: false };
+    if (!first) return { decided: false };
   }
 
-  return { decided: true, claim: best ? { seat: best.seat, response: best.response } : null };
+  return { decided: true, claim: first };
 }
