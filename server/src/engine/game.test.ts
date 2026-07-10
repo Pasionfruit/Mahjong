@@ -196,6 +196,64 @@ describe('claim priority', () => {
   });
 });
 
+describe('multi-variation chow reservation', () => {
+  // Seat 1 can chow b5 two ways (b4+b6 or b6+b7); seat 2 can pong it.
+  function multiChowVsPong(): GameState {
+    const wall = rigWall({
+      playerCount: 3,
+      hands: [
+        'd111 d222 d333 b5',
+        'b4 b6 b7 c123 d44 wE wE',
+        'b55 d567 wS wS wW gR gG',
+      ],
+      fronts: 'wN',
+    });
+    const { state } = startRoundWithWall(testSettings(), 3, 0, 1, wall);
+    discardKind(state, 0, 'b5');
+    return state;
+  }
+
+  it('a chow reservation holds the window open and locks out a later pong', () => {
+    const state = multiChowVsPong();
+
+    // Seat 1 clicks chow first but hasn't picked a run yet.
+    expect(applyPlayerAction(state, 1, { t: 'claim', claim: 'chowIntent' }).ok).toBe(true);
+    expect(state.phase.t).toBe('claimWindow'); // not resolved — run still unchosen
+
+    // Seat 2's pong arrives second and cannot steal the tile.
+    expect(applyPlayerAction(state, 2, { t: 'claim', claim: 'pong' }).ok).toBe(true);
+    expect(state.phase.t).toBe('claimWindow');
+
+    // Seat 1 finalizes; the chow it clicked first wins.
+    const chow = state.phase.t === 'claimWindow' ? state.phase.eligible.get(1)!.chows[0]! : null;
+    const tileIds = chow!.map((t) => t.id) as [number, number];
+    expect(applyPlayerAction(state, 1, { t: 'claim', claim: 'chow', tileIds }).ok).toBe(true);
+    expect(state.phase).toMatchObject({ t: 'awaitingDiscard', seat: 1 });
+    expect(state.players[1]!.melds[0]!.type).toBe('chow');
+    expect(state.players[2]!.melds).toHaveLength(0);
+  });
+
+  it('a pong that clicks before the chow reservation still wins the race', () => {
+    const state = multiChowVsPong();
+    expect(applyPlayerAction(state, 2, { t: 'claim', claim: 'pong' }).ok).toBe(true);
+    // Resolves immediately — seat 1's chow reservation never gets a chance.
+    expect(state.phase).toMatchObject({ t: 'awaitingDiscard', seat: 2 });
+    expect(state.players[2]!.melds[0]!.type).toBe('pong');
+    expect(applyPlayerAction(state, 1, { t: 'claim', claim: 'chowIntent' }).ok).toBe(false);
+  });
+
+  it('a reserved chow that is never chosen forfeits when the window lapses', () => {
+    const state = multiChowVsPong();
+    applyPlayerAction(state, 1, { t: 'claim', claim: 'chowIntent' });
+    applyPlayerAction(state, 2, { t: 'claim', claim: 'pong' });
+
+    applyTimeout(state);
+    // Seat 1 forfeited by not picking; seat 2's pong is next in line.
+    expect(state.phase).toMatchObject({ t: 'awaitingDiscard', seat: 2 });
+    expect(state.players[2]!.melds[0]!.type).toBe('pong');
+  });
+});
+
 describe('kongs', () => {
   it('exposed kong claims the discard and draws a replacement from the back', () => {
     const wall = rigWall({

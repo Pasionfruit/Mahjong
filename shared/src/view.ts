@@ -49,6 +49,8 @@ export interface YourOptions {
     kong: boolean;
     /** Each entry is the two hand tiles that complete a run with the discard. */
     chows: [Tile, Tile][];
+    /** You reserved a chow (clicked first) and must now pick which run to complete. */
+    mustPickChow: boolean;
   } | null;
 }
 

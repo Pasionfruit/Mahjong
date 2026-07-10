@@ -74,21 +74,33 @@ export function redactFor(
       addedKongTileIds: addedKongOptions(state, viewerSeat),
       claim: null,
     };
-  } else if (
-    phase.t === 'claimWindow' &&
-    phase.eligible.has(viewerSeat) &&
-    !phase.responses.has(viewerSeat)
-  ) {
+  } else if (phase.t === 'claimWindow' && phase.eligible.has(viewerSeat)) {
     const opts = phase.eligible.get(viewerSeat)!;
-    yourOptions = {
-      ...NO_OPTIONS,
-      claim: {
-        win: opts.win,
-        pong: opts.pong,
-        kong: opts.kong && state.wall.length > 0,
-        chows: opts.chows.map((pair) => [...pair] as [typeof pair[0], typeof pair[1]]),
-      },
-    };
+    const mine = phase.responses.get(viewerSeat);
+    const chows = opts.chows.map((pair) => [...pair] as [typeof pair[0], typeof pair[1]]);
+    if (mine?.r === 'chowPending') {
+      // You reserved the chow: keep offering the runs so you can pick one.
+      yourOptions = {
+        ...NO_OPTIONS,
+        claim: { win: false, pong: false, kong: false, chows, mustPickChow: true },
+      };
+    } else if (!mine) {
+      // A rival who reserved a chow clicked before you — their claim outranks
+      // your pong/kong/chow, so only a win can still beat it.
+      const lockedOut = [...phase.responses].some(
+        ([s, r]) => s !== viewerSeat && r.r === 'chowPending',
+      );
+      yourOptions = {
+        ...NO_OPTIONS,
+        claim: {
+          win: opts.win,
+          pong: opts.pong && !lockedOut,
+          kong: opts.kong && state.wall.length > 0 && !lockedOut,
+          chows: lockedOut ? [] : chows,
+          mustPickChow: false,
+        },
+      };
+    }
   }
 
   return {
@@ -118,9 +130,13 @@ export function deadlineHintMs(state: GameState): number | null {
     case 'awaitingDiscard':
       return state.settings.turnTimerSeconds > 0 ? state.settings.turnTimerSeconds * 1000 : null;
     case 'claimWindow': {
+      const phase = state.phase;
+      // Someone reserved a chow and is choosing which run — give them a fresh
+      // window to pick before the tile passes on.
+      const pickingChow = [...phase.responses.values()].some((r) => r.r === 'chowPending');
+      if (pickingChow) return CLAIM_WINDOW_COMPLEX_BONUS_MS;
       // More thinking time while a pending seat has several ways to claim
       // (pong + chow, multiple chow shapes, ...) — a win click needs no extra.
-      const phase = state.phase;
       const complex = [...phase.eligible.entries()].some(([seat, o]) => {
         if (phase.responses.has(seat)) return false;
         return (o.pong ? 1 : 0) + (o.kong ? 1 : 0) + o.chows.length >= 2;

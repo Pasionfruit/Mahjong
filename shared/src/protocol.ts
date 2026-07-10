@@ -8,6 +8,9 @@ export type Ack<T = null> = (r: Result<T>) => void;
 export type PlayerAction =
   | { t: 'discard'; tileId: number }
   | { t: 'claim'; claim: 'win' | 'pong' | 'kong' }
+  // Reserve a chow before choosing which run — locks in your place in the race
+  // so a rival's pong can't slip in while you pick a variation.
+  | { t: 'claim'; claim: 'chowIntent' }
   | { t: 'claim'; claim: 'chow'; tileIds: [number, number] }
   | { t: 'pass' }
   | { t: 'concealedKong'; kind: TileKind }

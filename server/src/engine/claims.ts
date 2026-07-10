@@ -15,7 +15,10 @@ export type ClaimResponse =
   | { r: 'win' }
   | { r: 'pong' }
   | { r: 'kong' }
-  | { r: 'chow'; tileIds: [number, number] };
+  | { r: 'chow'; tileIds: [number, number] }
+  // A chow has been reserved but the specific run is still being chosen. Holds
+  // the seat's place in the race without yet resolving the window.
+  | { r: 'chowPending' };
 
 /** Which seats can claim the discard, and how. Chow is only for the next seat. */
 export function computeClaimOptions(
@@ -48,6 +51,10 @@ export function computeClaimOptions(
  * a tie), otherwise the first pong/kong/chow response wins the race — clicking
  * speed decides between competing claims. A non-win claim is only granted once
  * no win-eligible seat is still pending, so a slow "Win!" is never stolen.
+ *
+ * A `chowPending` (chow reserved, run not yet chosen) counts as the earliest
+ * click for ordering — it locks out a rival's slower pong — but keeps the
+ * window open until the seat finalizes which run it wants.
  */
 export function decideClaims(
   eligible: Map<number, ClaimOptions>,
@@ -71,6 +78,10 @@ export function decideClaims(
     if (opts.win) return { decided: false };
     if (!first) return { decided: false };
   }
+
+  // The fastest claim reserved a chow but hasn't picked a run yet — hold the
+  // window open for it rather than handing the tile to a later claim.
+  if (first?.response.r === 'chowPending') return { decided: false };
 
   return { decided: true, claim: first };
 }

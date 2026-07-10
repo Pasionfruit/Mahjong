@@ -247,11 +247,18 @@ export function applyPlayerAction(state: GameState, seat: number, action: Player
   }
   const opts = phase.eligible.get(seat);
   if (!opts) return { ok: false, error: 'no claim available' };
-  if (phase.responses.has(seat)) return { ok: false, error: 'already responded' };
+  const prior = phase.responses.get(seat);
+  // A reserved chow may still be finalized (or abandoned); any other response
+  // is locked in.
+  if (prior && prior.r !== 'chowPending') return { ok: false, error: 'already responded' };
 
   let response: ClaimResponse;
   if (action.t === 'pass') {
     response = { r: 'pass' };
+  } else if (action.claim === 'chowIntent') {
+    if (opts.chows.length === 0) return { ok: false, error: 'cannot chow' };
+    if (prior) return { ok: false, error: 'already responded' };
+    response = { r: 'chowPending' };
   } else if (action.claim === 'chow') {
     const wanted = new Set(action.tileIds);
     const match = opts.chows.find((pair) => pair.every((t) => wanted.has(t.id)));
@@ -289,7 +296,9 @@ export function applyTimeout(state: GameState): GameEvent[] {
 
   if (phase.t === 'claimWindow') {
     for (const seat of phase.eligible.keys()) {
-      if (!phase.responses.has(seat)) phase.responses.set(seat, { r: 'pass' });
+      // A reserved-but-unchosen chow forfeits when the window lapses.
+      const r = phase.responses.get(seat);
+      if (!r || r.r === 'chowPending') phase.responses.set(seat, { r: 'pass' });
     }
     maybeResolveClaims(state, events);
     return events;

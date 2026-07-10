@@ -26,6 +26,19 @@ function pongWindowState(settings?: Partial<GameSettings>): GameState {
   return state;
 }
 
+// Seat 1 can chow b5 two ways (b4+b6 or b6+b7); seat 2 can pong it.
+function multiChowVsPongState(): GameState {
+  const wall = rigWall({
+    playerCount: 3,
+    hands: ['d111 d222 d333 b5', 'b4 b6 b7 c123 d44 wE wE', 'b55 d567 wS wS wW gR gG'],
+    fronts: 'wN',
+  });
+  const { state } = startRoundWithWall(testSettings(), 3, 0, 1, wall);
+  const b5 = state.players[0]!.hand.find((t) => t.kind === 'b5')!;
+  applyPlayerAction(state, 0, { t: 'discard', tileId: b5.id });
+  return state;
+}
+
 describe('redactFor', () => {
   it('hides opponents’ hands but exposes counts, melds, discards', () => {
     const state = pongWindowState();
@@ -132,5 +145,26 @@ describe('deadlineHintMs', () => {
     // Once seat 1 passes, only seat 2's single-way pong is pending → normal window.
     applyPlayerAction(state, 1, { t: 'pass' });
     expect(deadlineHintMs(state)).toBe(7000);
+  });
+
+  it('refreshes to a 5s window once a chow is reserved', () => {
+    const state = multiChowVsPongState();
+    applyPlayerAction(state, 1, { t: 'claim', claim: 'chowIntent' });
+    expect(deadlineHintMs(state)).toBe(5000);
+  });
+});
+
+describe('chow reservation view', () => {
+  it('keeps offering the runs to the reserver and locks out a rival pong', () => {
+    const state = multiChowVsPongState();
+    applyPlayerAction(state, 1, { t: 'claim', claim: 'chowIntent' });
+
+    const reserver = redactFor(state, 1, seats, null).yourOptions.claim;
+    expect(reserver).toMatchObject({ mustPickChow: true, pong: false });
+    expect(reserver!.chows.length).toBeGreaterThanOrEqual(2);
+
+    // Seat 2 clicked nothing yet — its pong is disabled because seat 1 reserved first.
+    const rival = redactFor(state, 2, seats, null).yourOptions.claim;
+    expect(rival).toMatchObject({ pong: false, mustPickChow: false });
   });
 });
