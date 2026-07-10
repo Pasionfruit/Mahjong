@@ -1,7 +1,6 @@
 import { useStore, currentScreen } from './store';
-import Landing from './screens/Landing';
-import Lobby from './screens/Lobby';
-import GameTable from './screens/GameTable';
+import Home from './screens/Home';
+import { gameById } from './games/catalog';
 
 export default function App() {
   const lobby = useStore((s) => s.lobby);
@@ -10,12 +9,22 @@ export default function App() {
   const screen = currentScreen(lobby, game);
   const theme = lobby?.settings.theme ?? 'jade';
 
+  // In a room, render the screens registered for that room's game.
+  const screens = lobby ? gameById(lobby.gameId)?.screens : undefined;
+
+  let content;
+  if (screen === 'home' || !screens) {
+    content = <Home />;
+  } else if (screen === 'game') {
+    content = <screens.Game />;
+  } else {
+    content = <screens.Lobby />;
+  }
+
   return (
     <div className="app" data-theme={theme}>
       {!connected && <div className="conn-banner">Reconnecting to server…</div>}
-      {screen === 'landing' && <Landing />}
-      {screen === 'lobby' && <Lobby />}
-      {screen === 'game' && <GameTable />}
+      {content}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { BotDifficulty, GameSettings } from './settings';
 import type { ClientGameView, GameEvent, LobbyState } from './view';
 import type { TileKind } from './tiles';
+import type { GameId } from './games';
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type Ack<T = null> = (r: Result<T>) => void;
@@ -25,7 +26,7 @@ export interface JoinInfo {
 }
 
 export interface ClientToServerEvents {
-  'room:create': (p: { nickname: string }, ack: Ack<JoinInfo>) => void;
+  'room:create': (p: { nickname: string; gameId: GameId }, ack: Ack<JoinInfo>) => void;
   'room:join': (p: { roomCode: string; nickname: string }, ack: Ack<JoinInfo>) => void;
   'room:rejoin': (p: { roomCode: string; token: string }, ack: Ack<JoinInfo>) => void;
   'room:leave': () => void;

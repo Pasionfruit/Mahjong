@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { ClientGameView, GameEvent, LobbyState } from '@shared/view';
 
-export type Screen = 'landing' | 'lobby' | 'game';
+export type Screen = 'home' | 'lobby' | 'game';
 
 interface AppState {
   connected: boolean;
@@ -39,5 +39,5 @@ export const useStore = create<AppState>((set) => ({
 export function currentScreen(lobby: LobbyState | null, game: ClientGameView | null): Screen {
   if (lobby && lobby.phase === 'playing' && game) return 'game';
   if (lobby) return 'lobby';
-  return 'landing';
+  return 'home';
 }

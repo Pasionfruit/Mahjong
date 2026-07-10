@@ -3,14 +3,9 @@ import { CLAIM_WINDOW_COMPLEX_BONUS_MS, CLAIM_WINDOW_MS } from '@shared/settings
 import type { ClientGameView, Meld, MeldView, PublicPlayer, YourOptions } from '@shared/view';
 import { addedKongOptions, concealedKongOptions, type GameState } from './game';
 import { isWinningHand } from './win';
+import type { SeatMeta } from '../games/GameModule';
 
-export interface SeatMeta {
-  nickname: string;
-  connected: boolean;
-  isHost: boolean;
-  isBot?: boolean;
-  wins: number;
-}
+export type { SeatMeta };
 
 const NO_OPTIONS: YourOptions = {
   canDiscard: false,

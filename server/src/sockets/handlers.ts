@@ -1,6 +1,8 @@
-import type { PlayerAction, Result } from '@shared/protocol';
+import type { Result } from '@shared/protocol';
 import { BOT_DIFFICULTIES, type BotDifficulty } from '@shared/settings';
+import { isGameId } from '@shared/games';
 import { RoomManager } from '../rooms/RoomManager';
+import { getModule } from '../games/registry';
 import { normalizeCode } from '../rooms/codes';
 import type { IoServer, IoSocket } from '../rooms/Room';
 
@@ -16,41 +18,6 @@ function cleanNickname(input: unknown): string | null {
   return nickname.length > 0 ? nickname : null;
 }
 
-const CLAIM_KINDS = new Set(['win', 'pong', 'kong', 'chow']);
-const ACTION_KINDS = new Set([
-  'discard',
-  'claim',
-  'pass',
-  'concealedKong',
-  'addedKong',
-  'winSelfDraw',
-]);
-
-function isPlayerAction(a: unknown): a is PlayerAction {
-  if (typeof a !== 'object' || a === null) return false;
-  const action = a as Record<string, unknown>;
-  if (typeof action.t !== 'string' || !ACTION_KINDS.has(action.t)) return false;
-  switch (action.t) {
-    case 'discard':
-    case 'addedKong':
-      return typeof action.tileId === 'number';
-    case 'concealedKong':
-      return typeof action.kind === 'string';
-    case 'claim':
-      if (typeof action.claim !== 'string' || !CLAIM_KINDS.has(action.claim)) return false;
-      if (action.claim === 'chow') {
-        return (
-          Array.isArray(action.tileIds) &&
-          action.tileIds.length === 2 &&
-          action.tileIds.every((id) => typeof id === 'number')
-        );
-      }
-      return true;
-    default:
-      return true;
-  }
-}
-
 export function registerHandlers(io: IoServer): void {
   const manager = new RoomManager();
 
@@ -62,8 +29,9 @@ export function registerHandlers(io: IoServer): void {
       if (typeof ack !== 'function') return;
       const nickname = cleanNickname(payload?.nickname);
       if (!nickname) return ack(fail('enter a nickname'));
+      if (!isGameId(payload?.gameId)) return ack(fail('unknown game'));
       if (roomOf(socket)) return ack(fail('already in a room'));
-      const room = manager.create();
+      const room = manager.create(getModule(payload.gameId));
       ack(room.join(nickname, socket));
     });
 
@@ -132,7 +100,6 @@ export function registerHandlers(io: IoServer): void {
       if (typeof ack !== 'function') return;
       const room = roomOf(socket);
       if (!room) return ack(fail('not in a room'));
-      if (!isPlayerAction(action)) return ack(fail('invalid action'));
       ack(room.action(socket, action));
     });
 

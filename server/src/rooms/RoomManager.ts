@@ -1,5 +1,7 @@
 import { Room } from './Room';
 import { generateCode } from './codes';
+import { mahjongModule } from '../games/mahjong';
+import type { GameModule } from '../games/GameModule';
 
 const SWEEP_INTERVAL_MS = 30_000;
 
@@ -11,11 +13,11 @@ export class RoomManager {
     interval.unref();
   }
 
-  create(): Room {
+  create(module: GameModule = mahjongModule): Room {
     for (let attempt = 0; attempt < 20; attempt++) {
       const code = generateCode();
       if (!this.rooms.has(code)) {
-        const room = new Room(code);
+        const room = new Room(code, module);
         this.rooms.set(code, room);
         return room;
       }

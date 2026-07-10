@@ -7,6 +7,7 @@ import type {
   ServerToClientEvents,
 } from '@shared/protocol';
 import type { BotDifficulty, GameSettings } from '@shared/settings';
+import type { GameId } from '@shared/games';
 import { useStore } from './store';
 import { clearSession, loadSession, saveSession } from './session';
 import { play } from './audio';
@@ -81,9 +82,9 @@ function handleJoin(nickname: string) {
   };
 }
 
-export function createParty(nickname: string): Promise<Result<JoinInfo>> {
+export function createParty(nickname: string, gameId: GameId): Promise<Result<JoinInfo>> {
   return new Promise((resolve) =>
-    socket.emit('room:create', { nickname }, (r) => {
+    socket.emit('room:create', { nickname, gameId }, (r) => {
       handleJoin(nickname)(r);
       resolve(r);
     }),

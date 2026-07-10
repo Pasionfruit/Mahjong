@@ -1,5 +1,6 @@
 import type { Tile, TileKind } from './tiles';
 import type { GameSettings } from './settings';
+import type { GameId } from './games';
 
 export type MeldType = 'pong' | 'chow' | 'kongExposed' | 'kongConcealed' | 'kongAdded';
 
@@ -98,6 +99,8 @@ export interface LobbyPlayer {
 
 export interface LobbyState {
   roomCode: string;
+  /** Which game this room is hosting. */
+  gameId: GameId;
   phase: 'lobby' | 'playing';
   players: LobbyPlayer[];
   settings: GameSettings;
