@@ -15,6 +15,14 @@ body,
 #root {
   margin: 0;
   height: 100%;
+  /* The page canvas sits behind .app. On mobile, when the browser's URL bar
+     collapses (or iOS rubber-band scrolls), a strip below .app is exposed —
+     paint it the felt-dark base so no white ever shows through. */
+  background: #16382d;
+}
+
+html {
+  overscroll-behavior: none;
 }
 
 body {
