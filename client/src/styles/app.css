@@ -258,10 +258,7 @@ body {
 }
 
 .home-title {
-  font-family: 'Henshin', 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
-  letter-spacing: 0.06em;
-  font-weight: 400;
-  font-size: 32px;
+  font-size: 30px;
   margin: 0 0 4px;
 }
 
@@ -349,6 +346,13 @@ body {
 .join-panel .join-row {
   max-width: 300px;
   margin: 0 auto;
+}
+
+.home-divider {
+  text-align: center;
+  opacity: 0.55;
+  font-size: 13px;
+  margin: 20px 0 16px;
 }
 
 /* ── lobby ──────────────────────────────────────────────────────────────── */
@@ -1574,12 +1578,45 @@ body {
   /* Home / lobby / overlays breathe less on small screens. */
   .home,
   .lobby { padding: 20px 14px; }
-  .home-title { font-size: 26px; }
-  .landing-card,
+  .home-title { font-size: 24px; }
   .lobby-card,
   .overlay-card { padding: 20px; }
-  .landing-title { font-size: 24px; }
   .room-code { font-size: 26px; letter-spacing: 0.2em; }
   .overlay-actions,
   .lobby-actions { flex-wrap: wrap; }
+
+  /* Compact game cards: two per row, tighter spacing. */
+  .game-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .game-card {
+    min-width: 0;
+    padding: 12px;
+    gap: 3px;
+  }
+  .game-card-icon {
+    font-size: 22px;
+    margin-bottom: 0;
+  }
+  .game-card-title {
+    font-size: 14px;
+    gap: 5px;
+    overflow-wrap: anywhere;
+  }
+  .game-card-tagline {
+    font-size: 12px;
+  }
+  .game-card-players {
+    font-size: 11px;
+  }
+  .game-card-btn {
+    margin-top: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+  .soon-badge {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
 }

@@ -58,6 +58,25 @@ export default function Home() {
           />
         </label>
 
+        <div className="join-panel">
+          <span className="join-label">Joining a friend? Enter their table code.</span>
+          <div className="join-row">
+            <input
+              className="code-input"
+              value={code}
+              maxLength={4}
+              placeholder="CODE"
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && join()}
+            />
+            <button className="btn" disabled={busy} onClick={join}>
+              Join
+            </button>
+          </div>
+        </div>
+
+        <div className="home-divider">or start a new table</div>
+
         <div className="game-grid">
           {GAMES.map((g) => (
             <div key={g.id} className={`game-card${g.available ? '' : ' soon'}`}>
@@ -79,23 +98,6 @@ export default function Home() {
               </button>
             </div>
           ))}
-        </div>
-
-        <div className="join-panel">
-          <span className="join-label">Joining a friend? Enter their table code.</span>
-          <div className="join-row">
-            <input
-              className="code-input"
-              value={code}
-              maxLength={4}
-              placeholder="CODE"
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === 'Enter' && join()}
-            />
-            <button className="btn" disabled={busy} onClick={join}>
-              Join
-            </button>
-          </div>
         </div>
 
         {error && <div className="error">{error}</div>}
