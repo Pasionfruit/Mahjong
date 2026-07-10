@@ -6,7 +6,8 @@ import type {
   Result,
   ServerToClientEvents,
 } from '@shared/protocol';
-import type { BotDifficulty, GameSettings } from '@shared/settings';
+import type { ClientGameView } from '@shared/view';
+import type { BotDifficulty } from '@shared/settings';
 import type { GameId } from '@shared/games';
 import { useStore } from './store';
 import { clearSession, loadSession, saveSession } from './session';
@@ -31,16 +32,17 @@ socket.on('connect', () => {
 socket.on('disconnect', () => useStore.getState().setConnected(false));
 socket.on('lobby:state', (s) => useStore.getState().setLobby(s));
 
+/** Is it the viewer's move right now? For Mahjong only the discard phase counts. */
+function myTurn(v: ClientGameView): boolean {
+  if (v.turnSeat !== v.yourSeat || v.result) return false;
+  return v.g === 'mahjong' ? v.phase === 'awaitingDiscard' : true;
+}
+
 socket.on('game:state', (v) => {
   const prev = useStore.getState().game;
-  const becameMyTurn =
-    v.phase === 'awaitingDiscard' &&
-    v.turnSeat === v.yourSeat &&
-    (!prev ||
-      prev.round !== v.round ||
-      prev.turnSeat !== v.turnSeat ||
-      prev.phase !== 'awaitingDiscard');
-  if (becameMyTurn && !v.result) play('yourTurn');
+  const became =
+    myTurn(v) && (!prev || prev.g !== v.g || prev.turnSeat !== v.turnSeat || !myTurn(prev));
+  if (became) play('yourTurn');
   useStore.getState().setGame(v);
 });
 
@@ -59,6 +61,9 @@ socket.on('game:event', (e) => {
     case 'concealedKong':
     case 'addedKong':
       play('kong');
+      break;
+    case 'place':
+      play('discard');
       break;
     case 'win':
       play(e.seat === mySeat ? 'win' : 'lose');
@@ -106,7 +111,7 @@ export function leaveParty(): void {
   useStore.getState().reset();
 }
 
-export function updateSettings(patch: Partial<GameSettings>): Promise<Result<null>> {
+export function updateSettings(patch: Record<string, unknown>): Promise<Result<null>> {
   return new Promise((resolve) => socket.emit('lobby:settings', patch, resolve));
 }
 

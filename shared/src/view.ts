@@ -1,6 +1,7 @@
 import type { Tile, TileKind } from './tiles';
 import type { GameSettings } from './settings';
 import type { GameId } from './games';
+import type { Cell, Mark, SmallResult, UtttPlayer, UtttResult, UtttSettings } from './uttt';
 
 export type MeldType = 'pong' | 'chow' | 'kongExposed' | 'kongConcealed' | 'kongAdded';
 
@@ -66,7 +67,8 @@ export interface RoundResult {
   fromSeat?: number;
 }
 
-export interface ClientGameView {
+export interface MahjongView {
+  g: 'mahjong';
   yourSeat: number;
   hand: Tile[];
   drawnTileId: number | null;
@@ -88,6 +90,30 @@ export interface ClientGameView {
   result: RoundResult | null;
 }
 
+export interface UtttView {
+  g: 'uttt';
+  yourSeat: number;
+  turnSeat: number;
+  /** Your mark, or null if you're only spectating. */
+  yourMark: Mark | null;
+  /** Nine small boards, each an array of nine cells. */
+  boards: Cell[][];
+  /** Winner (or draw/open) of each of the nine small boards. */
+  boardResults: SmallResult[];
+  /** The board the next move is forced into, or null to play anywhere open. */
+  activeBoard: number | null;
+  lastMove: { board: number; cell: number } | null;
+  deadline: number | null;
+  paused: boolean;
+  players: UtttPlayer[];
+  settings: UtttSettings;
+  round: number;
+  result: UtttResult | null;
+}
+
+/** The redacted per-seat snapshot, discriminated by which game is running. */
+export type ClientGameView = MahjongView | UtttView;
+
 export interface LobbyPlayer {
   seat: number;
   nickname: string;
@@ -103,7 +129,10 @@ export interface LobbyState {
   gameId: GameId;
   phase: 'lobby' | 'playing';
   players: LobbyPlayer[];
-  settings: GameSettings;
+  settings: GameSettings | UtttSettings;
+  /** Player-count bounds for this game, so the lobby can render them. */
+  minPlayers: number;
+  maxPlayers: number;
   round: number;
   /** The seat of the player this state was sent to. */
   yourSeat: number;
@@ -119,4 +148,6 @@ export type GameEvent =
   | { t: 'flower'; seat: number; tile: Tile }
   | { t: 'win'; seat: number; by: 'discard' | 'selfDraw' }
   | { t: 'timeout'; seat: number }
-  | { t: 'wallExhausted' };
+  | { t: 'wallExhausted' }
+  // Ultimate Tic-Tac-Toe
+  | { t: 'place'; seat: number };

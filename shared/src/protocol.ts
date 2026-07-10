@@ -1,4 +1,4 @@
-import type { BotDifficulty, GameSettings } from './settings';
+import type { BotDifficulty } from './settings';
 import type { ClientGameView, GameEvent, LobbyState } from './view';
 import type { TileKind } from './tiles';
 import type { GameId } from './games';
@@ -6,7 +6,7 @@ import type { GameId } from './games';
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type Ack<T = null> = (r: Result<T>) => void;
 
-export type PlayerAction =
+export type MahjongAction =
   | { t: 'discard'; tileId: number }
   | { t: 'claim'; claim: 'win' | 'pong' | 'kong' }
   // Reserve a chow before choosing which run — locks in your place in the race
@@ -17,6 +17,11 @@ export type PlayerAction =
   | { t: 'concealedKong'; kind: TileKind }
   | { t: 'addedKong'; tileId: number }
   | { t: 'winSelfDraw' };
+
+/** Ultimate Tic-Tac-Toe: place your mark in board `board`, cell `cell` (0–8). */
+export type UtttAction = { t: 'place'; board: number; cell: number };
+
+export type PlayerAction = MahjongAction | UtttAction;
 
 export interface JoinInfo {
   roomCode: string;
@@ -30,7 +35,7 @@ export interface ClientToServerEvents {
   'room:join': (p: { roomCode: string; nickname: string }, ack: Ack<JoinInfo>) => void;
   'room:rejoin': (p: { roomCode: string; token: string }, ack: Ack<JoinInfo>) => void;
   'room:leave': () => void;
-  'lobby:settings': (p: Partial<GameSettings>, ack: Ack) => void;
+  'lobby:settings': (p: Record<string, unknown>, ack: Ack) => void;
   'lobby:addBot': (p: { difficulty: BotDifficulty }, ack: Ack) => void;
   'lobby:removeBot': (p: { seat: number }, ack: Ack) => void;
   'lobby:start': (ack: Ack) => void;

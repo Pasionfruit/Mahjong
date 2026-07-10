@@ -1,20 +1,12 @@
 import { useState } from 'react';
-import {
-  BOT_DIFFICULTIES,
-  MAX_PLAYERS,
-  MIN_PLAYERS,
-  THEMES,
-  TURN_TIMER_CHOICES,
-  defaultSetsFor,
-  type GameSettings,
-  type ThemeId,
-  type TurnTimerSeconds,
-} from '@shared/settings';
-import { addBot, leaveParty, removeBot, startGame, updateSettings } from '../socket';
+import { BOT_DIFFICULTIES } from '@shared/settings';
+import { addBot, leaveParty, removeBot, startGame } from '../socket';
 import { IconBot, IconClose, IconTrophy } from '../components/icons';
-import HowToPlay from '../components/HowToPlay';
 import { useStore } from '../store';
+import { gameById } from '../games/catalog';
 
+/** Game-agnostic lobby shell: room code, players, bots, and the game's own
+ *  settings panel (looked up from the catalog by gameId). */
 export default function Lobby() {
   const lobby = useStore((s) => s.lobby);
   const [error, setError] = useState<string | null>(null);
@@ -23,12 +15,10 @@ export default function Lobby() {
 
   const me = lobby.players.find((p) => p.seat === lobby.yourSeat);
   const isHost = me?.isHost ?? false;
-  const canStart = lobby.players.length >= MIN_PLAYERS && lobby.players.length <= MAX_PLAYERS;
-  const autoSets = defaultSetsFor(lobby.players.length);
-
-  function patch(p: Partial<GameSettings>) {
-    void updateSettings(p).then((r) => setError(r.ok ? null : r.error));
-  }
+  const { minPlayers, maxPlayers } = lobby;
+  const canStart = lobby.players.length >= minPlayers && lobby.players.length <= maxPlayers;
+  const entry = gameById(lobby.gameId);
+  const SettingsPanel = entry?.SettingsPanel;
 
   async function handleStart() {
     const r = await startGame();
@@ -49,7 +39,7 @@ export default function Lobby() {
       <div className="lobby-card">
         <div className="room-code-row">
           <div>
-            <div className="room-code-label">Room code</div>
+            <div className="room-code-label">{entry?.name ?? 'Room'} · code</div>
             <div className="room-code">{lobby.roomCode}</div>
           </div>
           <button className="btn" onClick={copyCode}>
@@ -58,7 +48,7 @@ export default function Lobby() {
         </div>
 
         <h2 className="section-title">
-          Players ({lobby.players.length}/{MAX_PLAYERS})
+          Players ({lobby.players.length}/{maxPlayers})
         </h2>
         <ul className="player-list">
           {lobby.players.map((p) => (
@@ -83,9 +73,7 @@ export default function Lobby() {
                 <button
                   className="btn bot-remove-btn"
                   title="Remove bot"
-                  onClick={() =>
-                    void removeBot(p.seat).then((r) => setError(r.ok ? null : r.error))
-                  }
+                  onClick={() => void removeBot(p.seat).then((r) => setError(r.ok ? null : r.error))}
                 >
                   <IconClose />
                 </button>
@@ -94,7 +82,7 @@ export default function Lobby() {
           ))}
         </ul>
 
-        {isHost && lobby.players.length < MAX_PLAYERS && (
+        {isHost && lobby.players.length < maxPlayers && (
           <div className="add-bot-row">
             <span className="hint">Add a bot:</span>
             {BOT_DIFFICULTIES.map((d) => (
@@ -109,96 +97,7 @@ export default function Lobby() {
           </div>
         )}
 
-        <h2 className="section-title">Rules</h2>
-        <div className="settings">
-          <label className="setting-row">
-            <span>Flowers</span>
-            <input
-              type="checkbox"
-              disabled={!isHost}
-              checked={lobby.settings.includeFlowers}
-              onChange={(e) => patch({ includeFlowers: e.target.checked })}
-            />
-          </label>
-
-          <label className="setting-row">
-            <span>Winds &amp; dragons</span>
-            <input
-              type="checkbox"
-              disabled={!isHost}
-              checked={lobby.settings.includeHonors}
-              onChange={(e) => patch({ includeHonors: e.target.checked })}
-            />
-          </label>
-
-          <label className="setting-row">
-            <span>Turn timer</span>
-            <select
-              disabled={!isHost}
-              value={lobby.settings.turnTimerSeconds}
-              onChange={(e) =>
-                patch({ turnTimerSeconds: Number(e.target.value) as TurnTimerSeconds })
-              }
-            >
-              {TURN_TIMER_CHOICES.map((s) => (
-                <option key={s} value={s}>
-                  {s === 0 ? 'Off' : `${s} seconds`}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="setting-row">
-            <span>Open hands (everyone sees all tiles)</span>
-            <input
-              type="checkbox"
-              disabled={!isHost}
-              checked={lobby.settings.openHands}
-              onChange={(e) => patch({ openHands: e.target.checked })}
-            />
-          </label>
-
-          <label className="setting-row">
-            <span>Triples to win</span>
-            <select
-              disabled={!isHost}
-              value={lobby.settings.setsToWin ?? 'auto'}
-              onChange={(e) =>
-                patch({ setsToWin: e.target.value === 'auto' ? null : Number(e.target.value) })
-              }
-            >
-              <option value="auto">
-                Auto ({autoSets} for {lobby.players.length}{' '}
-                {lobby.players.length === 1 ? 'player' : 'players'})
-              </option>
-              {[2, 3, 4, 5].map((n) => (
-                <option key={n} value={n}>
-                  {n} triples + double (or {n + 2} doubles + triple)
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="setting-row">
-            <span>Tile theme</span>
-            <select
-              disabled={!isHost}
-              value={lobby.settings.theme}
-              onChange={(e) => patch({ theme: e.target.value as ThemeId })}
-            >
-              {THEMES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <h2 className="section-title">Instructions</h2>
-        <div className="howto-row">
-          <HowToPlay />
-        </div>
+        {SettingsPanel && <SettingsPanel />}
 
         {!isHost && <p className="hint">Waiting for the host to start the game…</p>}
         {error && <div className="error">{error}</div>}
@@ -213,7 +112,7 @@ export default function Lobby() {
                 ? lobby.round > 0
                   ? 'Start new game'
                   : 'Start game'
-                : `Need ${MIN_PLAYERS}+ players`}
+                : `Need ${minPlayers}+ players`}
             </button>
           )}
         </div>

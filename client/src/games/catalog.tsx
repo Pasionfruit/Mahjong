@@ -1,12 +1,24 @@
 import type { ComponentType } from 'react';
-import Lobby from '../screens/Lobby';
 import GameTable from '../screens/GameTable';
-import { IconTile, IconGrid } from '../components/icons';
+import MahjongSettings from './mahjong/Settings';
+import UtttGame from './uttt/UtttGame';
+import UtttSettingsPanel from './uttt/Settings';
+import {
+  IconTile,
+  IconGrid,
+  IconPalette,
+  IconMask,
+  IconDare,
+  IconBomb,
+  IconBus,
+  IconTiles,
+  IconQuoridor,
+  IconPac,
+} from '../components/icons';
 
 /**
- * The dashboard catalog. Each entry describes a game for the home screen; games
- * the server can actually host set `available: true` and provide their screens.
- * Adding a game = add an entry here (and, for a real one, its server module).
+ * The game catalog powers the home dashboard and routes lobby/game screens.
+ * Adding a game = add an entry here (and, for a hostable one, its server module).
  */
 export interface GameEntry {
   /** Matches the server GameId when available. */
@@ -16,7 +28,9 @@ export interface GameEntry {
   players: string;
   Icon: ComponentType;
   available: boolean;
-  screens?: { Lobby: ComponentType; Game: ComponentType };
+  /** The in-game screen and the lobby settings panel for this game. */
+  Game?: ComponentType;
+  SettingsPanel?: ComponentType;
 }
 
 export const GAMES: GameEntry[] = [
@@ -27,7 +41,8 @@ export const GAMES: GameEntry[] = [
     players: '2–4 players',
     Icon: IconTile,
     available: true,
-    screens: { Lobby, Game: GameTable },
+    Game: GameTable,
+    SettingsPanel: MahjongSettings,
   },
   {
     id: 'uttt',
@@ -35,6 +50,74 @@ export const GAMES: GameEntry[] = [
     tagline: 'Nine boards inside one — win the meta-grid.',
     players: '2 players',
     Icon: IconGrid,
+    available: true,
+    Game: UtttGame,
+    SettingsPanel: UtttSettingsPanel,
+  },
+
+  // Coming soon — placeholders for future games.
+  {
+    id: 'art',
+    name: 'Art Games',
+    tagline: 'Draw it, guess it, howl with laughter.',
+    players: '3–8 players',
+    Icon: IconPalette,
+    available: false,
+  },
+  {
+    id: 'mafia',
+    name: 'Mafia',
+    tagline: 'Find the culprits before dawn.',
+    players: '5–12 players',
+    Icon: IconMask,
+    available: false,
+  },
+  {
+    id: 'dare',
+    name: 'I Dare You',
+    tagline: 'Truths and dares, dealt at random.',
+    players: '2–10 players',
+    Icon: IconDare,
+    available: false,
+  },
+  {
+    id: 'bomberman',
+    name: 'Bomberman',
+    tagline: 'Drop bombs, dodge the blast.',
+    players: '2–4 players',
+    Icon: IconBomb,
+    available: false,
+  },
+  {
+    id: 'ridethebus',
+    name: 'Ride the Bus',
+    tagline: 'Call the cards or ride again.',
+    players: '2–8 players',
+    Icon: IconBus,
+    available: false,
+  },
+  {
+    id: 'bananagrams',
+    name: 'Bananagrams',
+    tagline: 'Race to build your word grid.',
+    players: '2–8 players',
+    Icon: IconTiles,
+    available: false,
+  },
+  {
+    id: 'quoridor',
+    name: 'Quoridor',
+    tagline: 'Reach the far side; wall off your rival.',
+    players: '2–4 players',
+    Icon: IconQuoridor,
+    available: false,
+  },
+  {
+    id: 'pacman',
+    name: 'Pac-Man',
+    tagline: 'Chomp pellets, outrun the ghosts.',
+    players: '1 player',
+    Icon: IconPac,
     available: false,
   },
 ];

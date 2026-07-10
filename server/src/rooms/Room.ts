@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { Server, Socket } from 'socket.io';
-import { type BotDifficulty, type GameSettings } from '@shared/settings';
+import { type BotDifficulty } from '@shared/settings';
 import type { GameId } from '@shared/games';
 import type { GameEvent, LobbyState } from '@shared/view';
+
+type RoomSettings = LobbyState['settings'];
 import type {
   ClientToServerEvents,
   JoinInfo,
@@ -48,7 +50,7 @@ export class Room {
   private readonly module: GameModule;
   private players: RoomPlayer[] = [];
   private hostToken: string | null = null;
-  private settings: GameSettings;
+  private settings: RoomSettings;
   private phase: 'lobby' | 'playing' = 'lobby';
   /** Opaque game state owned by the module; the room never inspects it. */
   private game: unknown = null;
@@ -62,7 +64,7 @@ export class Room {
   constructor(code: string, module: GameModule) {
     this.code = code;
     this.module = module;
-    this.settings = module.defaultSettings() as GameSettings;
+    this.settings = module.defaultSettings() as RoomSettings;
   }
 
   // ── membership ────────────────────────────────────────────────────────────
@@ -187,12 +189,12 @@ export class Room {
     return ok(null);
   }
 
-  updateSettings(socket: IoSocket, patch: Partial<GameSettings>): Result<null> {
+  updateSettings(socket: IoSocket, patch: Record<string, unknown>): Result<null> {
     const player = this.bySocket(socket);
     if (!player) return err('not in this room');
     if (player.token !== this.hostToken) return err('only the host can change settings');
     if (this.phase !== 'lobby') return err('settings are locked during a game');
-    const next = this.module.sanitizeSettings(this.settings, patch) as GameSettings | null;
+    const next = this.module.sanitizeSettings(this.settings, patch) as RoomSettings | null;
     if (!next) return err('invalid settings');
     this.settings = next;
     this.broadcastLobby();
@@ -448,6 +450,8 @@ export class Room {
     return {
       roomCode: this.code,
       gameId: this.module.id as GameId,
+      minPlayers: this.module.minPlayers,
+      maxPlayers: this.module.maxPlayers,
       phase: this.phase,
       players: this.players.map((p) => ({
         seat: p.seat,

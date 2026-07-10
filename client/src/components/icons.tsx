@@ -116,3 +116,92 @@ export function IconGrid() {
     </I>
   );
 }
+
+/** Painter's palette — drawing/party games. */
+export function IconPalette() {
+  return (
+    <I>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="8.5" cy="9" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="7.6" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15.6" cy="9.2" r="1" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="13" r="1" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
+/** A domino mask — social deduction (Mafia). */
+export function IconMask() {
+  return (
+    <I>
+      <rect x="3" y="7" width="18" height="10" rx="5" />
+      <circle cx="8.5" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="12" r="1.6" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
+/** Exclamation in a circle — challenge/dare. */
+export function IconDare() {
+  return (
+    <I>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v5" />
+      <circle cx="12" cy="16.2" r="0.7" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
+/** A bomb with a lit fuse. */
+export function IconBomb() {
+  return (
+    <I>
+      <circle cx="10.5" cy="14.5" r="6.5" />
+      <path d="M15.5 9.5l2.5-2.5" />
+      <path d="M18 6.5v-2M18 6.5h2M18 6.5l1.5 1.5M18 6.5l1.5-1.5" />
+    </I>
+  );
+}
+
+/** A little bus — "Ride the Bus". */
+export function IconBus() {
+  return (
+    <I>
+      <rect x="3" y="5" width="18" height="12" rx="2" />
+      <path d="M3 11h18M8 5v6M13 5v6M17.5 5v6" />
+      <circle cx="8" cy="19" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="19" r="1.4" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
+/** A letter tile — word games (Bananagrams). */
+export function IconTiles() {
+  return (
+    <I>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M9 16l3-8 3 8M10.1 13.2h3.8" />
+    </I>
+  );
+}
+
+/** A pawn beside a wall — Quoridor. */
+export function IconQuoridor() {
+  return (
+    <I>
+      <circle cx="8" cy="7" r="2.4" />
+      <path d="M5.5 17c0-2.2 1.1-4 2.5-4s2.5 1.8 2.5 4z" />
+      <path d="M17 4v13" strokeWidth={3} />
+    </I>
+  );
+}
+
+/** Pac-Man with a pellet. */
+export function IconPac() {
+  return (
+    <I>
+      <path d="M20 6.8A9 9 0 1 0 20 17.2L12 12z" />
+      <circle cx="17.5" cy="12" r="1" fill="currentColor" stroke="none" />
+    </I>
+  );
+}

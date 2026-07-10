@@ -1,5 +1,6 @@
 import { useStore, currentScreen } from './store';
 import Home from './screens/Home';
+import Lobby from './screens/Lobby';
 import { gameById } from './games/catalog';
 
 export default function App() {
@@ -9,16 +10,15 @@ export default function App() {
   const screen = currentScreen(lobby, game);
   const theme = lobby?.settings.theme ?? 'jade';
 
-  // In a room, render the screens registered for that room's game.
-  const screens = lobby ? gameById(lobby.gameId)?.screens : undefined;
+  const Game = lobby ? gameById(lobby.gameId)?.Game : undefined;
 
   let content;
-  if (screen === 'home' || !screens) {
+  if (screen === 'home') {
     content = <Home />;
-  } else if (screen === 'game') {
-    content = <screens.Game />;
+  } else if (screen === 'game' && Game) {
+    content = <Game />;
   } else {
-    content = <screens.Lobby />;
+    content = <Lobby />;
   }
 
   return (

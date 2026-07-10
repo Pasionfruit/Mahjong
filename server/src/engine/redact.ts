@@ -1,6 +1,6 @@
 import { sortTiles } from '@shared/tiles';
 import { CLAIM_WINDOW_COMPLEX_BONUS_MS, CLAIM_WINDOW_MS } from '@shared/settings';
-import type { ClientGameView, Meld, MeldView, PublicPlayer, YourOptions } from '@shared/view';
+import type { MahjongView, Meld, MeldView, PublicPlayer, YourOptions } from '@shared/view';
 import { addedKongOptions, concealedKongOptions, type GameState } from './game';
 import { isWinningHand } from './win';
 import type { SeatMeta } from '../games/GameModule';
@@ -31,7 +31,7 @@ export function redactFor(
   seats: SeatMeta[],
   deadline: number | null,
   paused = false,
-): ClientGameView {
+): MahjongView {
   const roundOver = state.phase.t === 'roundOver';
   const revealAll = state.settings.openHands || roundOver;
   const viewer = state.players[viewerSeat]!;
@@ -99,6 +99,7 @@ export function redactFor(
   }
 
   return {
+    g: 'mahjong',
     yourSeat: viewerSeat,
     hand: sortTiles(viewer.hand),
     drawnTileId:

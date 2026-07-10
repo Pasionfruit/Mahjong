@@ -26,7 +26,7 @@ export default function GameTable() {
   const orderRef = useRef<number[]>([]);
   const dragId = useRef<number | null>(null);
   const [, forceOrder] = useReducer((x: number) => x + 1, 0);
-  if (!game || !lobby) return null;
+  if (!game || game.g !== 'mahjong' || !lobby) return null;
 
   const n = game.players.length;
   const me = game.players.find((p) => p.seat === game.yourSeat)!;

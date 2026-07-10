@@ -1,10 +1,10 @@
-import type { ClientGameView } from '@shared/view';
+import type { MahjongView } from '@shared/view';
 import { backToLobby, nextRound } from '../socket';
 import Tile from './Tile';
 import { IconTrophy } from './icons';
 import { MeldRow, FlowerRow } from './rows';
 
-export default function ResultOverlay({ game, isHost }: { game: ClientGameView; isHost: boolean }) {
+export default function ResultOverlay({ game, isHost }: { game: MahjongView; isHost: boolean }) {
   const result = game.result;
   if (!result) return null;
 

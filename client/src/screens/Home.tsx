@@ -41,7 +41,7 @@ export default function Home() {
             <span className="landing-glyph">
               <IconTile />
             </span>{' '}
-            Game Night
+            GameNight
           </h1>
           <p className="home-sub">Pick a game, start a table, and share the code with friends.</p>
         </header>
