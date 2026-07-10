@@ -1,8 +1,8 @@
 /** Bomberman: real-time, desktop-only, 2–8 players. */
 
-// 19×15 gives eight spawn points real breathing room.
-export const BOMBER_W = 19;
-export const BOMBER_H = 15;
+// 23×17 gives eight spawn points real breathing room.
+export const BOMBER_W = 23;
+export const BOMBER_H = 17;
 
 export const BOMBER_MAPS = ['classic', 'arena', 'maze'] as const;
 export type BomberMapId = (typeof BOMBER_MAPS)[number];
@@ -38,7 +38,7 @@ export type ItemFrequency = (typeof ITEM_FREQUENCIES)[number];
 export interface BombermanSettings {
   map: BomberMapId;
   suddenDeathSeconds: SuddenDeathSeconds;
-  /** Lives per player; more than 1 respawns you at your corner. */
+  /** Lives per player; with spares you blink in place instead of dying. */
   lives: LivesCount;
   /** How often bricks hide an item. */
   itemFrequency: ItemFrequency;
@@ -94,9 +94,9 @@ export interface BomberPlayerView {
   carrying: boolean;
   /** Lives remaining (includes the one in play). */
   lives: number;
-  /** Off the board, waiting to respawn at their corner. */
-  respawning: boolean;
-  /** Brief spawn protection — flames don't hurt. */
+  /** Currently stepping between cells (drives the walk animation). */
+  moving: boolean;
+  /** Blinking after losing a life — flames don't hurt. */
   invulnerable: boolean;
   /** Milliseconds per cell at current speed (drives the client tween). */
   stepMs: number;

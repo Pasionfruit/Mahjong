@@ -21,16 +21,17 @@ const KEY_DIRS: Record<string, BomberDir> = {
 
 const PU_LABEL: Record<string, string> = { f: '🔥', p: '⚡', s: '🐌', g: '🧤', b: '👢' };
 
-/** A simple stick figure in the player's color. */
+/** A stick figure in the player's color; limbs swing while `.walking`. */
 function StickFigure({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 24 32" className="bomber-stick">
       <circle cx="12" cy="6.5" r="4.6" fill={color} stroke="rgba(0,0,0,0.45)" strokeWidth="1.4" />
       <g stroke={color} strokeWidth="2.6" strokeLinecap="round" fill="none">
         <path d="M12 11.5v10" />
-        <path d="M4.5 16.5h15" />
-        <path d="M12 21.5l-5 8" />
-        <path d="M12 21.5l5 8" />
+        <g className="bomber-arm-l"><path d="M12 13.5L5.5 18.5" /></g>
+        <g className="bomber-arm-r"><path d="M12 13.5L18.5 18.5" /></g>
+        <g className="bomber-leg-l"><path d="M12 21.5l-5 8" /></g>
+        <g className="bomber-leg-r"><path d="M12 21.5l5 8" /></g>
       </g>
     </svg>
   );
@@ -123,7 +124,6 @@ export default function BombermanGame() {
               {game.settings.lives > 1 && p.alive && (
                 <span className="bomber-lives">{'♥'.repeat(p.lives)}</span>
               )}
-              {p.respawning && <span className="bomber-respawn">…</span>}
               {p.wins > 0 && <span className="uttt-chip-wins">{p.wins}</span>}
             </div>
           ))}
@@ -196,14 +196,13 @@ export default function BombermanGame() {
 
         {game.players.map(
           (p) =>
-            p.alive &&
-            !p.respawning && (
+            p.alive && (
               <div
                 key={`p${p.seat}`}
-                className={`bomber-player${p.slowed ? ' slowed' : ''}${p.invulnerable ? ' invulnerable' : ''}`}
+                className={`bomber-player${p.slowed ? ' slowed' : ''}${p.invulnerable ? ' invulnerable' : ''}${p.moving ? ' walking' : ''}`}
                 // The tween duration matches this player's server step so the
-                // figure glides continuously instead of hopping cell to cell.
-                style={movePos(p.x, p.y, p.stepMs)}
+                // figure glides continuously; --step paces the limb swing too.
+                style={{ ...movePos(p.x, p.y, p.stepMs), '--step': `${p.stepMs}ms` } as React.CSSProperties}
               >
                 <StickFigure color={p.color} />
                 {p.carrying && <div className="bomber-carry" />}

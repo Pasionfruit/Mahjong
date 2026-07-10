@@ -156,11 +156,7 @@ function nextToEnemy(state: BombermanState, me: BomberPlayer, cell: number): boo
   const x = cell % W;
   const y = Math.floor(cell / W);
   return state.players.some(
-    (q) =>
-      q.seat !== me.seat &&
-      q.alive &&
-      q.respawnAtTick === null &&
-      Math.abs(q.x - x) + Math.abs(q.y - y) <= 1,
+    (q) => q.seat !== me.seat && q.alive && Math.abs(q.x - x) + Math.abs(q.y - y) <= 1,
   );
 }
 
@@ -171,6 +167,6 @@ function wantsBomb(state: BombermanState, p: BomberPlayer, diff: 'easy' | 'mediu
   // Hard: bomb when an enemy stands inside our blast footprint.
   const footprint = new Set(blastCells(state, { x: p.x, y: p.y, fire: p.fire, pierce: p.pierce }));
   return state.players.some(
-    (q) => q.seat !== p.seat && q.alive && q.respawnAtTick === null && footprint.has(idx(q.x, q.y)),
+    (q) => q.seat !== p.seat && q.alive && footprint.has(idx(q.x, q.y)),
   );
 }

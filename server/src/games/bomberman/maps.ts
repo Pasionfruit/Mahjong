@@ -93,9 +93,11 @@ export function buildMap(
     }
     brickDensity = 0.42;
   } else {
-    // Maze: wall rows with staggered gaps form corridors.
+    // Maze: wall rows with staggered gaps form corridors (gaps every 7 cells,
+    // offset on alternating rows so paths zigzag).
     for (let y = 2; y < H - 1; y += 2) {
-      const gaps = y % 4 === 2 ? [2, 9, 16] : [5, 13];
+      const gaps: number[] = [];
+      for (let x = y % 4 === 2 ? 2 : 5; x < W - 1; x += 7) gaps.push(x);
       for (let x = 1; x < W - 1; x++) {
         if (!gaps.includes(x)) grid[idx(x, y)] = WALL;
       }

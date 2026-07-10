@@ -3,10 +3,9 @@ import { BOMBER_H, BOMBER_MAPS, BOMBER_W, DEFAULT_BOMBERMAN_SETTINGS } from '@sh
 import { mulberry32 } from '../../engine/rng';
 import { BRICK, FLOOR, WALL, buildMap, shrinkSpiral, spawnPoints } from './maps';
 import {
+  BASE_FIRE,
   FUSE_TICKS,
-  INVULN_TICKS,
   MOVE_COOLDOWN,
-  RESPAWN_TICKS,
   SLOW_PENALTY,
   dropBomb,
   grabOrThrow,
@@ -229,33 +228,35 @@ describe('bomberman engine', () => {
   });
 });
 
-describe('bomberman lives & respawn', () => {
-  it('with lives > 1, a death respawns at the corner with brief protection', () => {
+describe('bomberman lives', () => {
+  it('with lives > 1, a hit blinks you in place — no relocation', () => {
     const s = openState();
     const p0 = s.players[0]!;
     const p1 = s.players[1]!;
     p0.lives = 2;
     p1.x = 9;
     p1.y = 9; // far from the blast
+    // Walk off the corner so we can prove position is preserved on death.
+    setInput(s, 0, 'right');
+    ticks(s, MOVE_COOLDOWN * 3);
+    setInput(s, 0, null);
+    const [dx, dy] = [p0.x, p0.y];
+    expect([dx, dy]).not.toEqual([p0.spawnX, p0.spawnY]);
+
     dropBomb(s, 0); // stand on it
     const results = ticks(s, FUSE_TICKS + 1);
     const events = results.flatMap((r) => r.events);
     expect(events.some((e) => e.t === 'death' && e.seat === 0)).toBe(true);
     expect(s.over).toBe(false); // still has a life — game continues
     expect(p0.alive).toBe(true);
-    expect(p0.respawnAtTick).not.toBe(null);
-
-    ticks(s, RESPAWN_TICKS + 1);
-    expect(p0.respawnAtTick).toBe(null);
-    expect([p0.x, p0.y]).toEqual([p0.spawnX, p0.spawnY]);
-    expect(p0.invulnUntil).toBeGreaterThan(s.tick); // spawn protection
     expect(p0.lives).toBe(1);
+    expect([p0.x, p0.y]).toEqual([dx, dy]); // stayed exactly where hit
+    expect(p0.invulnUntil).toBeGreaterThan(s.tick); // blinking protection
 
-    // Flames on the spawn cell don't hurt while invulnerable.
-    s.explosions.set(p0.y * 19 + p0.x, 5);
-    ticks(s, 1);
+    // The lingering flames can't finish them off while blinking.
+    ticks(s, 3);
     expect(p0.alive).toBe(true);
-    expect(p0.respawnAtTick).toBe(null);
+    expect(p0.lives).toBe(1);
   });
 
   it('the final life is final', () => {
@@ -269,6 +270,36 @@ describe('bomberman lives & respawn', () => {
     expect(p0.alive).toBe(false);
     expect(s.over).toBe(true);
     expect(s.result).toEqual({ winnerSeat: 1 });
+  });
+
+  it('invulnerability expires and that tick broadcasts a change', () => {
+    const s = openState();
+    const p0 = s.players[0]!;
+    s.players[1]!.x = 9;
+    s.players[1]!.y = 9;
+    p0.lives = 2;
+    dropBomb(s, 0);
+    ticks(s, FUSE_TICKS + 1);
+    expect(s.tick < p0.invulnUntil).toBe(true); // blinking
+
+    let changeAtExpiry = false;
+    for (let i = 0; i < 70; i++) {
+      const r = tick(s);
+      if (r.changed && p0.invulnUntil === s.tick) changeAtExpiry = true;
+    }
+    expect(s.tick >= p0.invulnUntil).toBe(true); // blink over
+    expect(changeAtExpiry).toBe(true); // idle clients hear about it
+  });
+
+  it('the closing walls are lethal even with spare lives', () => {
+    const s = newGame(settings({ suddenDeathSeconds: 60, lives: 3 }), 2, 1, 5);
+    s.tick = s.suddenDeathAtTick! - 1;
+    s.nextShrinkTick = 0;
+    s.players[1]!.x = 11;
+    s.players[1]!.y = 8;
+    ticks(s, 4); // spiral closes (1,1) under player 0
+    expect(s.players[0]!.alive).toBe(false);
+    expect(s.players[0]!.lives).toBe(0);
   });
 });
 
@@ -287,7 +318,7 @@ describe('bomberman items & config', () => {
     first.players[0]!.speed = 2;
     first.players[0]!.glove = true;
     const second = newGame(settings(), 2, 2, 8);
-    expect(second.players[0]!.fire).toBe(2);
+    expect(second.players[0]!.fire).toBe(BASE_FIRE);
     expect(second.players[0]!.speed).toBe(0);
     expect(second.players[0]!.glove).toBe(false);
   });
@@ -325,7 +356,7 @@ describe('bomberman bots', () => {
   it('a medium bot bombs bricks and survives the blast', () => {
     const s = botState('medium');
     // Surround the route with a brick target next to the spawn.
-    s.grid[1 * 19 + 3] = BRICK;
+    s.grid[idx(3, 1)] = BRICK;
     let bombed = false;
     for (let i = 0; i < 400 && !bombed; i++) {
       tick(s, botThink);

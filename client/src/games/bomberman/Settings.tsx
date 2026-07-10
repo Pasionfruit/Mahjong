@@ -79,7 +79,7 @@ export default function BombermanSettingsPanel() {
           >
             {LIVES_CHOICES.map((n) => (
               <option key={n} value={n}>
-                {n === 1 ? '1 — no second chances' : `${n} — respawn at your corner`}
+                {n === 1 ? '1 — no second chances' : `${n} — shrug off hits`}
               </option>
             ))}
           </select>
@@ -130,8 +130,9 @@ export default function BombermanSettingsPanel() {
         <p>
           Blast bricks to reveal powerups: bigger blasts, brick-piercing blasts, speed boots, a
           glove to throw bombs, and a hex that briefly slows everyone else. Powerups reset every
-          game. If sudden death is on, the walls close in toward the center when the timer runs
-          out — with extra lives you respawn at your corner, briefly protected.
+          game. With extra lives, a hit makes you blink — briefly untouchable — instead of taking
+          you out. If sudden death is on, the walls close in toward the center when the timer runs
+          out (and they are always lethal).
         </p>
       </div>
 

@@ -18,12 +18,11 @@ export const FUSE_TICKS = 50; // 2.5s
 export const EXPLOSION_TICKS = 9;
 export const MAX_BOMBS = 2;
 export const MAX_FIRE = 8;
-export const BASE_FIRE = 2;
+export const BASE_FIRE = 1; // starting blast: one cell in each direction
 export const MAX_SPEED = 2; // boots collected cap
 export const THROW_DISTANCE = 3;
 export const SHRINK_EVERY_TICKS = 3;
-export const RESPAWN_TICKS = 40; // 2s off the board
-export const INVULN_TICKS = 60; // 3s of spawn protection
+export const INVULN_TICKS = 60; // 3s of blinking protection after losing a life
 
 const W = BOMBER_W;
 const H = BOMBER_H;
@@ -65,8 +64,8 @@ export interface BomberPlayer {
   slowedUntil: number;
   bombsOut: number;
   lives: number;
-  /** Tick when this player returns to the board, or null when on it. */
-  respawnAtTick: number | null;
+  /** Tick of the last completed step (drives the walk animation). */
+  lastStepTick: number;
   invulnUntil: number;
   isBot: boolean;
   botDifficulty: BotDifficulty | null;
@@ -133,7 +132,7 @@ export function newGame(
       slowedUntil: 0,
       bombsOut: 0,
       lives: settings.lives,
-      respawnAtTick: null,
+      lastStepTick: -1000,
       invulnUntil: 0,
       isBot: seats[seat]?.isBot ?? false,
       botDifficulty: seats[seat]?.botDifficulty ?? null,
@@ -170,7 +169,12 @@ export function stepTicks(state: BombermanState, p: BomberPlayer): number {
 
 /** Is this player on the board and able to act? */
 function active(p: BomberPlayer): boolean {
-  return p.alive && p.respawnAtTick === null;
+  return p.alive;
+}
+
+/** Stepping right now? True from a step until the next one would be allowed. */
+export function isMoving(state: BombermanState, p: BomberPlayer): boolean {
+  return p.alive && state.tick - p.lastStepTick <= stepTicks(state, p);
 }
 
 // ── player actions (applied immediately; movement itself happens on ticks) ──
@@ -251,14 +255,6 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
   if (state.over) return { events, changed };
   state.tick++;
 
-  // Respawns come back first so this tick treats them normally.
-  for (const p of state.players) {
-    if (p.alive && p.respawnAtTick !== null && state.tick >= p.respawnAtTick) {
-      respawn(state, p);
-      changed = true;
-    }
-  }
-
   // Bot brains: pick inputs / drop bombs on their think cadence.
   if (botThink) {
     for (const p of state.players) {
@@ -279,6 +275,7 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
     p.x = nx;
     p.y = ny;
     p.moveCooldown = stepTicks(state, p);
+    p.lastStepTick = state.tick;
     changed = true;
 
     const pu = state.floorPU[idx(nx, ny)];
@@ -343,10 +340,11 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
       }
       state.nextShrinkTick = state.tick + SHRINK_EVERY_TICKS;
     }
-    // Crush players standing inside the new walls (no respawn saves you here
-    // if your corner is gone — respawn() falls back to the nearest open cell).
+    // The closing walls are always lethal — spare lives don't help when
+    // there's no floor left to stand on.
     for (const p of state.players) {
       if (active(p) && state.grid[idx(p.x, p.y)] === WALL) {
+        p.lives = 0;
         kill(state, p, events);
         changed = true;
       }
@@ -361,6 +359,9 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
       kill(state, p, events);
       changed = true;
     }
+    // Status timers lapse silently — broadcast the tick they flip so idle
+    // clients stop rendering the blink / slow tint.
+    if (p.invulnUntil === state.tick || p.slowedUntil === state.tick) changed = true;
   }
 
   // Last one standing wins; a mutual kill is a draw.
@@ -375,55 +376,21 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
   return { events, changed };
 }
 
-/** Lose a life: either leave the board to respawn, or go out for good. */
+/**
+ * Lose a life. With a spare, the player stays exactly where they are and
+ * blinks through a short protection window; the last life is final.
+ */
 function kill(state: BombermanState, p: BomberPlayer, events: GameEvent[]): void {
   // A carried bomb drops where they fell.
   const held = state.bombs.find((b) => b.carriedBySeat === p.seat);
   if (held) held.carriedBySeat = null;
-  p.lives--;
+  p.lives = Math.max(0, p.lives - 1);
   events.push({ t: 'death', seat: p.seat });
   if (p.lives > 0) {
-    p.respawnAtTick = state.tick + RESPAWN_TICKS;
-    p.inputDir = null;
+    p.invulnUntil = state.tick + INVULN_TICKS;
   } else {
     p.alive = false;
   }
-}
-
-/** Return at the spawn corner (or nearest open cell) with brief protection. */
-function respawn(state: BombermanState, p: BomberPlayer): void {
-  let target = { x: p.spawnX, y: p.spawnY };
-  if (!walkable(state, target.x, target.y)) {
-    const found = nearestOpen(state, target.x, target.y);
-    if (!found) {
-      p.alive = false; // the arena has closed over every open cell
-      p.respawnAtTick = null;
-      return;
-    }
-    target = found;
-  }
-  p.x = target.x;
-  p.y = target.y;
-  p.respawnAtTick = null;
-  p.invulnUntil = state.tick + INVULN_TICKS;
-  p.moveCooldown = 0;
-}
-
-function nearestOpen(state: BombermanState, sx: number, sy: number): { x: number; y: number } | null {
-  const seen = new Set<number>([idx(sx, sy)]);
-  const queue = [{ x: sx, y: sy }];
-  while (queue.length > 0) {
-    const { x, y } = queue.shift()!;
-    if (walkable(state, x, y)) return { x, y };
-    for (const { dx, dy } of Object.values(DIRS)) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= W || ny >= H || seen.has(idx(nx, ny))) continue;
-      seen.add(idx(nx, ny));
-      if (state.grid[idx(nx, ny)] !== WALL) queue.push({ x: nx, y: ny });
-    }
-  }
-  return null;
 }
 
 function applyPowerup(state: BombermanState, p: BomberPlayer, pu: PowerupKind): void {
