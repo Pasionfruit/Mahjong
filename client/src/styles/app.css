@@ -18,8 +18,7 @@ body,
 }
 
 body {
-  font-family: 'Henshin', 'Inter Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
-  letter-spacing: 0.075em;
+  font-family: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -165,6 +164,9 @@ body {
 }
 
 .landing-title {
+  /* the one place we keep the decorative display font */
+  font-family: 'Henshin', 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+  letter-spacing: 0.06em;
   margin: 0 0 4px;
   font-size: 28px;
 }
@@ -590,10 +592,6 @@ body {
   opacity: 0.7;
 }
 
-.hud .timerbar {
-  width: 100%;
-}
-
 .hud-menu {
   position: relative;
   align-self: stretch;
@@ -617,8 +615,24 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
   padding: 10px;
-  min-width: 150px;
+  min-width: 170px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.menu-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.menu-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.7;
 }
 
 /* ── leaderboard (top-left) ────────────────────────────────────────────── */
@@ -887,6 +901,29 @@ body {
   background: rgba(255, 255, 255, 0.18);
 }
 
+/* the timer sits just right of your name, above your hand */
+.my-hand-header {
+  flex-wrap: wrap;
+}
+
+.my-hand-header .player-name {
+  flex: 0 0 auto;
+}
+
+.my-timer {
+  display: flex;
+  align-items: center;
+  width: min(200px, 34vw);
+}
+
+.my-timer .timerbar {
+  width: 100%;
+}
+
+.my-hand-header .sort-btn {
+  margin-left: auto;
+}
+
 .my-hand .hand-row {
   display: flex;
   flex-wrap: wrap;
@@ -1092,22 +1129,10 @@ body {
 
 /* ── font weight ───────────────────────────────────────────────────────── */
 
-/* The display font ships a single weight — bolding it only smudges the strokes,
-   so strip synthetic bold everywhere. (Last in the file so it wins the cascade.) */
-h1,
-h2,
-h3,
-b,
-strong,
-.btn-primary,
-.host-badge,
-.hud-round,
-.leader-row.current .leader-name,
-.leader-wins,
-.turn-label,
-.claim-btn,
-.drawn-label,
-.score-wins {
+/* Only the title uses the single-weight display font; synthetic bold would just
+   smudge its strokes, so pin it to 400. Everything else is Inter and uses its
+   natural weights. (Last in the file so it wins the cascade.) */
+.landing-title {
   font-weight: 400;
 }
 
@@ -1115,18 +1140,103 @@ strong,
 
 @media (max-width: 900px) {
   .game-table {
-    grid-template-columns: 1fr 1fr;
+    /* grow with content and let .app scroll, rather than trapping a tall
+       stacked layout inside a viewport-height grid */
+    height: auto;
+    min-height: 100%;
+    /* minmax(0, …) lets the tracks shrink below their content's min-width so
+       tiles/buttons wrap inside the column instead of blowing the grid out
+       past the viewport. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto;
     grid-template-areas:
-      'topL topC'
-      'left right'
+      'score hud'
+      'topC  topC'
+      'left  right'
       'center center'
       'bottom bottom';
-    grid-template-rows: auto auto auto auto;
-    overflow-y: auto;
+    gap: 8px;
+    padding: 8px;
   }
-  .seat-top { grid-area: topC; }
-  .opponent-panel { min-width: 150px; }
-  .tile-md { width: 48px; }
-  .my-hand .tile-md { width: 60px; }
-  .my-hand .tile-lg { width: 74px; }
+
+  /* Pull the corner widgets into normal flow so they can never overlap the
+     table or each other on a narrow screen. */
+  .leaderboard,
+  .hud {
+    position: static;
+    inset: auto;
+  }
+  .leaderboard {
+    grid-area: score;
+    min-width: 0;
+  }
+  .hud {
+    grid-area: hud;
+    align-items: stretch;
+    min-width: 0;
+  }
+  .hud-line {
+    justify-content: space-between;
+  }
+
+  .opponent-panel {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .discard-board { min-height: 240px; }
+
+  .tile-xs { width: 22px; }
+  .tile-md { width: 46px; }
+  .my-hand .tile-md { width: 56px; }
+  .my-hand .tile-lg { width: 70px; }
+}
+
+@media (max-width: 640px) {
+  .game-table {
+    gap: 6px;
+    padding: 6px;
+  }
+
+  /* Compact HUD: keep round, wall, timer and menu; shed the goal line and the
+     volume slider (the mute button stays) to reclaim width. */
+  .hud { padding: 8px 10px; gap: 5px; }
+  .hud-goal { display: none; }
+  .hud-round { font-size: 15px; }
+  .hud-btn { padding: 5px 10px; }
+
+  .leaderboard { padding: 8px 10px; }
+  .leaderboard-title { display: none; }
+  .leader-name { max-width: 84px; }
+
+  .discard-board { min-height: 190px; }
+  .discard-active { transform: translate(-50%, calc(-50% - 28px)); }
+  .board-arrow { transform: translate(-50%, 22px); width: 44px; }
+  .turn-label { font-size: 15px; }
+  .wall-strip { max-width: 96%; }
+
+  .seat-bottom { padding: 10px; }
+  .action-area { min-height: 46px; }
+  .claim-btn { font-size: 16px; padding: 9px 18px; }
+  .panel-header .hint { display: none; }
+
+  .tile-xs { width: 19px; }
+  .tile-sm { width: 34px; }
+  .tile-md { width: 40px; }
+  .my-hand .tile-md { width: 48px; }
+  .my-hand .tile-lg { width: 60px; }
+  .my-hand .hand-row { gap: 2px; }
+  .drawn-slot { margin-left: 12px; }
+  .drawn-gap { width: 10px; }
+
+  /* Landing / lobby / overlays breathe less on small screens. */
+  .landing,
+  .lobby { padding: 16px; }
+  .landing-card,
+  .lobby-card,
+  .overlay-card { padding: 20px; }
+  .landing-title { font-size: 24px; }
+  .room-code { font-size: 26px; letter-spacing: 0.2em; }
+  .overlay-actions,
+  .lobby-actions { flex-wrap: wrap; }
 }

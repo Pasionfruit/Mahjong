@@ -354,16 +354,16 @@ export class Room {
   /** (Re)arm think timers for every bot that currently owes a move. */
   private scheduleBotMoves(): void {
     const game = this.game;
-    const due = new Map<string, { bot: RoomPlayer; kind: 'turn' | 'claim' }>();
+    const due = new Map<string, { bot: RoomPlayer; kind: 'turn' | 'claim'; canWin: boolean }>();
     if (game && this.phase === 'playing' && !this.paused && game.phase.t !== 'roundOver') {
       if (game.phase.t === 'awaitingDiscard') {
         const bot = this.players[game.phase.seat];
-        if (bot?.isBot) due.set(`turn:${bot.seat}`, { bot, kind: 'turn' });
+        if (bot?.isBot) due.set(`turn:${bot.seat}`, { bot, kind: 'turn', canWin: false });
       } else if (game.phase.t === 'claimWindow') {
-        for (const seat of game.phase.eligible.keys()) {
+        for (const [seat, opts] of game.phase.eligible) {
           if (game.phase.responses.has(seat)) continue;
           const bot = this.players[seat];
-          if (bot?.isBot) due.set(`claim:${seat}`, { bot, kind: 'claim' });
+          if (bot?.isBot) due.set(`claim:${seat}`, { bot, kind: 'claim', canWin: opts.win });
         }
       }
     }
@@ -373,12 +373,12 @@ export class Room {
         this.botTimers.delete(key);
       }
     }
-    for (const [key, { bot, kind }] of due) {
+    for (const [key, { bot, kind, canWin }] of due) {
       if (this.botTimers.has(key)) continue;
       const timer = setTimeout(() => {
         this.botTimers.delete(key);
         this.runBotMove(bot, kind);
-      }, botDelayMs(bot.botDifficulty!, kind));
+      }, botDelayMs(bot.botDifficulty!, kind, canWin));
       this.botTimers.set(key, timer);
     }
   }

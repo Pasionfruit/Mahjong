@@ -21,14 +21,29 @@ import { countsOf, isWinningHand, type Counts } from './win';
  */
 
 const DELAYS: Record<BotDifficulty, { turn: [number, number]; claim: [number, number] }> = {
-  easy: { turn: [1200, 800], claim: [2400, 800] },
-  medium: { turn: [900, 700], claim: [1800, 700] },
-  hard: { turn: [700, 600], claim: [1300, 500] },
+  // claim = reaction time when racing a human for a pong/chow/kong. Deliberately
+  // slow (10s / 4s / 1.5s) so a human almost always wins the click race, and the
+  // easier bots frequently miss the window entirely.
+  easy: { turn: [1200, 800], claim: [10000, 1500] },
+  medium: { turn: [900, 700], claim: [4000, 1000] },
+  hard: { turn: [700, 600], claim: [1500, 500] },
 };
 
-/** Claims are slower than turns so humans get a fair shot at the click race. */
-export function botDelayMs(difficulty: BotDifficulty, kind: 'turn' | 'claim'): number {
-  const [base, spread] = DELAYS[difficulty][kind];
+/** A claimable win is grabbed quickly regardless of difficulty — the reaction
+ * slowdown only applies to pong/chow/kong, never to forfeiting a win. */
+const WIN_CLAIM_DELAY: Record<BotDifficulty, [number, number]> = {
+  easy: [900, 700],
+  medium: [700, 600],
+  hard: [500, 400],
+};
+
+export function botDelayMs(
+  difficulty: BotDifficulty,
+  kind: 'turn' | 'claim',
+  canWin = false,
+): number {
+  const [base, spread] =
+    kind === 'claim' && canWin ? WIN_CLAIM_DELAY[difficulty] : DELAYS[difficulty][kind];
   return Math.round(base + Math.random() * spread);
 }
 

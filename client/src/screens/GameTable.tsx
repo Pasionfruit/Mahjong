@@ -117,14 +117,16 @@ export default function GameTable() {
         <div className="hud-goal">
           {game.setsToWin} triples · {game.setsToWin + 2} doubles
         </div>
-        <TimerBar deadline={game.paused ? null : game.deadline} tickAudible={tickAudible} />
-        <VolumeControl />
         <div className="hud-menu">
           <button className="btn hud-btn" onClick={() => setMenuOpen((o) => !o)}>
             <IconMenu /> Menu
           </button>
           {menuOpen && (
             <div className="hud-dropdown">
+              <div className="menu-section">
+                <span className="menu-section-title">Sound</span>
+                <VolumeControl />
+              </div>
               <HowToPlay />
               {isHost ? (
                 <>
@@ -206,10 +208,13 @@ export default function GameTable() {
         </div>
 
         <div className="my-hand">
-          <div className="panel-header">
+          <div className="panel-header my-hand-header">
             <span className="player-name">
               {me.nickname} {me.isDealer && <span className="dealer-badge">dealer</span>}
             </span>
+            <div className="my-timer">
+              <TimerBar deadline={game.paused ? null : game.deadline} tickAudible={tickAudible} />
+            </div>
             <button className="btn sort-btn" onClick={resetSort}>
               Sort
             </button>
