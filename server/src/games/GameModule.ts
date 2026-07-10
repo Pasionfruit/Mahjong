@@ -1,12 +1,20 @@
 import type { BotDifficulty } from '@shared/settings';
 import type { ClientGameView, GameEvent } from '@shared/view';
 
+/** Per-seat facts a module may need at round start (e.g. which seats are bots). */
+export interface SeatInit {
+  isBot: boolean;
+  botDifficulty?: BotDifficulty;
+}
+
 /** Public metadata every seat carries, independent of any game's rules. */
 export interface SeatMeta {
   nickname: string;
   connected: boolean;
   isHost: boolean;
   isBot?: boolean;
+  /** Player-chosen color, for games that use one. */
+  color?: string;
   wins: number;
 }
 
@@ -35,6 +43,14 @@ export interface GameModule {
   readonly maxPlayers: number;
   /** Grace period before a disconnected seat on the clock is auto-moved (ms). */
   readonly turnGraceMs: number;
+  /** False when the game has no bot support (room rejects addBot). Default true. */
+  readonly supportsBots?: boolean;
+  /**
+   * Real-time games: the room runs setInterval(tickMs) while a round is live
+   * and unpaused, calling tick() each beat. Turn-based games omit both.
+   */
+  readonly tickMs?: number;
+  tick?(state: unknown): { events: GameEvent[]; changed: boolean };
 
   /** A fresh, mutable copy of the default settings for a new room. */
   defaultSettings(): unknown;
@@ -47,6 +63,7 @@ export interface GameModule {
     dealerSeat: number,
     round: number,
     seed: number,
+    seats?: SeatInit[],
   ): { state: unknown; events: GameEvent[] };
 
   applyAction(state: unknown, seat: number, action: unknown): ApplyResult;

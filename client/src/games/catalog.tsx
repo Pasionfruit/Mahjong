@@ -3,6 +3,8 @@ import GameTable from '../screens/GameTable';
 import MahjongSettings from './mahjong/Settings';
 import UtttGame from './uttt/UtttGame';
 import UtttSettingsPanel from './uttt/Settings';
+import BombermanGame from './bomberman/BombermanGame';
+import BombermanSettingsPanel from './bomberman/Settings';
 import {
   IconTile,
   IconGrid,
@@ -28,6 +30,8 @@ export interface GameEntry {
   players: string;
   Icon: ComponentType;
   available: boolean;
+  /** Requires a keyboard: creating/joining is blocked on touch-only devices. */
+  desktopOnly?: boolean;
   /** The in-game screen and the lobby settings panel for this game. */
   Game?: ComponentType;
   SettingsPanel?: ComponentType;
@@ -55,6 +59,18 @@ export const GAMES: GameEntry[] = [
     SettingsPanel: UtttSettingsPanel,
   },
 
+  {
+    id: 'bomberman',
+    name: 'Bomberman',
+    tagline: 'Drop bombs, dodge the blast.',
+    players: '2–8 players · desktop',
+    Icon: IconBomb,
+    available: true,
+    desktopOnly: true,
+    Game: BombermanGame,
+    SettingsPanel: BombermanSettingsPanel,
+  },
+
   // Coming soon — placeholders for future games.
   {
     id: 'art',
@@ -78,14 +94,6 @@ export const GAMES: GameEntry[] = [
     tagline: 'Truths and dares, dealt at random.',
     players: '2–10 players',
     Icon: IconDare,
-    available: false,
-  },
-  {
-    id: 'bomberman',
-    name: 'Bomberman',
-    tagline: 'Drop bombs, dodge the blast.',
-    players: '2–4 players',
-    Icon: IconBomb,
     available: false,
   },
   {

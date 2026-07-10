@@ -32,6 +32,8 @@ interface RoomPlayer {
   wins: number;
   isBot: boolean;
   botDifficulty?: BotDifficulty;
+  /** Player-chosen color, for games that use one. */
+  color?: string;
 }
 
 const LOBBY_DISCONNECT_DROP_MS = 60_000;
@@ -60,6 +62,8 @@ export class Room {
   private paused = false;
   private pausedRemainingMs: number | null = null;
   private botTimers = new Map<string, NodeJS.Timeout>();
+  /** Interval driving module.tick() for real-time games; null when idle. */
+  private ticker: NodeJS.Timeout | null = null;
 
   constructor(code: string, module: GameModule) {
     this.code = code;
@@ -154,6 +158,7 @@ export class Room {
     const player = this.bySocket(socket);
     if (!player) return err('not in this room');
     if (player.token !== this.hostToken) return err('only the host can add bots');
+    if (this.module.supportsBots === false) return err('this game has no bots');
     if (this.phase !== 'lobby') return err('game already in progress');
     if (this.players.length >= this.module.maxPlayers) return err('party is full');
     const base = `${difficulty[0]!.toUpperCase()}${difficulty.slice(1)} Bot`;
@@ -201,6 +206,18 @@ export class Room {
     return ok(null);
   }
 
+  /** Any player may pick their own color; first-come, no duplicates. */
+  setColor(socket: IoSocket, color: string): Result<null> {
+    const player = this.bySocket(socket);
+    if (!player) return err('not in this room');
+    if (this.players.some((p) => p !== player && p.color === color)) {
+      return err('color already taken');
+    }
+    player.color = color;
+    this.broadcastLobby();
+    return ok(null);
+  }
+
   start(socket: IoSocket): Result<null> {
     const player = this.bySocket(socket);
     if (!player) return err('not in this room');
@@ -241,6 +258,7 @@ export class Room {
     this.pausedRemainingMs = null;
     this.clearTimer();
     this.clearBotTimers();
+    this.syncTicker();
     this.broadcastLobby();
     return ok(null);
   }
@@ -256,6 +274,7 @@ export class Room {
     if (this.deadline !== null) this.pausedRemainingMs = Math.max(this.deadline - Date.now(), 0);
     this.clearTimer();
     this.clearBotTimers();
+    this.syncTicker();
     this.broadcastGame([]);
     return ok(null);
   }
@@ -274,6 +293,7 @@ export class Room {
     } else {
       this.armDeadline();
     }
+    this.syncTicker();
     this.broadcastGame([]);
     this.scheduleBotMoves();
     return ok(null);
@@ -298,6 +318,7 @@ export class Room {
       dealerSeat,
       this.round,
       seed,
+      this.players.map((p) => ({ isBot: p.isBot, botDifficulty: p.botDifficulty })),
     );
     this.game = state;
     this.broadcastLobby();
@@ -336,7 +357,37 @@ export class Room {
     this.armDeadline();
     this.broadcastGame(events);
     this.scheduleBotMoves();
+    this.syncTicker();
     if (this.game && this.module.isRoundOver(this.game)) this.broadcastLobby();
+  }
+
+  // ── real-time tick loop (games that define module.tickMs) ────────────────
+
+  /** Run the ticker exactly when a real-time round is live and unpaused. */
+  private syncTicker(): void {
+    const should =
+      !!this.module.tickMs &&
+      this.phase === 'playing' &&
+      !!this.game &&
+      !this.paused &&
+      !this.module.isRoundOver(this.game);
+    if (should && !this.ticker) {
+      this.ticker = setInterval(() => this.onTick(), this.module.tickMs);
+    } else if (!should && this.ticker) {
+      clearInterval(this.ticker);
+      this.ticker = null;
+    }
+  }
+
+  private onTick(): void {
+    const game = this.game;
+    if (!game || this.paused || this.phase !== 'playing' || this.module.isRoundOver(game)) {
+      this.syncTicker();
+      return;
+    }
+    const { events, changed } = this.module.tick!(game);
+    // Only broadcast beats that changed something visible.
+    if (changed || events.length > 0) this.afterEngineStep(events);
   }
 
   // ── bots ──────────────────────────────────────────────────────────────────
@@ -442,6 +493,7 @@ export class Room {
       connected: p.connected,
       isHost: p.token === this.hostToken,
       isBot: p.isBot,
+      color: p.color,
       wins: p.wins,
     }));
   }
@@ -452,6 +504,7 @@ export class Room {
       gameId: this.module.id as GameId,
       minPlayers: this.module.minPlayers,
       maxPlayers: this.module.maxPlayers,
+      botsSupported: this.module.supportsBots !== false,
       phase: this.phase,
       players: this.players.map((p) => ({
         seat: p.seat,
@@ -459,6 +512,7 @@ export class Room {
         connected: p.connected,
         isHost: p.token === this.hostToken,
         isBot: p.isBot,
+        color: p.color,
         wins: p.wins,
       })),
       settings: this.settings,
@@ -514,6 +568,10 @@ export class Room {
   close(reason: string): void {
     this.clearTimer();
     this.clearBotTimers();
+    if (this.ticker) {
+      clearInterval(this.ticker);
+      this.ticker = null;
+    }
     for (const p of this.players) p.socket?.emit('room:closed', reason);
     this.players = [];
   }

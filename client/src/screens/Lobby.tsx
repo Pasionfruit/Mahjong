@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BOT_DIFFICULTIES } from '@shared/settings';
 import { addBot, leaveParty, removeBot, startGame } from '../socket';
 import { IconBot, IconClose, IconTrophy } from '../components/icons';
 import { useStore } from '../store';
 import { gameById } from '../games/catalog';
+import { isDesktop } from '../device';
 
 /** Game-agnostic lobby shell: room code, players, bots, and the game's own
  *  settings panel (looked up from the catalog by gameId). */
@@ -11,6 +12,16 @@ export default function Lobby() {
   const lobby = useStore((s) => s.lobby);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Keyboard-only games: bounce touch devices that joined by code.
+  const desktopOnly = lobby ? gameById(lobby.gameId)?.desktopOnly ?? false : false;
+  useEffect(() => {
+    if (desktopOnly && !isDesktop()) {
+      useStore.getState().setNotice('That table is a desktop-only game (keyboard required).');
+      leaveParty();
+    }
+  }, [desktopOnly]);
+
   if (!lobby) return null;
 
   const me = lobby.players.find((p) => p.seat === lobby.yourSeat);
@@ -54,6 +65,7 @@ export default function Lobby() {
           {lobby.players.map((p) => (
             <li key={p.seat} className="player-row">
               <span className={`conn-dot ${p.connected ? 'on' : 'off'}`} />
+              {p.color && <span className="bomber-chip-dot" style={{ background: p.color }} />}
               <span className="player-name">
                 {p.isBot && (
                   <span className="bot-glyph">
@@ -82,7 +94,7 @@ export default function Lobby() {
           ))}
         </ul>
 
-        {isHost && lobby.players.length < maxPlayers && (
+        {isHost && lobby.botsSupported && lobby.players.length < maxPlayers && (
           <div className="add-bot-row">
             <span className="hint">Add a bot:</span>
             {BOT_DIFFICULTIES.map((d) => (

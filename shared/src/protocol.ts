@@ -21,7 +21,13 @@ export type MahjongAction =
 /** Ultimate Tic-Tac-Toe: place your mark in board `board`, cell `cell` (0–8). */
 export type UtttAction = { t: 'place'; board: number; cell: number };
 
-export type PlayerAction = MahjongAction | UtttAction;
+/** Bomberman: held-direction input, drop a bomb, or grab/throw one (glove). */
+export type BombermanAction =
+  | { t: 'input'; dir: 'up' | 'down' | 'left' | 'right' | null }
+  | { t: 'bomb' }
+  | { t: 'grab' };
+
+export type PlayerAction = MahjongAction | UtttAction | BombermanAction;
 
 export interface JoinInfo {
   roomCode: string;
@@ -36,6 +42,7 @@ export interface ClientToServerEvents {
   'room:rejoin': (p: { roomCode: string; token: string }, ack: Ack<JoinInfo>) => void;
   'room:leave': () => void;
   'lobby:settings': (p: Record<string, unknown>, ack: Ack) => void;
+  'lobby:color': (p: { color: string }, ack: Ack) => void;
   'lobby:addBot': (p: { difficulty: BotDifficulty }, ack: Ack) => void;
   'lobby:removeBot': (p: { seat: number }, ack: Ack) => void;
   'lobby:start': (ack: Ack) => void;

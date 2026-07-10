@@ -8,7 +8,7 @@ export default function App() {
   const game = useStore((s) => s.game);
   const connected = useStore((s) => s.connected);
   const screen = currentScreen(lobby, game);
-  const theme = lobby?.settings.theme ?? 'jade';
+  const theme = lobby && 'theme' in lobby.settings ? lobby.settings.theme : 'jade';
 
   const Game = lobby ? gameById(lobby.gameId)?.Game : undefined;
 

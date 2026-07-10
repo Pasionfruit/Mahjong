@@ -46,8 +46,16 @@ export default defineConfig({
   server: {
     proxy: {
       '/socket.io': {
-        target: 'http://localhost:3001',
+        // 127.0.0.1 (not localhost) sidesteps IPv6-first resolution surprises.
+        target: 'http://127.0.0.1:3001',
         ws: true,
+        configure(proxy) {
+          // The backend briefly goes down on every tsx-watch restart while a
+          // browser tab keeps retrying — one quiet line beats a stack trace.
+          proxy.on('error', (err: NodeJS.ErrnoException) => {
+            console.log(`[proxy] game server not ready yet (${err.code ?? err.message}) — retrying`);
+          });
+        },
       },
     },
   },

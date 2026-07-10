@@ -32,16 +32,16 @@ socket.on('connect', () => {
 socket.on('disconnect', () => useStore.getState().setConnected(false));
 socket.on('lobby:state', (s) => useStore.getState().setLobby(s));
 
-/** Is it the viewer's move right now? For Mahjong only the discard phase counts. */
+/** Is it the viewer's move right now? Real-time games have no turn chime. */
 function myTurn(v: ClientGameView): boolean {
+  if (v.g === 'bomberman') return false;
   if (v.turnSeat !== v.yourSeat || v.result) return false;
   return v.g === 'mahjong' ? v.phase === 'awaitingDiscard' : true;
 }
 
 socket.on('game:state', (v) => {
   const prev = useStore.getState().game;
-  const became =
-    myTurn(v) && (!prev || prev.g !== v.g || prev.turnSeat !== v.turnSeat || !myTurn(prev));
+  const became = myTurn(v) && (!prev || prev.g !== v.g || !myTurn(prev));
   if (became) play('yourTurn');
   useStore.getState().setGame(v);
 });
@@ -64,6 +64,18 @@ socket.on('game:event', (e) => {
       break;
     case 'place':
       play('discard');
+      break;
+    case 'bomb':
+      play('bomb');
+      break;
+    case 'boom':
+      play('boom');
+      break;
+    case 'powerup':
+      if (e.seat === mySeat) play('powerup');
+      break;
+    case 'death':
+      if (e.seat === mySeat) play('lose');
       break;
     case 'win':
       play(e.seat === mySeat ? 'win' : 'lose');
@@ -113,6 +125,10 @@ export function leaveParty(): void {
 
 export function updateSettings(patch: Record<string, unknown>): Promise<Result<null>> {
   return new Promise((resolve) => socket.emit('lobby:settings', patch, resolve));
+}
+
+export function setColor(color: string): Promise<Result<null>> {
+  return new Promise((resolve) => socket.emit('lobby:color', { color }, resolve));
 }
 
 export function addBot(difficulty: BotDifficulty): Promise<Result<null>> {

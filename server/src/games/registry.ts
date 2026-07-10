@@ -2,11 +2,13 @@ import type { GameId } from '@shared/games';
 import type { GameModule } from './GameModule';
 import { mahjongModule } from './mahjong';
 import { utttModule } from './uttt';
+import { bombermanModule } from './bomberman';
 
 /** Every game the server can host, keyed by its id. Add new games here. */
 export const MODULES: Record<GameId, GameModule> = {
   mahjong: mahjongModule,
   uttt: utttModule,
+  bomberman: bombermanModule,
 };
 
 export function getModule(gameId: GameId): GameModule {

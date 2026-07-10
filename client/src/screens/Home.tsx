@@ -5,6 +5,7 @@ import { loadNickname } from '../session';
 import { useStore } from '../store';
 import { GAMES, type GameEntry } from '../games/catalog';
 import { IconTile } from '../components/icons';
+import { isDesktop } from '../device';
 
 export default function Home() {
   const [nickname, setNickname] = useState(loadNickname());
@@ -15,8 +16,13 @@ export default function Home() {
 
   const name = nickname.trim();
 
+  const desktop = isDesktop();
+
   async function create(game: GameEntry) {
     if (!game.available) return;
+    if (game.desktopOnly && !desktop) {
+      return setError(`${game.name} needs a keyboard — play from a desktop.`);
+    }
     if (!name) return setError('Enter a nickname first');
     setBusy(true);
     const r = await createParty(name, game.id as GameId);
@@ -91,10 +97,10 @@ export default function Home() {
               <div className="game-card-players">{g.players}</div>
               <button
                 className="btn btn-primary game-card-btn"
-                disabled={busy || !g.available}
+                disabled={busy || !g.available || (g.desktopOnly && !desktop)}
                 onClick={() => create(g)}
               >
-                {g.available ? 'New table' : 'Coming soon'}
+                {!g.available ? 'Coming soon' : g.desktopOnly && !desktop ? 'Desktop only' : 'New table'}
               </button>
             </div>
           ))}

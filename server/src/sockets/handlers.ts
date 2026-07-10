@@ -1,6 +1,7 @@
 import type { Result } from '@shared/protocol';
 import { BOT_DIFFICULTIES, type BotDifficulty } from '@shared/settings';
 import { isGameId } from '@shared/games';
+import { PLAYER_COLORS } from '@shared/bomberman';
 import { RoomManager } from '../rooms/RoomManager';
 import { getModule } from '../games/registry';
 import { normalizeCode } from '../rooms/codes';
@@ -65,6 +66,17 @@ export function registerHandlers(io: IoServer): void {
       const room = roomOf(socket);
       if (!room) return ack(fail('not in a room'));
       ack(room.updateSettings(socket, patch ?? {}));
+    });
+
+    socket.on('lobby:color', (payload, ack) => {
+      if (typeof ack !== 'function') return;
+      const room = roomOf(socket);
+      if (!room) return ack(fail('not in a room'));
+      const color = payload?.color;
+      if (typeof color !== 'string' || !(PLAYER_COLORS as readonly string[]).includes(color)) {
+        return ack(fail('invalid color'));
+      }
+      ack(room.setColor(socket, color));
     });
 
     socket.on('lobby:addBot', (payload, ack) => {

@@ -13,7 +13,10 @@ export type SoundName =
   | 'kong'
   | 'win'
   | 'lose'
-  | 'yourTurn';
+  | 'yourTurn'
+  | 'bomb'
+  | 'boom'
+  | 'powerup';
 
 export const SOUND_NAMES: SoundName[] = [
   'tick',
@@ -25,6 +28,9 @@ export const SOUND_NAMES: SoundName[] = [
   'win',
   'lose',
   'yourTurn',
+  'bomb',
+  'boom',
+  'powerup',
 ];
 
 const STORAGE_KEY = 'mahjong.audio';
@@ -149,6 +155,20 @@ const SYNTH: Record<SoundName, () => void> = {
     playNotes([
       { freq: 659, at: 0, dur: 0.09, gain: 0.12 },
       { freq: 880, at: 0.08, dur: 0.16, gain: 0.12 },
+    ]),
+  // bomberman
+  bomb: () => playNotes([{ freq: 240, at: 0, dur: 0.06, type: 'square', gain: 0.08 }]),
+  boom: () =>
+    playNotes([
+      { freq: 110, at: 0, dur: 0.22, type: 'sawtooth', gain: 0.24 },
+      { freq: 55, at: 0.02, dur: 0.32, type: 'triangle', gain: 0.26 },
+      { freq: 220, at: 0, dur: 0.08, type: 'square', gain: 0.1 },
+    ]),
+  powerup: () =>
+    playNotes([
+      { freq: 523, at: 0, dur: 0.07, type: 'square', gain: 0.09 },
+      { freq: 659, at: 0.06, dur: 0.07, type: 'square', gain: 0.09 },
+      { freq: 1047, at: 0.12, dur: 0.14, type: 'square', gain: 0.1 },
     ]),
 };
 
