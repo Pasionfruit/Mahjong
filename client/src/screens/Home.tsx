@@ -45,7 +45,7 @@ export default function Home() {
         <header className="home-head">
           <h1 className="home-title">
             <span className="landing-glyph">
-              <IconTile />
+              <IconController />
             </span>{' '}
             GameNight
           </h1>
@@ -100,7 +100,7 @@ export default function Home() {
                 disabled={busy || !g.available || (g.desktopOnly && !desktop)}
                 onClick={() => create(g)}
               >
-                {!g.available ? 'Coming soon' : g.desktopOnly && !desktop ? 'Desktop only' : 'New table'}
+                {!g.available ? 'Coming soon' : g.desktopOnly && !desktop ? 'Desktop only' : 'Play'}
               </button>
             </div>
           ))}
