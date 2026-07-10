@@ -65,7 +65,7 @@ function sanitizeSettings(
   return next;
 }
 
-const PU_CHAR = { fire: 'f', pierce: 'p', slow: 's', glove: 'g', boots: 'b' } as const;
+const PU_CHAR = { fire: 'f', pierce: 'p', slow: 's', glove: 'g', boots: 'b', bombs: 'x' } as const;
 
 function view(
   state: BombermanState,

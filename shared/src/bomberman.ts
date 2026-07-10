@@ -51,7 +51,7 @@ export const DEFAULT_BOMBERMAN_SETTINGS: BombermanSettings = {
   itemFrequency: 'normal',
 };
 
-export type PowerupKind = 'fire' | 'pierce' | 'slow' | 'glove' | 'boots';
+export type PowerupKind = 'fire' | 'pierce' | 'slow' | 'glove' | 'boots' | 'bombs';
 
 export const POWERUP_NAMES: Record<PowerupKind, string> = {
   fire: 'Bigger blast',
@@ -59,6 +59,7 @@ export const POWERUP_NAMES: Record<PowerupKind, string> = {
   slow: 'Slow rivals',
   glove: 'Pick up & throw bombs',
   boots: 'Speed boots',
+  bombs: 'Extra bomb',
 };
 
 export type BomberDir = 'up' | 'down' | 'left' | 'right';
@@ -72,7 +73,8 @@ export type BomberCellChar =
   | 'p' // pierce powerup
   | 's' // slow powerup
   | 'g' // glove powerup
-  | 'b'; // speed boots
+  | 'b' // speed boots
+  | 'x'; // extra bomb
 
 export interface BomberPlayerView {
   seat: number;

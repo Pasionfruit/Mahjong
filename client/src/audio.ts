@@ -16,7 +16,10 @@ export type SoundName =
   | 'yourTurn'
   | 'bomb'
   | 'boom'
-  | 'powerup';
+  | 'powerup'
+  | 'hurt'
+  | 'eliminated'
+  | 'gameOver';
 
 export const SOUND_NAMES: SoundName[] = [
   'tick',
@@ -31,6 +34,9 @@ export const SOUND_NAMES: SoundName[] = [
   'bomb',
   'boom',
   'powerup',
+  'hurt',
+  'eliminated',
+  'gameOver',
 ];
 
 const STORAGE_KEY = 'mahjong.audio';
@@ -169,6 +175,25 @@ const SYNTH: Record<SoundName, () => void> = {
       { freq: 523, at: 0, dur: 0.07, type: 'square', gain: 0.09 },
       { freq: 659, at: 0.06, dur: 0.07, type: 'square', gain: 0.09 },
       { freq: 1047, at: 0.12, dur: 0.14, type: 'square', gain: 0.1 },
+    ]),
+  // took a hit but survived (lost a spare life)
+  hurt: () =>
+    playNotes([
+      { freq: 620, at: 0, dur: 0.06, type: 'square', gain: 0.12 },
+      { freq: 392, at: 0.05, dur: 0.09, type: 'square', gain: 0.12 },
+    ]),
+  // out of the game for good
+  eliminated: () =>
+    playNotes([
+      { freq: 392, at: 0, dur: 0.12, type: 'triangle', gain: 0.16 },
+      { freq: 294, at: 0.11, dur: 0.12, type: 'triangle', gain: 0.16 },
+      { freq: 196, at: 0.22, dur: 0.26, type: 'triangle', gain: 0.18 },
+    ]),
+  // the game ended with no winner
+  gameOver: () =>
+    playNotes([
+      { freq: 220, at: 0, dur: 0.22, type: 'triangle', gain: 0.18 },
+      { freq: 147, at: 0.2, dur: 0.4, type: 'triangle', gain: 0.2 },
     ]),
 };
 

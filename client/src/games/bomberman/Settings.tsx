@@ -125,11 +125,12 @@ export default function BombermanSettingsPanel() {
         <p>
           <strong>Desktop only.</strong> Move with WASD or arrow keys, drop bombs with{' '}
           <strong>Space</strong>, and pick up / throw a bomb with <strong>E</strong> (needs the
-          glove powerup). Last player standing wins.
+          glove powerup). You carry one bomb at a time until you find more. Last player standing
+          wins.
         </p>
         <p>
-          Blast bricks to reveal powerups: bigger blasts, brick-piercing blasts, speed boots, a
-          glove to throw bombs, and a hex that briefly slows everyone else. Powerups reset every
+          Blast bricks to reveal powerups: extra bombs, bigger blasts, brick-piercing blasts,
+          speed boots, a glove to throw bombs, and a hex that briefly slows everyone else. Powerups reset every
           game. With extra lives, a hit makes you blink — briefly untouchable — instead of taking
           you out. If sudden death is on, the walls close in toward the center when the timer runs
           out (and they are always lethal).

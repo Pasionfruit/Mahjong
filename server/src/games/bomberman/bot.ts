@@ -2,7 +2,6 @@ import { BOMBER_H, BOMBER_W } from '@shared/bomberman';
 import { BRICK } from './maps';
 import {
   DIRS,
-  MAX_BOMBS,
   blastCells,
   bombAt,
   dropBomb,
@@ -42,7 +41,7 @@ export function botThink(state: BombermanState, p: BomberPlayer): void {
   }
 
   // 2. Maybe bomb: bricks next to us, or (hard) an enemy in the blast line.
-  if (p.bombsOut < MAX_BOMBS && !bombAt(state, p.x, p.y) && wantsBomb(state, p, diff)) {
+  if (p.bombsOut < p.maxBombs && !bombAt(state, p.x, p.y) && wantsBomb(state, p, diff)) {
     const footprint = new Set(blastCells(state, { x: p.x, y: p.y, fire: p.fire, pierce: p.pierce }));
     const escape = firstStepToward(
       state,

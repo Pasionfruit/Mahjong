@@ -44,14 +44,15 @@ export function spawnPoints(playerCount: number): { x: number; y: number }[] {
 /** Chance a brick hides an item, by host setting. */
 const ITEM_CHANCE: Record<ItemFrequency, number> = { low: 0.2, normal: 0.38, high: 0.56 };
 
-/** Weighted item roll: fire is commonest; boots/pierce/slow/glove share the rest. */
+/** Weighted item roll: fire and extra bombs are the staples. */
 function rollPowerup(rand: () => number, freq: ItemFrequency): PowerupKind | null {
   if (rand() >= ITEM_CHANCE[freq]) return null;
   const r = rand();
-  if (r < 0.3) return 'fire';
-  if (r < 0.5) return 'boots';
-  if (r < 0.68) return 'pierce';
-  if (r < 0.84) return 'slow';
+  if (r < 0.26) return 'fire';
+  if (r < 0.5) return 'bombs';
+  if (r < 0.66) return 'boots';
+  if (r < 0.8) return 'pierce';
+  if (r < 0.9) return 'slow';
   return 'glove';
 }
 

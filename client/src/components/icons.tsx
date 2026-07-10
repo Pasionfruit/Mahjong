@@ -107,6 +107,18 @@ export function IconTile() {
   );
 }
 
+/** A game controller, for the GameNight brand. */
+export function IconController() {
+  return (
+    <I>
+      <path d="M6.5 7h11a5 5 0 0 1 4.9 6l-.9 4.2a2.6 2.6 0 0 1-4.5 1.1L14.6 16H9.4L7 18.3a2.6 2.6 0 0 1-4.5-1.1L1.6 13a5 5 0 0 1 4.9-6Z" />
+      <path d="M8 10v4M6 12h4" />
+      <circle cx="15.5" cy="13" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="10.8" r="0.8" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
 /** A 3×3 grid, for tic-tac-toe style games. */
 export function IconGrid() {
   return (

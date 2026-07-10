@@ -16,7 +16,8 @@ export const SLOW_PENALTY = 5; // extra ticks per step while hexed
 export const SLOW_DURATION = 100; // 5s
 export const FUSE_TICKS = 50; // 2.5s
 export const EXPLOSION_TICKS = 9;
-export const MAX_BOMBS = 2;
+export const BASE_BOMBS = 1; // one bomb out at a time until you find more
+export const BOMB_CAP = 5;
 export const MAX_FIRE = 8;
 export const BASE_FIRE = 1; // starting blast: one cell in each direction
 export const MAX_SPEED = 2; // boots collected cap
@@ -63,6 +64,8 @@ export interface BomberPlayer {
   speed: number;
   slowedUntil: number;
   bombsOut: number;
+  /** How many bombs may be out at once (grows with the extra-bomb powerup). */
+  maxBombs: number;
   lives: number;
   /** Tick of the last completed step (drives the walk animation). */
   lastStepTick: number;
@@ -131,6 +134,7 @@ export function newGame(
       speed: 0,
       slowedUntil: 0,
       bombsOut: 0,
+      maxBombs: BASE_BOMBS,
       lives: settings.lives,
       lastStepTick: -1000,
       invulnUntil: 0,
@@ -191,7 +195,7 @@ export function dropBomb(state: BombermanState, seat: number): ApplyResult {
   const p = state.players[seat];
   if (!p) return { ok: false, error: 'not seated' };
   if (state.over || !active(p)) return { ok: true, events: [] };
-  if (p.bombsOut >= MAX_BOMBS || bombAt(state, p.x, p.y)) return { ok: true, events: [] };
+  if (p.bombsOut >= p.maxBombs || bombAt(state, p.x, p.y)) return { ok: true, events: [] };
   state.bombs.push({
     id: state.nextBombId++,
     x: p.x,
@@ -370,6 +374,7 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
     state.over = true;
     state.result = { winnerSeat: alive[0]?.seat ?? null };
     if (alive[0]) events.push({ t: 'win', seat: alive[0].seat, by: 'lastStanding' });
+    else events.push({ t: 'gameOver' });
     changed = true;
   }
 
@@ -385,7 +390,7 @@ function kill(state: BombermanState, p: BomberPlayer, events: GameEvent[]): void
   const held = state.bombs.find((b) => b.carriedBySeat === p.seat);
   if (held) held.carriedBySeat = null;
   p.lives = Math.max(0, p.lives - 1);
-  events.push({ t: 'death', seat: p.seat });
+  events.push({ t: 'death', seat: p.seat, fatal: p.lives === 0 });
   if (p.lives > 0) {
     p.invulnUntil = state.tick + INVULN_TICKS;
   } else {
@@ -406,6 +411,9 @@ function applyPowerup(state: BombermanState, p: BomberPlayer, pu: PowerupKind): 
       break;
     case 'boots':
       p.speed = Math.min(p.speed + 1, MAX_SPEED);
+      break;
+    case 'bombs':
+      p.maxBombs = Math.min(p.maxBombs + 1, BOMB_CAP);
       break;
     case 'slow':
       for (const other of state.players) {

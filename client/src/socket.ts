@@ -75,7 +75,10 @@ socket.on('game:event', (e) => {
       if (e.seat === mySeat) play('powerup');
       break;
     case 'death':
-      if (e.seat === mySeat) play('lose');
+      play(e.fatal ? 'eliminated' : 'hurt');
+      break;
+    case 'gameOver':
+      play('gameOver');
       break;
     case 'win':
       play(e.seat === mySeat ? 'win' : 'lose');

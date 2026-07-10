@@ -19,14 +19,15 @@ const KEY_DIRS: Record<string, BomberDir> = {
   KeyD: 'right',
 };
 
-const PU_LABEL: Record<string, string> = { f: '🔥', p: '⚡', s: '🐌', g: '🧤', b: '👢' };
+const PU_LABEL: Record<string, string> = { f: '🔥', p: '⚡', s: '🐌', g: '🧤', b: '👢', x: '💣' };
 
-/** A stick figure in the player's color; limbs swing while `.walking`. */
+/** A pixel-y stick figure in the player's color; limbs swing while `.walking`. */
 function StickFigure({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 24 32" className="bomber-stick">
-      <circle cx="12" cy="6.5" r="4.6" fill={color} stroke="rgba(0,0,0,0.45)" strokeWidth="1.4" />
-      <g stroke={color} strokeWidth="2.6" strokeLinecap="round" fill="none">
+      {/* square head reads more 8-bit than a circle */}
+      <rect x="7.6" y="2" width="8.8" height="8.8" fill={color} stroke="rgba(0,0,0,0.5)" strokeWidth="1.4" />
+      <g stroke={color} strokeWidth="2.8" strokeLinecap="square" fill="none">
         <path d="M12 11.5v10" />
         <g className="bomber-arm-l"><path d="M12 13.5L5.5 18.5" /></g>
         <g className="bomber-arm-r"><path d="M12 13.5L18.5 18.5" /></g>

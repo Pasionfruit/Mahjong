@@ -179,4 +179,7 @@ export type GameEvent =
   | { t: 'bomb'; seat: number }
   | { t: 'boom' }
   | { t: 'powerup'; seat: number }
-  | { t: 'death'; seat: number };
+  /** fatal: out of the game (vs. losing a spare life). */
+  | { t: 'death'; seat: number; fatal: boolean }
+  /** The game ended with no winner (mutual knockout). */
+  | { t: 'gameOver' };

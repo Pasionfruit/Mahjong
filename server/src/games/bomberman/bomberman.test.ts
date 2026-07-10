@@ -100,6 +100,34 @@ describe('bomberman engine', () => {
     expect(p.x).toBe(x0 + 1); // one step per slowed cooldown now
   });
 
+  it('only one bomb may be out until it explodes; the powerup adds more', () => {
+    const s = openState();
+    const p = s.players[0]!;
+    expect(p.maxBombs).toBe(1);
+    dropBomb(s, 0);
+    setInput(s, 0, 'right');
+    ticks(s, MOVE_COOLDOWN + 1); // step off the bomb
+    setInput(s, 0, null);
+    dropBomb(s, 0); // second drop is a no-op — one already out
+    expect(s.bombs).toHaveLength(1);
+
+    p.x = 9;
+    p.y = 9; // out of the blast
+    ticks(s, FUSE_TICKS); // first bomb explodes
+    expect(s.bombs).toHaveLength(0);
+    dropBomb(s, 0); // slot free again
+    expect(s.bombs).toHaveLength(1);
+
+    // The extra-bomb powerup raises the cap.
+    s.floorPU[idx(10, 9)] = 'bombs';
+    setInput(s, 0, 'right');
+    ticks(s, 2);
+    setInput(s, 0, null);
+    expect(p.maxBombs).toBe(2);
+    dropBomb(s, 0);
+    expect(s.bombs).toHaveLength(2);
+  });
+
   it('speed boots shorten the move cooldown', () => {
     const s = openState();
     const p = s.players[0]!;
@@ -246,7 +274,8 @@ describe('bomberman lives', () => {
     dropBomb(s, 0); // stand on it
     const results = ticks(s, FUSE_TICKS + 1);
     const events = results.flatMap((r) => r.events);
-    expect(events.some((e) => e.t === 'death' && e.seat === 0)).toBe(true);
+    // Losing a spare life is a non-fatal hit.
+    expect(events.some((e) => e.t === 'death' && e.seat === 0 && e.fatal === false)).toBe(true);
     expect(s.over).toBe(false); // still has a life — game continues
     expect(p0.alive).toBe(true);
     expect(p0.lives).toBe(1);
@@ -259,17 +288,32 @@ describe('bomberman lives', () => {
     expect(p0.lives).toBe(1);
   });
 
-  it('the final life is final', () => {
+  it('the final life is final, and the death event says so', () => {
     const s = openState();
     const p0 = s.players[0]!;
     s.players[1]!.x = 9;
     s.players[1]!.y = 9;
     p0.lives = 1;
     dropBomb(s, 0);
-    ticks(s, FUSE_TICKS + 1);
+    const results = ticks(s, FUSE_TICKS + 1);
+    const events = results.flatMap((r) => r.events);
+    expect(events.some((e) => e.t === 'death' && e.seat === 0 && e.fatal === true)).toBe(true);
     expect(p0.alive).toBe(false);
     expect(s.over).toBe(true);
     expect(s.result).toEqual({ winnerSeat: 1 });
+  });
+
+  it('a mutual knockout emits gameOver', () => {
+    const s = openState();
+    s.players[0]!.lives = 1;
+    s.players[1]!.lives = 1;
+    s.players[1]!.x = 2;
+    s.players[1]!.y = 1; // inside the same blast
+    dropBomb(s, 0);
+    const results = ticks(s, FUSE_TICKS + 1);
+    const events = results.flatMap((r) => r.events);
+    expect(s.result).toEqual({ winnerSeat: null });
+    expect(events.some((e) => e.t === 'gameOver')).toBe(true);
   });
 
   it('invulnerability expires and that tick broadcasts a change', () => {
@@ -407,7 +451,7 @@ describe('bomberman module', () => {
     if (v.g !== 'bomberman') return;
     expect(v.grid).toHaveLength(BOMBER_H);
     // Grid chars never leak what's under a brick.
-    for (const row of v.grid) expect(row).toMatch(/^[#B.fpsgb]+$/);
+    for (const row of v.grid) expect(row).toMatch(/^[#B.fpsgbx]+$/);
     expect(v.players[1]!.color).toBe('#e05656');
     expect(v.players[0]!.color).toBeTruthy(); // default palette fallback
     expect(v.suddenDeathSecondsLeft).toBe(null);

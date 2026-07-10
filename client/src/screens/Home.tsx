@@ -4,7 +4,7 @@ import { createParty, joinParty } from '../socket';
 import { loadNickname } from '../session';
 import { useStore } from '../store';
 import { GAMES, type GameEntry } from '../games/catalog';
-import { IconTile } from '../components/icons';
+import { IconController } from '../components/icons';
 import { isDesktop } from '../device';
 
 export default function Home() {

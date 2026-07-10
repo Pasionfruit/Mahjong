@@ -1505,9 +1505,12 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  border-radius: 0;
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.12),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.45);
   padding: 4px 9px;
   font-size: 13px;
 }
@@ -1521,8 +1524,8 @@ body {
   display: inline-block;
   width: 11px;
   height: 11px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 0; /* pixel swatch */
+  border: 1px solid rgba(0, 0, 0, 0.45);
   flex-shrink: 0;
 }
 
@@ -1532,9 +1535,12 @@ body {
 }
 
 .bomber-status {
-  font-size: 15px;
+  font-size: 14px;
   min-height: 18px;
-  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
+  opacity: 0.95;
 }
 
 .bomber-status.urgent {
@@ -1542,13 +1548,17 @@ body {
   animation: pulse 1s ease-in-out infinite;
 }
 
+/* Pixel-art look: hard edges, stepped shading, grid-aligned checkerboard. */
 .bomber-board {
   position: relative;
   width: min(94vw, calc(76vh * 23 / 17), 1100px);
   aspect-ratio: 23 / 17;
-  border-radius: 10px;
-  background: rgba(0, 0, 0, 0.3);
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.35);
+  border-radius: 0;
+  background-color: rgba(0, 0, 0, 0.32);
+  /* two-cell checker aligned with the grid */
+  background-image: repeating-conic-gradient(rgba(255, 255, 255, 0.045) 0% 25%, transparent 0% 50%);
+  background-size: calc(200% / 23) calc(200% / 17);
+  box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.45), 0 0 0 6px rgba(255, 255, 255, 0.12);
   overflow: hidden;
 }
 
@@ -1563,28 +1573,47 @@ body {
 
 .bomber-cell.wall {
   background: rgba(255, 255, 255, 0.16);
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.35);
-  border-radius: 2px;
+  /* chunky 8-bit bevel: light top-left, dark bottom-right */
+  box-shadow:
+    inset 3px 3px 0 rgba(255, 255, 255, 0.22),
+    inset -3px -3px 0 rgba(0, 0, 0, 0.45);
+  border-radius: 0;
 }
 
 .bomber-cell.brick {
-  background: rgba(196, 129, 76, 0.75);
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
+  background-color: rgba(196, 122, 68, 0.92);
+  /* mortar lines */
+  background-image:
+    repeating-linear-gradient(0deg, rgba(60, 24, 8, 0.55) 0 2px, transparent 2px 33.3%),
+    repeating-linear-gradient(90deg, rgba(60, 24, 8, 0.45) 0 2px, transparent 2px 50%);
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.18),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.4);
+  border-radius: 0;
 }
 
 .bomber-cell.powerup {
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.35);
-  box-shadow: 0 0 8px rgba(232, 193, 90, 0.5);
-  animation: pulse 1.4s ease-in-out infinite;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.5);
+  /* hard double frame instead of a soft glow */
+  box-shadow:
+    inset 0 0 0 2px #e8c15a,
+    inset 0 0 0 4px rgba(0, 0, 0, 0.7);
+  animation: pulse 1.4s steps(2, end) infinite;
 }
 
 .bomber-flame {
   position: absolute;
-  background: radial-gradient(circle, #ffd873 15%, #ff9a3c 55%, rgba(224, 86, 86, 0.85) 100%);
-  border-radius: 4px;
-  animation: pulse 0.2s ease-in-out infinite;
+  /* hard-stop rings read as chunky sprite fire */
+  background: radial-gradient(
+    circle,
+    #fff3b0 0 22%,
+    #ffd873 22% 46%,
+    #ff9a3c 46% 72%,
+    #e05656 72% 100%
+  );
+  border-radius: 0;
+  animation: pulse 0.2s steps(2, end) infinite;
   z-index: 2;
 }
 
@@ -1597,10 +1626,22 @@ body {
 .bomber-bomb::after {
   content: '';
   position: absolute;
-  inset: 15%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #4a4a52, #17171c 70%);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  inset: 16%;
+  border-radius: 28%;
+  /* stepped shading, no smooth blend */
+  background: radial-gradient(circle at 35% 30%, #565662 0 30%, #26262e 30% 65%, #141419 65% 100%);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+}
+
+.bomber-bomb::before {
+  content: '';
+  position: absolute;
+  top: 4%;
+  left: 58%;
+  width: 14%;
+  height: 18%;
+  background: #e8c15a; /* the fuse spark */
+  z-index: 1;
 }
 
 .bomber-bomb.fizzing::after {
@@ -1623,7 +1664,9 @@ body {
   inset: 4%;
   width: 92%;
   height: 92%;
-  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+  /* jagged strokes on purpose — reads as sprite art */
+  shape-rendering: crispEdges;
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.45));
 }
 
 .bomber-player.slowed .bomber-stick {
