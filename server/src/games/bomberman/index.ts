@@ -23,7 +23,7 @@ import {
   tick,
   type BombermanState,
 } from './engine';
-import { botThink } from './bot';
+import { botTick } from './bot';
 
 const DIRS = new Set(['up', 'down', 'left', 'right']);
 
@@ -147,7 +147,7 @@ export const bombermanModule: GameModule = {
   turnGraceMs: DISCONNECT_TURN_GRACE_MS,
   supportsBots: true,
   tickMs: TICK_MS,
-  tick: (state) => tick(state as BombermanState, botThink),
+  tick: (state) => tick(state as BombermanState, botTick),
 
   defaultSettings: () => ({ ...DEFAULT_BOMBERMAN_SETTINGS }),
   sanitizeSettings: (current, patch) =>

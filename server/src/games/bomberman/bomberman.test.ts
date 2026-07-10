@@ -14,7 +14,7 @@ import {
   tick,
   type BombermanState,
 } from './engine';
-import { botThink } from './bot';
+import { botTick } from './bot';
 import { bombermanModule as m } from './index';
 
 const W = BOMBER_W;
@@ -389,12 +389,42 @@ describe('bomberman bots', () => {
     return s;
   }
 
-  it('a bot flees a bomb about to explode under it', () => {
+  for (const diff of ['easy', 'medium', 'hard'] as const) {
+    it(`a ${diff} bot survives a bomb dropped at its feet`, () => {
+      const s = botState(diff);
+      const p = s.players[0]!;
+      dropBomb(s, 0); // bomb at the bot's feet
+      for (let i = 0; i < FUSE_TICKS + 2; i++) tick(s, botTick);
+      expect(p.alive).toBe(true); // it ran clear of its own blast
+    });
+  }
+
+  it('escapes that require a turn work (the stale-direction suicide)', () => {
+    // A max-fire bomb covers the bot's entire row AND column: any straight
+    // run stays inside the blast — survival demands a turn mid-escape. The
+    // old first-step-only planner died here every time.
     const s = botState('medium');
     const p = s.players[0]!;
-    dropBomb(s, 0); // bomb at the bot's feet
-    for (let i = 0; i < FUSE_TICKS + 2; i++) tick(s, botThink);
-    expect(p.alive).toBe(true); // it ran clear of its own blast
+    dropBomb(s, 0);
+    s.bombs[0]!.fire = 8;
+    for (let i = 0; i < FUSE_TICKS + 2; i++) tick(s, botTick);
+    expect(p.alive).toBe(true);
+    expect(p.x !== 1 && p.y !== 1).toBe(true); // stepped off both blast lines
+  });
+
+  it('never bombs when there is no escape', () => {
+    // Wall the bot into a two-cell pocket with a tempting brick: bombing
+    // would be suicide, so the state machine must refuse.
+    const s = botState('hard');
+    for (let i = 0; i < s.grid.length; i++) if (s.grid[i] === FLOOR) s.grid[i] = WALL;
+    s.grid[idx(1, 1)] = FLOOR;
+    s.grid[idx(2, 1)] = FLOOR;
+    s.grid[idx(3, 1)] = BRICK;
+    s.players[1]!.x = 5;
+    s.players[1]!.y = 5; // out of the way (inside walls; irrelevant)
+    for (let i = 0; i < 200; i++) tick(s, botTick);
+    expect(s.bombs).toHaveLength(0);
+    expect(s.players[0]!.alive).toBe(true);
   });
 
   it('a medium bot bombs bricks and survives the blast', () => {
@@ -403,13 +433,35 @@ describe('bomberman bots', () => {
     s.grid[idx(3, 1)] = BRICK;
     let bombed = false;
     for (let i = 0; i < 400 && !bombed; i++) {
-      tick(s, botThink);
+      tick(s, botTick);
       bombed = s.bombs.length > 0 || bombed;
     }
     expect(bombed).toBe(true);
-    for (let i = 0; i < FUSE_TICKS + 10; i++) tick(s, botThink);
+    for (let i = 0; i < FUSE_TICKS + 10; i++) tick(s, botTick);
     expect(s.players[0]!.alive).toBe(true);
   });
+
+  for (const diff of ['easy', 'medium', 'hard'] as const) {
+    it(`soak: a lone ${diff} bot never blows itself up on a real map`, () => {
+      // Real classic map, full of bricks; the only other player idles far away
+      // behind cover. For 3000 ticks (2.5 game-minutes) every bomb on the
+      // board is the bot's own — so any bot death here is a self-kill.
+      const s = newGame(settings({ map: 'classic', itemFrequency: 'high' }), 2, 1, 77, [
+        { isBot: true, botDifficulty: diff },
+        { isBot: false },
+      ]);
+      const bot = s.players[0]!;
+      let bombsPlaced = 0;
+      for (let i = 0; i < 3000 && !s.over; i++) {
+        const before = s.bombs.length;
+        tick(s, botTick);
+        if (s.bombs.length > before) bombsPlaced++;
+        if (!bot.alive) break;
+      }
+      expect(bot.alive).toBe(true);
+      expect(bombsPlaced).toBeGreaterThan(3); // it actually played, not hid
+    });
+  }
 
   it('module.startRound marks bot seats from seat info', () => {
     const { state } = m.startRound(settings(), 2, 0, 1, 3, [

@@ -73,6 +73,10 @@ export interface BomberPlayer {
   isBot: boolean;
   botDifficulty: BotDifficulty | null;
   nextBotThink: number;
+  /** Bot state machine: roaming for targets, fleeing danger, or waiting it out. */
+  botMode: 'roam' | 'flee' | 'wait';
+  /** Cells (y*W+x) still to visit, in order — followed every tick. */
+  botPath: number[];
 }
 
 export interface BombermanState {
@@ -141,6 +145,8 @@ export function newGame(
       isBot: seats[seat]?.isBot ?? false,
       botDifficulty: seats[seat]?.botDifficulty ?? null,
       nextBotThink: 0,
+      botMode: 'roam',
+      botPath: [],
     })),
     tick: 0,
     nextBombId: 1,
@@ -259,10 +265,11 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
   if (state.over) return { events, changed };
   state.tick++;
 
-  // Bot brains: pick inputs / drop bombs on their think cadence.
+  // Bot brains run every tick: path-following is cheap; the expensive
+  // re-planning is cadence-gated inside the bot itself.
   if (botThink) {
     for (const p of state.players) {
-      if (p.isBot && active(p) && state.tick >= p.nextBotThink) botThink(state, p);
+      if (p.isBot && active(p)) botThink(state, p);
     }
   }
 
