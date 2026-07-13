@@ -10,9 +10,15 @@ import {
 import { BRICK, FLOOR, WALL, buildMap, shrinkSpiral } from './maps';
 
 // All times are in ticks; the room drives one tick every TICK_MS.
+// Positions are continuous, in cell units with INTEGER CELL CENTERS: cell i
+// spans [i-0.5, i+0.5). Players glide freely and may rest between cells.
 export const TICK_MS = 50;
-export const MOVE_COOLDOWN = 4; // 5 cells/sec at base speed
-export const SLOW_PENALTY = 5; // extra ticks per step while hexed
+export const SPEED_BASE = 0.24; // cells per tick (~4.8 cells/s)
+export const SPEED_PER_BOOT = 0.05; // each pair of boots adds this
+export const SLOW_FACTOR = 0.5; // hexed players move at half speed
+export const PLAYER_HALF = 0.39; // collision half-size (box < 1 cell → can slip corners)
+const CENTER_SNAP = 0.09; // gently settle onto the lane center when this close
+const EPS = 1e-4;
 export const SLOW_DURATION = 100; // 5s
 export const FUSE_TICKS = 50; // 2.5s
 export const EXPLOSION_TICKS = 9;
@@ -57,7 +63,6 @@ export interface BomberPlayer {
   alive: boolean;
   facing: BomberDir;
   inputDir: BomberDir | null;
-  moveCooldown: number;
   fire: number;
   pierce: boolean;
   glove: boolean;
@@ -131,7 +136,6 @@ export function newGame(
       alive: true,
       facing: 'down',
       inputDir: null,
-      moveCooldown: 0,
       fire: BASE_FIRE,
       pierce: false,
       glove: false,
@@ -165,16 +169,27 @@ export function bombAt(state: BombermanState, x: number, y: number): Bomb | unde
   return state.bombs.find((b) => b.carriedBySeat === null && b.x === x && b.y === y);
 }
 
+/** Cell-level passability (bots' BFS, throw landings). */
 export function walkable(state: BombermanState, x: number, y: number): boolean {
   if (x < 0 || y < 0 || x >= W || y >= H) return false;
   if (state.grid[idx(x, y)] !== FLOOR) return false;
   return !bombAt(state, x, y);
 }
 
-/** Ticks per step for this player right now (boots speed up, the hex slows). */
-export function stepTicks(state: BombermanState, p: BomberPlayer): number {
-  const base = MOVE_COOLDOWN - p.speed;
-  return state.tick < p.slowedUntil ? base + SLOW_PENALTY : base;
+/** The cell this player's center is in. */
+export function centerCell(p: BomberPlayer): { cx: number; cy: number } {
+  return { cx: Math.round(p.x), cy: Math.round(p.y) };
+}
+
+/** Current speed in cells per tick (boots speed up, the hex halves it). */
+export function speedOf(state: BombermanState, p: BomberPlayer): number {
+  const base = SPEED_BASE + p.speed * SPEED_PER_BOOT;
+  return state.tick < p.slowedUntil ? base * SLOW_FACTOR : base;
+}
+
+/** Milliseconds to cross one cell at current speed (walk-cycle pacing). */
+export function msPerCell(state: BombermanState, p: BomberPlayer): number {
+  return Math.round(TICK_MS / speedOf(state, p));
 }
 
 /** Is this player on the board and able to act? */
@@ -182,9 +197,100 @@ function active(p: BomberPlayer): boolean {
   return p.alive;
 }
 
-/** Stepping right now? True from a step until the next one would be allowed. */
+/** Gliding right now? (drives the walk animation) */
 export function isMoving(state: BombermanState, p: BomberPlayer): boolean {
-  return p.alive && state.tick - p.lastStepTick <= stepTicks(state, p);
+  return p.alive && state.tick - p.lastStepTick <= 2;
+}
+
+// ── continuous movement ──────────────────────────────────────────────────────
+
+/**
+ * Is the cell solid for this player right now? Bombs block — except the cell
+ * the player's box still overlaps, so you can walk OFF a bomb you just laid
+ * but never back onto it.
+ */
+function solidFor(state: BombermanState, p: BomberPlayer, cx: number, cy: number): boolean {
+  if (cx < 0 || cy < 0 || cx >= W || cy >= H) return true;
+  if (state.grid[idx(cx, cy)] !== FLOOR) return true;
+  const bomb = bombAt(state, cx, cy);
+  if (!bomb) return false;
+  const overlaps =
+    Math.abs(p.x - cx) < 0.5 + PLAYER_HALF - EPS && Math.abs(p.y - cy) < 0.5 + PLAYER_HALF - EPS;
+  return !overlaps;
+}
+
+/**
+ * Glide `dist` cells in `dir` with box collision. On a blocked edge, if the
+ * player is mostly in the open lane, slide sideways toward that lane's center
+ * (the classic corner assist). Returns true if the position changed.
+ */
+export function slideMove(
+  state: BombermanState,
+  p: BomberPlayer,
+  dir: BomberDir,
+  dist: number,
+): boolean {
+  const { dx, dy } = DIRS[dir];
+  const horiz = dx !== 0;
+  const sign = horiz ? dx : dy;
+  const main = horiz ? p.x : p.y; // coordinate along the movement axis
+  const cross = horiz ? p.y : p.x; // the perpendicular coordinate
+  const setPos = (m: number, c: number) => {
+    if (horiz) {
+      p.x = m;
+      p.y = c;
+    } else {
+      p.y = m;
+      p.x = c;
+    }
+  };
+  const solid = (m: number, c: number) => (horiz ? solidFor(state, p, m, c) : solidFor(state, p, c, m));
+
+  const target = main + sign * dist;
+  const edgeCell = Math.round(target + sign * PLAYER_HALF); // cell the leading edge pokes into
+  // Lanes (perpendicular cells) the box currently overlaps: one or two.
+  const laneA = Math.round(cross - PLAYER_HALF + EPS);
+  const laneB = Math.round(cross + PLAYER_HALF - EPS);
+
+  const blockedA = solid(edgeCell, laneA);
+  const blockedB = solid(edgeCell, laneB);
+
+  if (!blockedA && !blockedB) {
+    // Clear road: advance, and settle gently onto the lane center.
+    let c = cross;
+    const center = Math.round(cross);
+    if (Math.abs(cross - center) <= CENTER_SNAP) c = center;
+    setPos(target, c);
+    return true;
+  }
+
+  let moved = false;
+  // Advance up to the blocking cell's face.
+  const face = edgeCell - sign * (0.5 + PLAYER_HALF + EPS);
+  if (sign > 0 ? face > main + EPS : face < main - EPS) {
+    setPos(sign > 0 ? Math.min(target, face) : Math.max(target, face), cross);
+    moved = true;
+  }
+  // Corner assist: exactly one lane open → slide toward its center.
+  if (laneA !== laneB && blockedA !== blockedB) {
+    const openLane = blockedA ? laneB : laneA;
+    const slideSign = Math.sign(openLane - cross);
+    // The slide is a real move: it must not push the box into anything.
+    const slideEdge = Math.round(cross + slideSign * (dist + PLAYER_HALF));
+    const mainA = Math.round((horiz ? p.x : p.y) - PLAYER_HALF + EPS);
+    const mainB = Math.round((horiz ? p.x : p.y) + PLAYER_HALF - EPS);
+    const slideBlocked = horiz
+      ? solidFor(state, p, mainA, slideEdge) || solidFor(state, p, mainB, slideEdge)
+      : solidFor(state, p, slideEdge, mainA) || solidFor(state, p, slideEdge, mainB);
+    if (!slideBlocked) {
+      const step = Math.min(dist, Math.abs(openLane - cross));
+      if (step > EPS) {
+        setPos(horiz ? p.x : p.y, cross + slideSign * step);
+        moved = true;
+      }
+    }
+  }
+  return moved;
 }
 
 // ── player actions (applied immediately; movement itself happens on ticks) ──
@@ -201,11 +307,12 @@ export function dropBomb(state: BombermanState, seat: number): ApplyResult {
   const p = state.players[seat];
   if (!p) return { ok: false, error: 'not seated' };
   if (state.over || !active(p)) return { ok: true, events: [] };
-  if (p.bombsOut >= p.maxBombs || bombAt(state, p.x, p.y)) return { ok: true, events: [] };
+  const { cx, cy } = centerCell(p);
+  if (p.bombsOut >= p.maxBombs || bombAt(state, cx, cy)) return { ok: true, events: [] };
   state.bombs.push({
     id: state.nextBombId++,
-    x: p.x,
-    y: p.y,
+    x: cx,
+    y: cy,
     ownerSeat: seat,
     ticksLeft: FUSE_TICKS,
     fire: p.fire,
@@ -222,6 +329,7 @@ export function grabOrThrow(state: BombermanState, seat: number): ApplyResult {
   if (!p) return { ok: false, error: 'not seated' };
   if (state.over || !active(p) || !p.glove) return { ok: true, events: [] };
 
+  const { cx, cy } = centerCell(p);
   const held = state.bombs.find((b) => b.carriedBySeat === seat);
   if (held) {
     // Throw: land on the first free cell at least THROW_DISTANCE ahead,
@@ -229,8 +337,8 @@ export function grabOrThrow(state: BombermanState, seat: number): ApplyResult {
     const { dx, dy } = DIRS[p.facing];
     let landed = false;
     for (let d = THROW_DISTANCE; ; d++) {
-      const tx = p.x + dx * d;
-      const ty = p.y + dy * d;
+      const tx = cx + dx * d;
+      const ty = cy + dy * d;
       if (tx <= 0 || ty <= 0 || tx >= W - 1 || ty >= H - 1) break;
       if (walkable(state, tx, ty)) {
         held.x = tx;
@@ -240,16 +348,16 @@ export function grabOrThrow(state: BombermanState, seat: number): ApplyResult {
         break;
       }
     }
-    if (!landed && !bombAt(state, p.x, p.y)) {
-      held.x = p.x;
-      held.y = p.y;
+    if (!landed && !bombAt(state, cx, cy)) {
+      held.x = cx;
+      held.y = cy;
       held.carriedBySeat = null;
       landed = true;
     }
     return { ok: true, events: landed ? [{ t: 'bomb', seat }] : [] };
   }
 
-  const under = bombAt(state, p.x, p.y);
+  const under = bombAt(state, cx, cy);
   if (under) under.carriedBySeat = seat;
   return { ok: true, events: [] };
 }
@@ -273,25 +381,19 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
     }
   }
 
-  // Movement + floor powerup pickup.
+  // Movement: glide continuously while a direction is held.
   for (const p of state.players) {
-    if (!active(p)) continue;
-    if (p.moveCooldown > 0) p.moveCooldown--;
-    if (!p.inputDir || p.moveCooldown > 0) continue;
-    const { dx, dy } = DIRS[p.inputDir];
-    const nx = p.x + dx;
-    const ny = p.y + dy;
+    if (!active(p) || !p.inputDir) continue;
     p.facing = p.inputDir;
-    if (!walkable(state, nx, ny)) continue;
-    p.x = nx;
-    p.y = ny;
-    p.moveCooldown = stepTicks(state, p);
-    p.lastStepTick = state.tick;
-    changed = true;
-
-    const pu = state.floorPU[idx(nx, ny)];
+    if (slideMove(state, p, p.inputDir, speedOf(state, p))) {
+      p.lastStepTick = state.tick;
+      changed = true;
+    }
+    // Pick up whatever the center of the body is standing on.
+    const { cx, cy } = centerCell(p);
+    const pu = state.floorPU[idx(cx, cy)];
     if (pu) {
-      state.floorPU[idx(nx, ny)] = null;
+      state.floorPU[idx(cx, cy)] = null;
       applyPowerup(state, p, pu);
       events.push({ t: 'powerup', seat: p.seat });
     }
@@ -354,7 +456,8 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
     // The closing walls are always lethal — spare lives don't help when
     // there's no floor left to stand on.
     for (const p of state.players) {
-      if (active(p) && state.grid[idx(p.x, p.y)] === WALL) {
+      const { cx, cy } = centerCell(p);
+      if (active(p) && state.grid[idx(cx, cy)] === WALL) {
         p.lives = 0;
         kill(state, p, events);
         changed = true;
@@ -364,9 +467,10 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
     changed = true; // keep the countdown display fresh once a second
   }
 
-  // Flames kill anyone standing (or walking) in them — unless protected.
+  // Flames kill anyone whose body-center stands in them — unless protected.
   for (const p of state.players) {
-    if (active(p) && state.tick >= p.invulnUntil && state.explosions.has(idx(p.x, p.y))) {
+    const { cx, cy } = centerCell(p);
+    if (active(p) && state.tick >= p.invulnUntil && state.explosions.has(idx(cx, cy))) {
       kill(state, p, events);
       changed = true;
     }
@@ -442,6 +546,9 @@ function explodeChain(state: BombermanState, initial: Bomb[]): void {
     done.add(bomb.id);
     state.bombs = state.bombs.filter((b) => b !== bomb);
     state.players[bomb.ownerSeat]!.bombsOut--;
+    // A bomb exploding in a carrier's hands sits at their float position.
+    const bx = Math.round(bomb.x);
+    const by = Math.round(bomb.y);
 
     const flame = (x: number, y: number): void => {
       const cell = idx(x, y);
@@ -451,11 +558,11 @@ function explodeChain(state: BombermanState, initial: Bomb[]): void {
       if (other && !done.has(other.id)) queue.push(other);
     };
 
-    flame(bomb.x, bomb.y);
+    flame(bx, by);
     for (const { dx, dy } of Object.values(DIRS)) {
       for (let d = 1; d <= bomb.fire; d++) {
-        const x = bomb.x + dx * d;
-        const y = bomb.y + dy * d;
+        const x = bx + dx * d;
+        const y = by + dy * d;
         if (x < 0 || y < 0 || x >= W || y >= H) break;
         const cell = idx(x, y);
         if (state.grid[cell] === WALL) break;
@@ -476,11 +583,13 @@ function explodeChain(state: BombermanState, initial: Bomb[]): void {
 
 /** Every cell a bomb's blast will cover when it goes off (for the bots). */
 export function blastCells(state: BombermanState, bomb: Pick<Bomb, 'x' | 'y' | 'fire' | 'pierce'>): number[] {
-  const cells = [idx(bomb.x, bomb.y)];
+  const bx = Math.round(bomb.x);
+  const by = Math.round(bomb.y);
+  const cells = [idx(bx, by)];
   for (const { dx, dy } of Object.values(DIRS)) {
     for (let d = 1; d <= bomb.fire; d++) {
-      const x = bomb.x + dx * d;
-      const y = bomb.y + dy * d;
+      const x = bx + dx * d;
+      const y = by + dy * d;
       if (x < 0 || y < 0 || x >= W || y >= H) break;
       const cell = idx(x, y);
       if (state.grid[cell] === WALL) break;

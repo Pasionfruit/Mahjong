@@ -248,9 +248,15 @@ export default function BombermanGame() {
               <div
                 key={`p${p.seat}`}
                 className={`bomber-player${p.slowed ? ' slowed' : ''}${p.invulnerable ? ' invulnerable' : ''}${p.moving ? ' walking' : ''}`}
-                // The tween duration matches this player's server step so the
-                // figure glides continuously; --step paces the limb swing too.
-                style={{ ...movePos(p.x, p.y, p.stepMs), '--step': `${p.stepMs}ms` } as React.CSSProperties}
+                // Movement is continuous server-side: positions stream every
+                // 50ms tick, so a short fixed tween just smooths tick jitter.
+                // --step (ms per cell) paces the limb swing.
+                style={
+                  {
+                    ...movePos(p.x, p.y, 100),
+                    '--step': `${p.stepMs}ms`,
+                  } as React.CSSProperties
+                }
               >
                 <StickFigure color={p.color} />
                 {p.carrying && <div className="bomber-carry" />}

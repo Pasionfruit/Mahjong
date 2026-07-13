@@ -5,8 +5,9 @@ import {
   FUSE_TICKS,
   blastCells,
   bombAt,
+  centerCell,
   dropBomb,
-  stepTicks,
+  speedOf,
   walkable,
   type BomberPlayer,
   type BombermanState,
@@ -32,6 +33,13 @@ import {
 const W = BOMBER_W;
 const H = BOMBER_H;
 const idx = (x: number, y: number) => y * W + x;
+/** The grid cell under a (possibly mid-glide) player's center. */
+const cellOf = (p: BomberPlayer) => {
+  const { cx, cy } = centerCell(p);
+  return idx(cx, cy);
+};
+/** Waypoint counts as reached when the center is this close to it. */
+const ARRIVE = 0.12;
 
 /** How often each difficulty re-plans targets (ticks). Fleeing ignores this. */
 const THINK_EVERY = { easy: 14, medium: 9, hard: 6 } as const;
@@ -47,7 +55,7 @@ const SHRINK_WARNING_TICKS = 40;
 export function botTick(state: BombermanState, p: BomberPlayer): void {
   const diff = p.botDifficulty ?? 'easy';
   const danger = dangerCells(state);
-  const me = idx(p.x, p.y);
+  const me = cellOf(p);
   const inDanger = danger.has(me) || state.explosions.has(me);
 
   // ── transitions ───────────────────────────────────────────────────────────
@@ -76,9 +84,10 @@ export function botTick(state: BombermanState, p: BomberPlayer): void {
   if (p.botMode === 'roam' && state.tick >= p.nextBotThink) {
     p.nextBotThink = state.tick + THINK_EVERY[diff];
 
-    if (p.bombsOut < p.maxBombs && !bombAt(state, p.x, p.y) && wantsBomb(state, p, diff)) {
+    const { cx, cy } = centerCell(p);
+    if (p.bombsOut < p.maxBombs && !bombAt(state, cx, cy) && wantsBomb(state, p, diff)) {
       // Validate the whole escape before committing: pretend the bomb exists.
-      const footprint = blastCells(state, { x: p.x, y: p.y, fire: p.fire, pierce: p.pierce });
+      const footprint = blastCells(state, { x: cx, y: cy, fire: p.fire, pierce: p.pierce });
       const simDanger = new Set(danger);
       for (const c of footprint) simDanger.add(c);
       const escape = findPath(
@@ -87,7 +96,10 @@ export function botTick(state: BombermanState, p: BomberPlayer): void {
         (cell) => !simDanger.has(cell) && !state.explosions.has(cell),
         /* throughDanger */ true,
       );
-      const ticksNeeded = escape ? escape.length * stepTicks(state, p) + ESCAPE_MARGIN_TICKS : Infinity;
+      const ticksPerCell = 1 / speedOf(state, p);
+      const ticksNeeded = escape
+        ? Math.ceil(escape.length * ticksPerCell) + ESCAPE_MARGIN_TICKS
+        : Infinity;
       if (escape && ticksNeeded <= FUSE_TICKS) {
         dropBomb(state, p.seat);
         p.botMode = 'flee';
@@ -101,15 +113,20 @@ export function botTick(state: BombermanState, p: BomberPlayer): void {
   followPath(state, p);
 }
 
-// ── movement: advance the stored path one cell at a time, every tick ────────
+// ── movement: steer toward waypoint centers, every tick ─────────────────────
 
 function followPath(state: BombermanState, p: BomberPlayer): void {
   if (p.botPath.length === 0) {
     if (p.botMode !== 'roam') p.inputDir = null;
     return;
   }
-  const me = idx(p.x, p.y);
-  if (p.botPath[0] === me) p.botPath.shift(); // arrived at this waypoint
+  // Pop waypoints whose center we've reached (continuous positions).
+  while (p.botPath.length > 0) {
+    const w = p.botPath[0]!;
+    if (Math.abs(w % W - p.x) <= ARRIVE && Math.abs(Math.floor(w / W) - p.y) <= ARRIVE) {
+      p.botPath.shift();
+    } else break;
+  }
   const next = p.botPath[0];
   if (next === undefined) {
     p.inputDir = null;
@@ -117,13 +134,13 @@ function followPath(state: BombermanState, p: BomberPlayer): void {
   }
   const nx = next % W;
   const ny = Math.floor(next / W);
-  if (Math.abs(nx - p.x) + Math.abs(ny - p.y) !== 1) {
-    p.botPath = []; // desynced (thrown bomb landed on us, etc.) — replan later
+  if (Math.abs(nx - p.x) + Math.abs(ny - p.y) > 1.6) {
+    p.botPath = []; // desynced (knocked around, replanned mid-glide) — replan later
     p.inputDir = null;
     return;
   }
   if (state.explosions.has(next)) {
-    p.inputDir = null; // never step into live flames; they decay in a few ticks
+    p.inputDir = null; // never glide into live flames; they decay in a few ticks
     return;
   }
   if (!walkable(state, nx, ny)) {
@@ -131,7 +148,15 @@ function followPath(state: BombermanState, p: BomberPlayer): void {
     p.inputDir = null;
     return;
   }
-  p.inputDir = dirTo(p.x, p.y, nx, ny);
+  // Steer along whichever axis is further from the waypoint (paths are
+  // 4-adjacent, so this settles onto the lane then advances along it).
+  const ddx = nx - p.x;
+  const ddy = ny - p.y;
+  if (Math.abs(ddx) > Math.abs(ddy)) {
+    p.inputDir = ddx > 0 ? 'right' : 'left';
+  } else {
+    p.inputDir = ddy > 0 ? 'down' : 'up';
+  }
 }
 
 // ── planners ─────────────────────────────────────────────────────────────────
@@ -210,7 +235,7 @@ function dangerCells(state: BombermanState): Set<number> {
 function surroundingsCalm(state: BombermanState, p: BomberPlayer, _danger: Set<number>): boolean {
   const hot = new Set<number>(state.explosions.keys());
   for (const b of state.bombs) for (const cell of blastCells(state, b)) hot.add(cell);
-  if (hot.has(idx(p.x, p.y))) return false;
+  if (hot.has(cellOf(p))) return false;
   return Object.values(DIRS).every(({ dx, dy }) => {
     const nx = p.x + dx;
     const ny = p.y + dy;
@@ -246,7 +271,7 @@ function bfs(
   throughDanger: boolean,
   visit: (cell: number, path: number[]) => boolean,
 ): void {
-  const start = idx(p.x, p.y);
+  const start = cellOf(p);
   const parent = new Map<number, number>([[start, -1]]);
   const queue = [start];
   if (visit(start, [])) return;
@@ -282,13 +307,6 @@ function dangerCellsHas(state: BombermanState, cell: number): boolean {
   return entry.set.has(cell);
 }
 
-function dirTo(x: number, y: number, nx: number, ny: number): BomberDir {
-  if (nx > x) return 'right';
-  if (nx < x) return 'left';
-  if (ny > y) return 'down';
-  return 'up';
-}
-
 function nextToBrick(state: BombermanState, cell: number): boolean {
   const x = cell % W;
   const y = Math.floor(cell / W);
@@ -308,13 +326,13 @@ function nextToEnemy(state: BombermanState, me: BomberPlayer, cell: number): boo
 }
 
 function wantsBomb(state: BombermanState, p: BomberPlayer, diff: 'easy' | 'medium' | 'hard'): boolean {
-  const byBrick = nextToBrick(state, idx(p.x, p.y));
+  const byBrick = nextToBrick(state, cellOf(p));
   if (diff === 'easy') return byBrick && Math.random() < 0.25;
   if (byBrick) return true;
   if (diff !== 'hard') return false;
   // Hard: bomb when an enemy stands inside our blast footprint.
   const footprint = new Set(blastCells(state, { x: p.x, y: p.y, fire: p.fire, pierce: p.pierce }));
   return state.players.some(
-    (q) => q.seat !== p.seat && q.alive && footprint.has(idx(q.x, q.y)),
+    (q) => q.seat !== p.seat && q.alive && footprint.has(cellOf(q)),
   );
 }

@@ -19,7 +19,7 @@ import {
   isMoving,
   newGame,
   setInput,
-  stepTicks,
+  msPerCell,
   tick,
   type BombermanState,
 } from './engine';
@@ -127,7 +127,7 @@ function view(
         lives: p.lives,
         moving: isMoving(state, p),
         invulnerable: state.tick < p.invulnUntil,
-        stepMs: stepTicks(state, p) * TICK_MS,
+        stepMs: msPerCell(state, p),
         wins: meta.wins,
       };
     }),

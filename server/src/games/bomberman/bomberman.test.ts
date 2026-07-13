@@ -5,8 +5,10 @@ import { BRICK, FLOOR, WALL, buildMap, shrinkSpiral, spawnPoints } from './maps'
 import {
   BASE_FIRE,
   FUSE_TICKS,
-  MOVE_COOLDOWN,
-  SLOW_PENALTY,
+  PLAYER_HALF,
+  SPEED_BASE,
+  SPEED_PER_BOOT,
+  SLOW_FACTOR,
   dropBomb,
   grabOrThrow,
   newGame,
@@ -83,21 +85,53 @@ describe('bomberman maps', () => {
 });
 
 describe('bomberman engine', () => {
-  it('moves with a cooldown, faster than when slowed', () => {
+  it('glides continuously and can stop between cells', () => {
     const s = openState();
     const p = s.players[0]!;
     setInput(s, 0, 'right');
-    ticks(s, 1);
-    expect([p.x, p.y]).toEqual([2, 1]);
-    ticks(s, MOVE_COOLDOWN - 1); // still cooling down
-    expect(p.x).toBe(2);
-    ticks(s, 1);
-    expect(p.x).toBe(3);
+    ticks(s, 2);
+    expect(p.x).toBeCloseTo(1 + 2 * SPEED_BASE, 5); // mid-cell — not snapped
+    setInput(s, 0, null);
+    ticks(s, 10);
+    expect(p.x).toBeCloseTo(1 + 2 * SPEED_BASE, 5); // rests exactly where released
+    expect(p.x % 1).not.toBe(0); // genuinely between two tiles
+  });
 
+  it('the slow hex halves speed; boots raise it', () => {
+    const s = openState();
+    const p = s.players[0]!;
+    setInput(s, 0, 'right');
     p.slowedUntil = s.tick + 1000;
-    const x0 = p.x;
-    ticks(s, MOVE_COOLDOWN + SLOW_PENALTY);
-    expect(p.x).toBe(x0 + 1); // one step per slowed cooldown now
+    ticks(s, 4);
+    expect(p.x).toBeCloseTo(1 + 4 * SPEED_BASE * SLOW_FACTOR, 5);
+
+    const s2 = openState();
+    const q = s2.players[0]!;
+    q.speed = 2;
+    setInput(s2, 0, 'right');
+    ticks(s2, 4);
+    expect(q.x).toBeCloseTo(1 + 4 * (SPEED_BASE + 2 * SPEED_PER_BOOT), 5);
+  });
+
+  it('walls clamp the glide flush against their face', () => {
+    const s = openState();
+    const p = s.players[0]!;
+    setInput(s, 0, 'up'); // border wall at (1,0)
+    ticks(s, 20);
+    expect(p.y).toBeCloseTo(0.5 + PLAYER_HALF, 2); // pressed against the wall
+    expect(p.x).toBe(1);
+  });
+
+  it('corner assist slides a misaligned player around a wall edge', () => {
+    const s = openState();
+    const p = s.players[0]!;
+    s.grid[idx(2, 2)] = WALL;
+    p.x = 1;
+    p.y = 1.65; // overlaps rows 1 and 2; row 2 is blocked at x=2, row 1 open
+    setInput(s, 0, 'right');
+    ticks(s, 30);
+    expect(p.y).toBeCloseTo(1, 1); // slid up into the open lane…
+    expect(p.x).toBeGreaterThan(2); // …and kept moving through it
   });
 
   it('only one bomb may be out until it explodes; the powerup adds more', () => {
@@ -106,7 +140,7 @@ describe('bomberman engine', () => {
     expect(p.maxBombs).toBe(1);
     dropBomb(s, 0);
     setInput(s, 0, 'right');
-    ticks(s, MOVE_COOLDOWN + 1); // step off the bomb
+    ticks(s, 10); // glide well off the bomb cell
     setInput(s, 0, null);
     dropBomb(s, 0); // second drop is a no-op — one already out
     expect(s.bombs).toHaveLength(1);
@@ -121,44 +155,32 @@ describe('bomberman engine', () => {
     // The extra-bomb powerup raises the cap.
     s.floorPU[idx(10, 9)] = 'bombs';
     setInput(s, 0, 'right');
-    ticks(s, 2);
+    ticks(s, 6); // glide until the body-center crosses into (10,9)
     setInput(s, 0, null);
     expect(p.maxBombs).toBe(2);
     dropBomb(s, 0);
     expect(s.bombs).toHaveLength(2);
   });
 
-  it('speed boots shorten the move cooldown', () => {
+  it('bombs block re-entry but let you walk off them; blasts kill bystanders', () => {
     const s = openState();
-    const p = s.players[0]!;
-    p.speed = 2;
-    setInput(s, 0, 'right');
-    ticks(s, 1); // first step is instant (cooldown 0)
-    const x0 = p.x;
-    ticks(s, MOVE_COOLDOWN - 2); // boots: cooldown is MOVE_COOLDOWN - speed
-    expect(p.x).toBe(x0 + 1);
-  });
-
-  it('bombs block movement and explode after the fuse, killing bystanders', () => {
-    const s = openState();
-    const p0 = s.players[0]!;
     const p1 = s.players[1]!;
-    p1.x = 3;
-    p1.y = 1; // within blast range of (1,1)
-    dropBomb(s, 0);
+    dropBomb(s, 0); // bomb under p0 at (1,1) — p0 stays on it
     expect(s.bombs).toHaveLength(1);
 
-    // p1 can't walk onto the bomb cell.
+    // p1 gliding left is stopped at the bomb cell's face.
     p1.x = 2;
+    p1.y = 1;
     setInput(s, 1, 'left');
-    ticks(s, 2);
-    expect(p1.x).toBe(2);
+    ticks(s, 10);
+    expect(p1.x).toBeGreaterThan(1.5 + PLAYER_HALF - 0.01); // never entered cell (1,1)
+    expect(Math.round(p1.x)).toBe(2);
 
     setInput(s, 1, null);
     const results = ticks(s, FUSE_TICKS);
     const events = results.flatMap((r) => r.events);
     expect(events.some((e) => e.t === 'boom')).toBe(true);
-    expect(events.some((e) => e.t === 'death' && e.seat === 1)).toBe(true);
+    expect(events.some((e) => e.t === 'death' && e.seat === 1)).toBe(true); // beside it
     expect(events.some((e) => e.t === 'death' && e.seat === 0)).toBe(true); // stood on it
     expect(s.over).toBe(true);
     expect(s.result).toEqual({ winnerSeat: null }); // mutual kill → draw
@@ -206,7 +228,7 @@ describe('bomberman engine', () => {
     p.y = 1;
     const fire0 = p.fire;
     setInput(s, 0, 'right');
-    ticks(s, 2);
+    ticks(s, 4); // glide until the center crosses into (2,1)
     expect(p.fire).toBe(fire0 + 1);
     expect(s.floorPU[idx(2, 1)]).toBe(null);
   });
@@ -216,7 +238,7 @@ describe('bomberman engine', () => {
     const p = s.players[0]!;
     s.floorPU[idx(2, 1)] = 'slow';
     setInput(s, 0, 'right');
-    ticks(s, 2);
+    ticks(s, 4); // glide until the center crosses into (2,1)
     expect(p.slowedUntil).toBe(0);
     expect(s.players[1]!.slowedUntil).toBeGreaterThan(s.tick);
     expect(s.players[2]!.slowedUntil).toBeGreaterThan(s.tick);
@@ -266,7 +288,7 @@ describe('bomberman lives', () => {
     p1.y = 9; // far from the blast
     // Walk off the corner so we can prove position is preserved on death.
     setInput(s, 0, 'right');
-    ticks(s, MOVE_COOLDOWN * 3);
+    ticks(s, 12); // glide well off the corner
     setInput(s, 0, null);
     const [dx, dy] = [p0.x, p0.y];
     expect([dx, dy]).not.toEqual([p0.spawnX, p0.spawnY]);
