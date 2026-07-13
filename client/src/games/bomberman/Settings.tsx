@@ -39,7 +39,7 @@ export default function BombermanSettingsPanel() {
       <h2 className="section-title">Settings</h2>
       <div className="settings">
         <label className="setting-row">
-          <span>Map</span>
+          <span>🗺️ Map</span>
           <select
             disabled={!isHost}
             value={settings.map}
@@ -54,7 +54,7 @@ export default function BombermanSettingsPanel() {
         </label>
 
         <label className="setting-row">
-          <span>Sudden death (walls close in)</span>
+          <span>⏱️ Sudden death (walls close in)</span>
           <select
             disabled={!isHost}
             value={settings.suddenDeathSeconds}
@@ -71,7 +71,7 @@ export default function BombermanSettingsPanel() {
         </label>
 
         <label className="setting-row">
-          <span>Lives</span>
+          <span>❤️ Lives</span>
           <select
             disabled={!isHost}
             value={settings.lives}
@@ -86,7 +86,7 @@ export default function BombermanSettingsPanel() {
         </label>
 
         <label className="setting-row">
-          <span>Item drop rate</span>
+          <span>🎁 Item drop rate</span>
           <select
             disabled={!isHost}
             value={settings.itemFrequency}

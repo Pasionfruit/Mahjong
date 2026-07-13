@@ -23,7 +23,7 @@ export default function UtttSettingsPanel() {
       <h2 className="section-title">Settings</h2>
       <div className="settings">
         <label className="setting-row">
-          <span>Turn timer</span>
+          <span>⏱️ Turn timer</span>
           <select
             disabled={!isHost}
             value={settings.turnTimerSeconds}
@@ -38,7 +38,7 @@ export default function UtttSettingsPanel() {
         </label>
 
         <label className="setting-row">
-          <span>Theme</span>
+          <span>🎨 Theme</span>
           <select
             disabled={!isHost}
             value={settings.theme}

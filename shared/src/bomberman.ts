@@ -90,6 +90,8 @@ export interface BomberPlayerView {
   fire: number;
   pierce: boolean;
   glove: boolean;
+  /** How many bombs may be out at once. */
+  maxBombs: number;
   /** Speed boots collected (0–2); higher = faster. */
   speed: number;
   slowed: boolean;

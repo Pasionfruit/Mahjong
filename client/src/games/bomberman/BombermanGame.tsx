@@ -21,6 +21,16 @@ const KEY_DIRS: Record<string, BomberDir> = {
 
 const PU_LABEL: Record<string, string> = { f: '🔥', p: '⚡', s: '🐌', g: '🧤', b: '👢', x: '💣' };
 
+/** The powerup legend, mirroring PU_LABEL / the server loot table. */
+const LEGEND: { icon: string; name: string; desc: string }[] = [
+  { icon: '🔥', name: 'Bigger blast', desc: '+1 explosion length' },
+  { icon: '💣', name: 'Extra bomb', desc: '+1 bomb out at once' },
+  { icon: '👢', name: 'Speed boots', desc: 'Move faster' },
+  { icon: '⚡', name: 'Pierce', desc: 'Blast burns through brick rows' },
+  { icon: '🧤', name: 'Glove', desc: 'E to grab & throw bombs' },
+  { icon: '🐌', name: 'Slow hex', desc: 'Briefly slows all rivals' },
+];
+
 /** A pixel-y stick figure in the player's color; limbs swing while `.walking`. */
 function StickFigure({ color }: { color: string }) {
   return (
@@ -95,7 +105,8 @@ export default function BombermanGame() {
   if (!game || game.g !== 'bomberman' || !lobby) return null;
 
   const isHost = lobby.players.find((p) => p.seat === lobby.yourSeat)?.isHost ?? false;
-  const meAlive = game.players.find((p) => p.seat === game.yourSeat)?.alive ?? false;
+  const me = game.players.find((p) => p.seat === game.yourSeat);
+  const meAlive = me?.alive ?? false;
   const winner =
     game.result && game.result.winnerSeat !== null
       ? game.players.find((p) => p.seat === game.result!.winnerSeat)
@@ -170,7 +181,43 @@ export default function BombermanGame() {
 
       <div className={`bomber-status${game.shrinking ? ' urgent' : ''}`}>{status}</div>
 
-      <div className="bomber-board">
+      <div className="bomber-arena">
+        <aside className={`bomber-side${meAlive ? '' : ' dead'}`}>
+          <div className="bomber-side-title">Your stats</div>
+          {me && (
+            <>
+              <div className="bomber-stat">
+                <span>🔥 Blast</span>
+                <b>{me.fire}</b>
+              </div>
+              <div className="bomber-stat">
+                <span>💣 Bombs</span>
+                <b>{me.maxBombs}</b>
+              </div>
+              <div className="bomber-stat">
+                <span>👢 Boots</span>
+                <b>{me.speed > 0 ? `+${me.speed}` : '—'}</b>
+              </div>
+              <div className={`bomber-stat${me.pierce ? '' : ' off'}`}>
+                <span>⚡ Pierce</span>
+                <b>{me.pierce ? 'yes' : '—'}</b>
+              </div>
+              <div className={`bomber-stat${me.glove ? '' : ' off'}`}>
+                <span>🧤 Glove</span>
+                <b>{me.glove ? 'yes' : '—'}</b>
+              </div>
+              {game.settings.lives > 1 && (
+                <div className="bomber-stat">
+                  <span>Lives</span>
+                  <b className="bomber-lives">{me.alive ? '♥'.repeat(me.lives) : '—'}</b>
+                </div>
+              )}
+              {me.slowed && <div className="bomber-stat warn">🐌 Hexed — slowed!</div>}
+            </>
+          )}
+        </aside>
+
+        <div className="bomber-board">
         {game.grid.map((row, y) =>
           row.split('').map((ch, x) => {
             if (ch === '.') return null; // plain floor = board background
@@ -210,6 +257,20 @@ export default function BombermanGame() {
               </div>
             ),
         )}
+        </div>
+
+        <aside className="bomber-side">
+          <div className="bomber-side-title">Powerups</div>
+          {LEGEND.map((l) => (
+            <div key={l.name} className="bomber-legend-row">
+              <span className="bomber-legend-icon">{l.icon}</span>
+              <span>
+                <b>{l.name}</b>
+                <small>{l.desc}</small>
+              </span>
+            </div>
+          ))}
+        </aside>
       </div>
 
       <div className="bomber-keys hint">WASD / arrows move · Space bombs · E grab &amp; throw</div>

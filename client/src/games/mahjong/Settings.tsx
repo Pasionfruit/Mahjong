@@ -31,7 +31,7 @@ export default function MahjongSettings() {
       <h2 className="section-title">Rules</h2>
       <div className="settings">
         <label className="setting-row">
-          <span>Flowers</span>
+          <span>🌸 Flowers</span>
           <input
             type="checkbox"
             disabled={!isHost}
@@ -41,7 +41,7 @@ export default function MahjongSettings() {
         </label>
 
         <label className="setting-row">
-          <span>Winds &amp; dragons</span>
+          <span>🐉 Winds &amp; dragons</span>
           <input
             type="checkbox"
             disabled={!isHost}
@@ -51,7 +51,7 @@ export default function MahjongSettings() {
         </label>
 
         <label className="setting-row">
-          <span>Turn timer</span>
+          <span>⏱️ Turn timer</span>
           <select
             disabled={!isHost}
             value={settings.turnTimerSeconds}
@@ -66,7 +66,7 @@ export default function MahjongSettings() {
         </label>
 
         <label className="setting-row">
-          <span>Open hands (everyone sees all tiles)</span>
+          <span>👀 Open hands (everyone sees all tiles)</span>
           <input
             type="checkbox"
             disabled={!isHost}
@@ -76,7 +76,7 @@ export default function MahjongSettings() {
         </label>
 
         <label className="setting-row">
-          <span>Triples to win</span>
+          <span>🎯 Triples to win</span>
           <select
             disabled={!isHost}
             value={settings.setsToWin ?? 'auto'}
@@ -97,7 +97,7 @@ export default function MahjongSettings() {
         </label>
 
         <label className="setting-row">
-          <span>Tile theme</span>
+          <span>🎨 Tile theme</span>
           <select
             disabled={!isHost}
             value={settings.theme}

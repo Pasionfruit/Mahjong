@@ -325,11 +325,45 @@ body {
 .game-card-players {
   font-size: 12px;
   opacity: 0.6;
+  margin-bottom: 6px;
 }
 
 .game-card-btn {
-  margin-top: 12px;
+  /* pin to the bottom so every card's button sits on the same line */
+  margin-top: auto;
   width: 100%;
+}
+
+/* ── toast ─────────────────────────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  max-width: min(92vw, 420px);
+  background: #a13327;
+  color: #fff;
+  border: 1px solid #e0563699;
+  border-left: 5px solid #ffb3a7;
+  border-radius: 10px;
+  padding: 11px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  animation: toast-in 0.22s ease;
+}
+
+@keyframes toast-in {
+  from {
+    transform: translate(-50%, -14px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
 }
 
 .join-panel {
@@ -389,11 +423,24 @@ body {
 }
 
 .section-title {
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.75;
-  margin: 18px 0 8px;
+  letter-spacing: 0.1em;
+  opacity: 0.85;
+  margin: 20px 0 10px;
+}
+
+/* gold accent chevron before every section heading */
+.section-title::before {
+  content: '';
+  width: 5px;
+  height: 15px;
+  flex-shrink: 0;
+  background: var(--accent);
+  clip-path: polygon(0 0, 100% 20%, 100% 80%, 0 100%);
 }
 
 .player-list {
@@ -473,7 +520,7 @@ body {
 .settings {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 7px;
 }
 
 .setting-row {
@@ -481,25 +528,52 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 7px 0;
-  font-size: 15px;
+  padding: 9px 12px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.setting-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .setting-row select {
   font: inherit;
-  font-size: 14px;
-  padding: 6px 8px;
-  border-radius: 6px;
+  font-size: 13.5px;
+  padding: 7px 10px;
+  border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.25);
-  background: var(--felt-dark);
+  background: rgba(0, 0, 0, 0.35);
   color: var(--paper);
   max-width: 230px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.setting-row select:hover:not(:disabled),
+.setting-row select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.setting-row select:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .setting-row input[type='checkbox'] {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.setting-row input[type='checkbox']:disabled {
+  cursor: default;
 }
 
 .lobby-actions {
@@ -1548,10 +1622,94 @@ body {
   animation: pulse 1s ease-in-out infinite;
 }
 
+.bomber-arena {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 14px;
+}
+
+.bomber-side {
+  width: 178px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow:
+    inset 2px 2px 0 rgba(255, 255, 255, 0.12),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+}
+
+.bomber-side.dead {
+  opacity: 0.55;
+}
+
+.bomber-side-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  opacity: 0.75;
+  margin-bottom: 2px;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.bomber-stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 4px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bomber-stat b {
+  font-variant-numeric: tabular-nums;
+}
+
+.bomber-stat.off {
+  opacity: 0.45;
+}
+
+.bomber-stat.warn {
+  justify-content: center;
+  background: rgba(224, 86, 86, 0.25);
+  animation: pulse 0.8s steps(2, end) infinite;
+}
+
+.bomber-legend-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 4px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.bomber-legend-icon {
+  font-size: 16px;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.bomber-legend-row b {
+  display: block;
+  font-size: 12.5px;
+}
+
+.bomber-legend-row small {
+  display: block;
+  font-size: 11px;
+  opacity: 0.7;
+  line-height: 1.3;
+}
+
 /* Pixel-art look: hard edges, stepped shading, grid-aligned checkerboard. */
 .bomber-board {
   position: relative;
-  width: min(94vw, calc(76vh * 23 / 17), 1100px);
+  /* leave room for the two side panels */
+  width: min(calc(94vw - 400px), calc(76vh * 23 / 17), 1000px);
   aspect-ratio: 23 / 17;
   border-radius: 0;
   background-color: rgba(0, 0, 0, 0.32);
@@ -1746,6 +1904,20 @@ body {
   letter-spacing: 0.08em;
 }
 
+/* Narrow windows: board first at full width, panels side by side beneath. */
+@media (max-width: 1120px) {
+  .bomber-arena {
+    flex-wrap: wrap;
+  }
+  .bomber-board {
+    order: -1;
+    width: min(94vw, calc(76vh * 23 / 17), 1000px);
+  }
+  .bomber-side {
+    width: min(44vw, 260px);
+  }
+}
+
 .color-row {
   display: flex;
   gap: 8px;
@@ -1910,7 +2082,7 @@ body {
     font-size: 11px;
   }
   .game-card-btn {
-    margin-top: 8px;
+    margin-top: auto;
     padding: 8px 10px;
     font-size: 14px;
   }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GameId } from '@shared/games';
 import { createParty, joinParty } from '../socket';
 import { loadNickname } from '../session';
@@ -10,33 +10,47 @@ import { isDesktop } from '../device';
 export default function Home() {
   const [nickname, setNickname] = useState(loadNickname());
   const [code, setCode] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const notice = useStore((s) => s.notice);
+  const nickRef = useRef<HTMLInputElement>(null);
+  const toastTimer = useRef<number>(0);
+
+  useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
   const name = nickname.trim();
-
   const desktop = isDesktop();
+
+  /** Pop an error toast; nickname problems also focus the field. */
+  function complain(msg: string, focusNick = false) {
+    setToast(msg);
+    if (focusNick) {
+      nickRef.current?.focus();
+      nickRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 3000);
+  }
 
   async function create(game: GameEntry) {
     if (!game.available) return;
     if (game.desktopOnly && !desktop) {
-      return setError(`${game.name} needs a keyboard — play from a desktop.`);
+      return complain(`${game.name} needs a keyboard — play from a desktop.`);
     }
-    if (!name) return setError('Enter a nickname first');
+    if (!name) return complain('Pick a nickname before you play!', true);
     setBusy(true);
     const r = await createParty(name, game.id as GameId);
     setBusy(false);
-    if (!r.ok) setError(r.error);
+    if (!r.ok) complain(r.error);
   }
 
   async function join() {
-    if (!name) return setError('Enter a nickname first');
-    if (!code.trim()) return setError('Enter a room code');
+    if (!name) return complain('Pick a nickname before you join!', true);
+    if (!code.trim()) return complain('Enter your friend’s table code.');
     setBusy(true);
     const r = await joinParty(code, name);
     setBusy(false);
-    if (!r.ok) setError(r.error);
+    if (!r.ok) complain(r.error);
   }
 
   return (
@@ -54,9 +68,16 @@ export default function Home() {
 
         {notice && <div className="notice">{notice}</div>}
 
+        {toast && (
+          <div className="toast" role="alert">
+            ⚠️ {toast}
+          </div>
+        )}
+
         <label className="field home-nick">
           <span>Nickname</span>
           <input
+            ref={nickRef}
             value={nickname}
             maxLength={16}
             placeholder="Your name at the table"
@@ -106,7 +127,6 @@ export default function Home() {
           ))}
         </div>
 
-        {error && <div className="error">{error}</div>}
       </div>
     </div>
   );

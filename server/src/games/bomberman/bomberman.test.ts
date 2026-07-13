@@ -442,6 +442,18 @@ describe('bomberman bots', () => {
   });
 
   for (const diff of ['easy', 'medium', 'hard'] as const) {
+    it(`a ${diff} bot outruns the closing walls`, () => {
+      // Sudden death from the start; a bot idling at its corner (the spiral's
+      // first cell) would be crushed almost immediately without lookahead.
+      const s = botState(diff);
+      s.suddenDeathAtTick = 10;
+      s.nextShrinkTick = 10;
+      for (let i = 0; i < 450 && !s.over; i++) tick(s, botTick);
+      expect(s.players[0]!.alive).toBe(true); // retreated ahead of the wave
+    });
+  }
+
+  for (const diff of ['easy', 'medium', 'hard'] as const) {
     it(`soak: a lone ${diff} bot never blows itself up on a real map`, () => {
       // Real classic map, full of bricks; the only other player idles far away
       // behind cover. For 3000 ticks (2.5 game-minutes) every bomb on the

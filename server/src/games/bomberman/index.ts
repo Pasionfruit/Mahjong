@@ -120,6 +120,7 @@ function view(
         fire: p.fire,
         pierce: p.pierce,
         glove: p.glove,
+        maxBombs: p.maxBombs,
         speed: p.speed,
         slowed: state.tick < p.slowedUntil,
         carrying: state.bombs.some((b) => b.carriedBySeat === p.seat),

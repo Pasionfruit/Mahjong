@@ -39,6 +39,10 @@ const THINK_EVERY = { easy: 14, medium: 9, hard: 6 } as const;
 const ESCAPE_MARGIN_TICKS = 6;
 /** Roam target sampling for easy bots. */
 const WANDER_RADIUS = 8;
+/** Sudden death: treat this many upcoming spiral cells as already lethal. */
+const SHRINK_LOOKAHEAD_CELLS = 26;
+/** Start avoiding doomed ground this many ticks before the walls move. */
+const SHRINK_WARNING_TICKS = 40;
 
 export function botTick(state: BombermanState, p: BomberPlayer): void {
   const diff = p.botDifficulty ?? 'easy';
@@ -177,22 +181,40 @@ function wanderPath(
 
 // ── shared helpers ───────────────────────────────────────────────────────────
 
-/** Cells that are, or are about to be, on fire — every bomb's full footprint. */
+/**
+ * Cells that are, or are about to be, lethal: live flames, every bomb's full
+ * blast footprint, and — once sudden death is (nearly) underway — the next
+ * stretch of spiral cells the walls will close over, so bots retreat toward
+ * the center ahead of the wave instead of being crushed at the edge.
+ */
 function dangerCells(state: BombermanState): Set<number> {
   const out = new Set<number>(state.explosions.keys());
   for (const b of state.bombs) {
     for (const cell of blastCells(state, b)) out.add(cell);
   }
+  if (
+    state.suddenDeathAtTick !== null &&
+    state.tick >= state.suddenDeathAtTick - SHRINK_WARNING_TICKS
+  ) {
+    const end = Math.min(state.shrinkIdx + SHRINK_LOOKAHEAD_CELLS, state.spiral.length);
+    for (let i = state.shrinkIdx; i < end; i++) out.add(state.spiral[i]!);
+  }
   return out;
 }
 
-/** Nothing burning or about to burn on or next to the bot. */
-function surroundingsCalm(state: BombermanState, p: BomberPlayer, danger: Set<number>): boolean {
-  if (danger.has(idx(p.x, p.y))) return false;
+/**
+ * Nothing burning or about to burn on or next to the bot. Deliberately ignores
+ * the shrink wave: near the closing edge a bot should resume roaming (its
+ * roam planner already avoids doomed cells) rather than wait forever.
+ */
+function surroundingsCalm(state: BombermanState, p: BomberPlayer, _danger: Set<number>): boolean {
+  const hot = new Set<number>(state.explosions.keys());
+  for (const b of state.bombs) for (const cell of blastCells(state, b)) hot.add(cell);
+  if (hot.has(idx(p.x, p.y))) return false;
   return Object.values(DIRS).every(({ dx, dy }) => {
     const nx = p.x + dx;
     const ny = p.y + dy;
-    return nx < 0 || ny < 0 || nx >= W || ny >= H || !danger.has(idx(nx, ny));
+    return nx < 0 || ny < 0 || nx >= W || ny >= H || !hot.has(idx(nx, ny));
   });
 }
 
