@@ -21,7 +21,20 @@ export interface SeatMeta {
 }
 
 export type ApplyResult =
-  | { ok: true; events: GameEvent[] }
+  | {
+      ok: true;
+      events: GameEvent[];
+      /**
+       * How the room should broadcast this step. Omitted/'full' = events plus a
+       * fresh redacted state to every seat (the default). 'events' = the events
+       * alone fully describe the change (high-frequency deltas like drawing
+       * strokes — no state snapshot is sent). 'none' = private mutation, nothing
+       * is sent (e.g. a stroke on a canvas only its author can see).
+       */
+      sync?: 'full' | 'events' | 'none';
+      /** With sync 'events': skip this seat (it already applied the change locally). */
+      exceptSeat?: number;
+    }
   | { ok: false; error: string };
 
 /** A move a seat currently owes, surfaced so the room can schedule bots. */
@@ -58,6 +71,19 @@ export interface GameModule {
   defaultSettings(): unknown;
   /** Validate + merge a settings patch; null if the patch is invalid. */
   sanitizeSettings(current: unknown, patch: unknown): unknown | null;
+
+  /**
+   * Player-count bounds under the given settings (e.g. a mode-dependent
+   * minimum, or a host-configured table cap). Defaults to min/maxPlayers.
+   */
+  playerBounds?(settings: unknown): { min: number; max: number };
+
+  /**
+   * Events replayed to a single (re)joining seat before its state snapshot,
+   * so clients can rebuild event-fed caches (e.g. drawing strokes) that the
+   * redacted view deliberately omits.
+   */
+  resyncEvents?(state: unknown, viewerSeat: number): GameEvent[];
 
   startRound(
     settings: unknown,

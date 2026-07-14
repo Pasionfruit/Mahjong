@@ -5,6 +5,8 @@ import UtttGame from './uttt/UtttGame';
 import UtttSettingsPanel from './uttt/Settings';
 import BombermanGame from './bomberman/BombermanGame';
 import BombermanSettingsPanel from './bomberman/Settings';
+import ArtGame from './art/ArtGame';
+import ArtSettingsPanel from './art/Settings';
 import {
   IconTile,
   IconGrid,
@@ -71,15 +73,18 @@ export const GAMES: GameEntry[] = [
     SettingsPanel: BombermanSettingsPanel,
   },
 
-  // Coming soon — placeholders for future games.
   {
     id: 'art',
     name: 'Art Games',
     tagline: 'Draw it, guess it, howl with laughter.',
-    players: '3–8 players',
+    players: '2–12 players',
     Icon: IconPalette,
-    available: false,
+    available: true,
+    Game: ArtGame,
+    SettingsPanel: ArtSettingsPanel,
   },
+
+  // Coming soon — placeholders for future games.
   {
     id: 'mafia',
     name: 'Mafia',

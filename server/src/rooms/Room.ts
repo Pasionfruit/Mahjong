@@ -53,6 +53,8 @@ export class Room {
   readonly code: string;
   private readonly module: GameModule;
   private players: RoomPlayer[] = [];
+  /** Late joiners parked until the game returns to the lobby (seat = -1). */
+  private waiting: RoomPlayer[] = [];
   private hostToken: string | null = null;
   private settings: RoomSettings;
   private phase: 'lobby' | 'playing' = 'lobby';
@@ -75,28 +77,41 @@ export class Room {
 
   // ── membership ────────────────────────────────────────────────────────────
 
+  /** Player-count bounds under the current settings (module may override). */
+  private bounds(): { min: number; max: number } {
+    return (
+      this.module.playerBounds?.(this.settings) ?? {
+        min: this.module.minPlayers,
+        max: this.module.maxPlayers,
+      }
+    );
+  }
+
   join(nickname: string, socket: IoSocket): Result<JoinInfo> {
-    if (this.phase !== 'lobby') return err('game already in progress');
-    if (this.players.length >= this.module.maxPlayers) return err('party is full');
+    const { max } = this.bounds();
+    if (this.players.length + this.waiting.length >= max) return err('party is full');
     const player: RoomPlayer = {
       token: randomUUID(),
       nickname,
-      seat: this.players.length,
+      seat: this.phase === 'lobby' ? this.players.length : -1,
       socket,
       connected: true,
       disconnectedAt: null,
       wins: 0,
       isBot: false,
     };
-    this.players.push(player);
-    if (!this.hostToken) this.hostToken = player.token;
+    // Mid-game joiners wait out the current game and are seated afterwards.
+    if (this.phase === 'lobby') this.players.push(player);
+    else this.waiting.push(player);
+    if (!this.hostToken && this.phase === 'lobby') this.hostToken = player.token;
     this.bind(socket, player);
     this.broadcastLobby();
     return ok(this.joinInfo(player));
   }
 
   rejoin(token: string, socket: IoSocket): Result<JoinInfo> {
-    const player = this.players.find((p) => p.token === token);
+    const player =
+      this.players.find((p) => p.token === token) ?? this.waiting.find((p) => p.token === token);
     if (!player) return err('unknown session');
     if (player.socket && player.socket.id !== socket.id) {
       player.socket.emit('room:closed', 'session opened elsewhere');
@@ -107,12 +122,25 @@ export class Room {
     player.disconnectedAt = null;
     this.bind(socket, player);
     this.broadcastLobby();
-    if (this.game) {
-      socket.emit(
-        'game:state',
-        this.module.redactFor(this.game, player.seat, this.seatMeta(), this.deadline, this.paused),
-      );
-      this.broadcastGame([]);
+    if (this.game && player.seat >= 0) {
+      // Replay cache-building events (e.g. strokes) before the snapshot.
+      for (const e of this.module.resyncEvents?.(this.game, player.seat) ?? []) {
+        socket.emit('game:event', e);
+      }
+      if (!this.module.isRoundOver(this.game)) {
+        // Let the module see the seat is back (mirrors markDisconnected).
+        const events: GameEvent[] = [];
+        this.settleDisconnectedClaims(events);
+        this.armDeadline();
+        this.broadcastGame(events);
+        this.scheduleBotMoves();
+      } else {
+        socket.emit(
+          'game:state',
+          this.module.redactFor(this.game, player.seat, this.seatMeta(), this.deadline, this.paused),
+        );
+        this.broadcastGame([]);
+      }
     }
     return ok(this.joinInfo(player));
   }
@@ -122,6 +150,11 @@ export class Room {
     if (!player) return;
     socket.data.roomCode = undefined;
     socket.data.token = undefined;
+    if (this.waiting.includes(player)) {
+      this.waiting = this.waiting.filter((p) => p !== player);
+      this.broadcastLobby();
+      return;
+    }
     if (this.phase === 'playing') {
       this.markDisconnected(player);
       return;
@@ -145,12 +178,23 @@ export class Room {
     player.connected = false;
     player.disconnectedAt = Date.now();
     this.broadcastLobby();
-    if (this.game && !this.module.isRoundOver(this.game)) {
+    if (player.seat >= 0 && this.game && !this.module.isRoundOver(this.game)) {
       const events: GameEvent[] = [];
       this.settleDisconnectedClaims(events);
       this.armDeadline();
       this.broadcastGame(events);
       this.scheduleBotMoves();
+    }
+  }
+
+  /** Seat everyone who joined mid-game, in arrival order (back in the lobby). */
+  private seatWaiting(): void {
+    const { max } = this.bounds();
+    while (this.waiting.length > 0 && this.players.length < max) {
+      const player = this.waiting.shift()!;
+      player.seat = this.players.length;
+      this.players.push(player);
+      if (!this.hostToken) this.hostToken = player.token;
     }
   }
 
@@ -203,6 +247,10 @@ export class Room {
     if (this.phase !== 'lobby') return err('settings are locked during a game');
     const next = this.module.sanitizeSettings(this.settings, patch) as RoomSettings | null;
     if (!next) return err('invalid settings');
+    const cap = this.module.playerBounds?.(next).max;
+    if (cap !== undefined && this.players.length + this.waiting.length > cap) {
+      return err('cap is below the current player count');
+    }
     this.settings = next;
     this.broadcastLobby();
     return ok(null);
@@ -239,8 +287,9 @@ export class Room {
     if (!this.players.some((p) => p.token === this.hostToken)) {
       this.hostToken = this.players.find((p) => !p.isBot)?.token ?? null;
     }
-    if (this.players.length < this.module.minPlayers || this.players.length > this.module.maxPlayers) {
-      return err(`need ${this.module.minPlayers}-${this.module.maxPlayers} connected players`);
+    const { min, max } = this.bounds();
+    if (this.players.length < min || this.players.length > max) {
+      return err(`need ${min}-${max} connected players`);
     }
     this.phase = 'playing';
     this.round = 0;
@@ -270,6 +319,7 @@ export class Room {
     this.clearTimer();
     this.clearBotTimers();
     this.syncTicker();
+    this.seatWaiting();
     this.broadcastLobby();
     return ok(null);
   }
@@ -340,12 +390,18 @@ export class Room {
 
   action(socket: IoSocket, action: PlayerAction): Result<null> {
     const player = this.bySocket(socket);
-    if (!player) return err('not in this room');
+    if (!player || player.seat < 0) return err('not in this game');
     if (this.phase !== 'playing' || !this.game) return err('no game in progress');
     if (this.paused) return err('game is paused');
     if (!this.module.validateAction(action)) return err('invalid action');
     const res = this.module.applyAction(this.game, player.seat, action);
     if (!res.ok) return err(res.error);
+    // High-frequency deltas (drawing strokes) skip the full-state rebroadcast.
+    if (res.sync === 'none') return ok(null);
+    if (res.sync === 'events') {
+      this.emitEvents(res.events, res.exceptSeat);
+      return ok(null);
+    }
     this.afterEngineStep(res.events);
     return ok(null);
   }
@@ -485,6 +541,7 @@ export class Room {
 
   private broadcastLobby(): void {
     for (const p of this.players) p.socket?.emit('lobby:state', this.lobbyState(p.seat));
+    for (const p of this.waiting) p.socket?.emit('lobby:state', this.lobbyState(-1));
   }
 
   private broadcastGame(events: GameEvent[]): void {
@@ -495,6 +552,15 @@ export class Room {
       if (!p.socket) continue;
       for (const e of events) p.socket.emit('game:event', e);
       p.socket.emit('game:state', this.module.redactFor(game, p.seat, meta, this.deadline, this.paused));
+    }
+  }
+
+  /** Send events alone (no state snapshot) to every seated player. */
+  private emitEvents(events: GameEvent[], exceptSeat?: number): void {
+    if (events.length === 0) return;
+    for (const p of this.players) {
+      if (!p.socket || p.seat === exceptSeat) continue;
+      for (const e of events) p.socket.emit('game:event', e);
     }
   }
 
@@ -510,11 +576,12 @@ export class Room {
   }
 
   lobbyState(yourSeat: number): LobbyState {
+    const { min, max } = this.bounds();
     return {
       roomCode: this.code,
       gameId: this.module.id as GameId,
-      minPlayers: this.module.minPlayers,
-      maxPlayers: this.module.maxPlayers,
+      minPlayers: min,
+      maxPlayers: max,
       botsSupported: this.module.supportsBots !== false,
       phase: this.phase,
       players: this.players.map((p) => ({
@@ -530,6 +597,7 @@ export class Room {
       settings: this.settings,
       round: this.round,
       yourSeat,
+      waiting: this.waiting.map((p) => ({ nickname: p.nickname, connected: p.connected })),
     };
   }
 
@@ -543,7 +611,10 @@ export class Room {
   }
 
   private bySocket(socket: IoSocket): RoomPlayer | undefined {
-    return this.players.find((p) => p.token === socket.data.token);
+    return (
+      this.players.find((p) => p.token === socket.data.token) ??
+      this.waiting.find((p) => p.token === socket.data.token)
+    );
   }
 
   private bind(socket: IoSocket, player: RoomPlayer): void {
@@ -554,23 +625,30 @@ export class Room {
   // ── lifecycle (called by RoomManager sweep) ───────────────────────────────
 
   sweep(now: number): void {
-    if (this.phase !== 'lobby') return;
+    const gone = (p: RoomPlayer) =>
+      !p.connected && now - (p.disconnectedAt ?? now) >= LOBBY_DISCONNECT_DROP_MS;
+    const waitingBefore = this.waiting.length;
+    this.waiting = this.waiting.filter((p) => !gone(p));
+    if (this.phase !== 'lobby') {
+      if (this.waiting.length !== waitingBefore) this.broadcastLobby();
+      return;
+    }
     const before = this.players.length;
-    this.players = this.players.filter(
-      (p) => p.connected || now - (p.disconnectedAt ?? now) < LOBBY_DISCONNECT_DROP_MS,
-    );
+    this.players = this.players.filter((p) => !gone(p));
     if (this.players.length !== before) {
       this.players.forEach((p, i) => (p.seat = i));
       if (!this.players.some((p) => p.token === this.hostToken)) {
         this.hostToken = this.players.find((p) => !p.isBot)?.token ?? null;
       }
+    }
+    if (this.players.length !== before || this.waiting.length !== waitingBefore) {
       this.broadcastLobby();
     }
   }
 
   /** Bots don't keep a room alive: only human presence counts. */
   isAbandoned(now: number): boolean {
-    const humans = this.players.filter((p) => !p.isBot);
+    const humans = [...this.players, ...this.waiting].filter((p) => !p.isBot);
     if (humans.length === 0) return true;
     return humans.every(
       (p) => !p.connected && now - (p.disconnectedAt ?? now) > ROOM_ABANDON_MS,
@@ -584,7 +662,8 @@ export class Room {
       clearInterval(this.ticker);
       this.ticker = null;
     }
-    for (const p of this.players) p.socket?.emit('room:closed', reason);
+    for (const p of [...this.players, ...this.waiting]) p.socket?.emit('room:closed', reason);
     this.players = [];
+    this.waiting = [];
   }
 }

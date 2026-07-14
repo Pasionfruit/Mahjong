@@ -35,6 +35,15 @@ socket.on('lobby:state', (s) => useStore.getState().setLobby(s));
 /** Is it the viewer's move right now? Real-time games have no turn chime. */
 function myTurn(v: ClientGameView): boolean {
   if (v.g === 'bomberman') return false;
+  if (v.g === 'art') {
+    // Chime when you become the drawer and must pick a word.
+    return (
+      v.mode === 'guess' &&
+      v.phase === 'choose' &&
+      v.guess?.drawerSeat === v.yourSeat &&
+      !v.result
+    );
+  }
   if (v.turnSeat !== v.yourSeat || v.result) return false;
   return v.g === 'mahjong' ? v.phase === 'awaitingDiscard' : true;
 }
@@ -65,7 +74,35 @@ function queueWinSound(seat: number, mySeat: number | undefined) {
 
 socket.on('game:event', (e) => {
   const mySeat = useStore.getState().game?.yourSeat;
+  // Art stroke deltas feed the canvas cache and stay out of the event log.
   switch (e.t) {
+    case 'stroke':
+      useStore
+        .getState()
+        .artStrokeDelta(
+          e.cv,
+          { seat: e.seat, id: e.id, color: e.color, size: e.size, erase: e.erase, pts: e.pts },
+          e.full ? 'replace' : 'append',
+        );
+      return;
+    case 'strokeUndo':
+      useStore.getState().artStrokeUndo(e.cv, e.seat, e.id);
+      return;
+    case 'strokeClear':
+      useStore.getState().artStrokeClear(e.cv, e.seat);
+      return;
+    case 'artVote':
+      useStore.getState().artVoteCast(e.seat);
+      play('discard');
+      return;
+  }
+  switch (e.t) {
+    case 'artGuess':
+      if (e.correct) play(e.seat === mySeat ? 'powerup' : 'pong');
+      break;
+    case 'artPhase':
+      play('draw');
+      break;
     case 'draw':
       play('draw');
       break;

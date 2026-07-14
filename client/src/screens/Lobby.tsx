@@ -30,6 +30,8 @@ export default function Lobby() {
   const canStart = lobby.players.length >= minPlayers && lobby.players.length <= maxPlayers;
   const entry = gameById(lobby.gameId);
   const SettingsPanel = entry?.SettingsPanel;
+  /** Joined while a game is running: parked until it returns to the lobby. */
+  const isWaiting = lobby.yourSeat < 0;
 
   async function handleStart() {
     const r = await startGame();
@@ -57,6 +59,12 @@ export default function Lobby() {
             {copied ? 'Copied!' : 'Copy'}
           </button>
         </div>
+
+        {isWaiting && (
+          <div className="notice">
+            A game is in progress — you’ll take a seat as soon as it ends.
+          </div>
+        )}
 
         <h2 className="section-title">
           Players ({lobby.players.length}/{maxPlayers})
@@ -93,6 +101,12 @@ export default function Lobby() {
             </li>
           ))}
         </ul>
+
+        {lobby.waiting.length > 0 && (
+          <p className="hint">
+            Waiting to join: {lobby.waiting.map((w) => w.nickname).join(', ')}
+          </p>
+        )}
 
         {isHost && lobby.botsSupported && lobby.players.length < maxPlayers && (
           <div className="add-bot-row">

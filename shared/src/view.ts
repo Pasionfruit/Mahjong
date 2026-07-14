@@ -3,6 +3,7 @@ import type { GameSettings } from './settings';
 import type { GameId } from './games';
 import type { Cell, Mark, SmallResult, UtttPlayer, UtttResult, UtttSettings } from './uttt';
 import type { BomberPlayerView, BombView, BombermanSettings } from './bomberman';
+import type { ArtSettings, ArtView } from './art';
 
 export type MeldType = 'pong' | 'chow' | 'kongExposed' | 'kongConcealed' | 'kongAdded';
 
@@ -133,7 +134,7 @@ export interface BombermanView {
 }
 
 /** The redacted per-seat snapshot, discriminated by which game is running. */
-export type ClientGameView = MahjongView | UtttView | BombermanView;
+export type ClientGameView = MahjongView | UtttView | BombermanView | ArtView;
 
 export interface LobbyPlayer {
   seat: number;
@@ -154,15 +155,20 @@ export interface LobbyState {
   gameId: GameId;
   phase: 'lobby' | 'playing';
   players: LobbyPlayer[];
-  settings: GameSettings | UtttSettings | BombermanSettings;
+  settings: GameSettings | UtttSettings | BombermanSettings | ArtSettings;
   /** Player-count bounds for this game, so the lobby can render them. */
   minPlayers: number;
   maxPlayers: number;
   /** False for games with no bot support (hides/blocks the add-bot flow). */
   botsSupported: boolean;
   round: number;
-  /** The seat of the player this state was sent to. */
+  /**
+   * The seat of the player this state was sent to, or -1 for a late joiner
+   * waiting for the current game to finish.
+   */
   yourSeat: number;
+  /** Late joiners who will be seated when the game returns to the lobby. */
+  waiting: { nickname: string; connected: boolean }[];
 }
 
 export type GameEvent =
@@ -185,4 +191,22 @@ export type GameEvent =
   /** fatal: out of the game (vs. losing a spare life). */
   | { t: 'death'; seat: number; fatal: boolean }
   /** The game ended with no winner (mutual knockout). */
-  | { t: 'gameOver' };
+  | { t: 'gameOver' }
+  // Art games — stroke deltas append into the client-side canvas cache.
+  | {
+      t: 'stroke';
+      cv: string;
+      seat: number;
+      id: number;
+      color: string;
+      size: number;
+      erase?: boolean;
+      pts: number[];
+      /** Complete stroke (resync replay): replace instead of append. */
+      full?: boolean;
+    }
+  | { t: 'strokeUndo'; cv: string; seat: number; id: number }
+  | { t: 'strokeClear'; cv: string; seat: number }
+  | { t: 'artGuess'; seat: number; correct: boolean }
+  | { t: 'artVote'; seat: number }
+  | { t: 'artPhase'; phase: string };
