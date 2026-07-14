@@ -35,6 +35,13 @@ export type LivesCount = (typeof LIVES_CHOICES)[number];
 export const ITEM_FREQUENCIES = ['low', 'normal', 'high'] as const;
 export type ItemFrequency = (typeof ITEM_FREQUENCIES)[number];
 
+/** 0 = free-for-all; otherwise the number of teams. */
+export const TEAM_COUNT_CHOICES = [0, 2, 3, 4] as const;
+export type TeamCount = (typeof TEAM_COUNT_CHOICES)[number];
+
+export const TEAM_NAMES = ['Red', 'Blue', 'Green', 'Gold'] as const;
+export const TEAM_COLORS = ['#e05656', '#57a9e8', '#5fce7a', '#e8c15a'] as const;
+
 export interface BombermanSettings {
   map: BomberMapId;
   suddenDeathSeconds: SuddenDeathSeconds;
@@ -42,6 +49,8 @@ export interface BombermanSettings {
   lives: LivesCount;
   /** How often bricks hide an item. */
   itemFrequency: ItemFrequency;
+  /** 0 = free-for-all; 2–4 = last team standing wins. */
+  teamCount: TeamCount;
 }
 
 export const DEFAULT_BOMBERMAN_SETTINGS: BombermanSettings = {
@@ -49,6 +58,7 @@ export const DEFAULT_BOMBERMAN_SETTINGS: BombermanSettings = {
   suddenDeathSeconds: 120,
   lives: 1,
   itemFrequency: 'normal',
+  teamCount: 0,
 };
 
 export type PowerupKind = 'fire' | 'pierce' | 'slow' | 'glove' | 'boots' | 'bombs';
@@ -83,6 +93,8 @@ export interface BomberPlayerView {
   isHost: boolean;
   isBot?: boolean;
   color: string;
+  /** Team index (TEAM_NAMES/TEAM_COLORS), or null in free-for-all. */
+  team: number | null;
   x: number;
   y: number;
   alive: boolean;

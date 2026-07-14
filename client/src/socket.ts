@@ -46,6 +46,23 @@ socket.on('game:state', (v) => {
   useStore.getState().setGame(v);
 });
 
+// Team wins emit one 'win' event per member; buffer them for a beat and play
+// a single jingle — 'win' if any of them is mine, else one 'lose'.
+let pendingWinSeats: number[] | null = null;
+
+function queueWinSound(seat: number, mySeat: number | undefined) {
+  if (pendingWinSeats) {
+    pendingWinSeats.push(seat);
+    return;
+  }
+  pendingWinSeats = [seat];
+  setTimeout(() => {
+    const seats = pendingWinSeats ?? [];
+    pendingWinSeats = null;
+    play(seats.includes(mySeat ?? -1) ? 'win' : 'lose');
+  }, 60);
+}
+
 socket.on('game:event', (e) => {
   const mySeat = useStore.getState().game?.yourSeat;
   switch (e.t) {
@@ -81,7 +98,7 @@ socket.on('game:event', (e) => {
       play('gameOver');
       break;
     case 'win':
-      play(e.seat === mySeat ? 'win' : 'lose');
+      queueWinSound(e.seat, mySeat);
       break;
   }
   useStore.getState().pushEvent(e);
@@ -132,6 +149,10 @@ export function updateSettings(patch: Record<string, unknown>): Promise<Result<n
 
 export function setColor(color: string): Promise<Result<null>> {
   return new Promise((resolve) => socket.emit('lobby:color', { color }, resolve));
+}
+
+export function setTeam(team: number): Promise<Result<null>> {
+  return new Promise((resolve) => socket.emit('lobby:team', { team }, resolve));
 }
 
 export function addBot(difficulty: BotDifficulty): Promise<Result<null>> {

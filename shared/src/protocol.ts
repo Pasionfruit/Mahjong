@@ -43,6 +43,7 @@ export interface ClientToServerEvents {
   'room:leave': () => void;
   'lobby:settings': (p: Record<string, unknown>, ack: Ack) => void;
   'lobby:color': (p: { color: string }, ack: Ack) => void;
+  'lobby:team': (p: { team: number }, ack: Ack) => void;
   'lobby:addBot': (p: { difficulty: BotDifficulty }, ack: Ack) => void;
   'lobby:removeBot': (p: { seat: number }, ack: Ack) => void;
   'lobby:start': (ack: Ack) => void;

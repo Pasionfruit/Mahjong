@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BOMBER_H, BOMBER_W, type BomberDir } from '@shared/bomberman';
+import { BOMBER_H, BOMBER_W, TEAM_COLORS, TEAM_NAMES, type BomberDir } from '@shared/bomberman';
 import { backToLobby, leaveParty, nextRound, pauseGame, resumeGame, sendAction } from '../../socket';
 import { useStore } from '../../store';
 import VolumeControl from '../../components/VolumeControl';
@@ -31,7 +31,9 @@ const LEGEND: { icon: string; name: string; desc: string }[] = [
   { icon: '🐌', name: 'Slow hex', desc: 'Briefly slows all rivals' },
 ];
 
-/** A pixel-y stick figure in the player's color; limbs swing while `.walking`. */
+/** A pixel-y stick figure in the player's color; limbs pump while `.walking`.
+ *  Limbs hang nearly vertical so the run cycle reads as running (arms swing
+ *  across the torso), not jumping jacks. */
 function StickFigure({ color }: { color: string }) {
   return (
     <svg viewBox="0 0 24 32" className="bomber-stick">
@@ -39,10 +41,10 @@ function StickFigure({ color }: { color: string }) {
       <rect x="7.6" y="2" width="8.8" height="8.8" fill={color} stroke="rgba(0,0,0,0.5)" strokeWidth="1.4" />
       <g stroke={color} strokeWidth="2.8" strokeLinecap="square" fill="none">
         <path d="M12 11.5v10" />
-        <g className="bomber-arm-l"><path d="M12 13.5L5.5 18.5" /></g>
-        <g className="bomber-arm-r"><path d="M12 13.5L18.5 18.5" /></g>
-        <g className="bomber-leg-l"><path d="M12 21.5l-5 8" /></g>
-        <g className="bomber-leg-r"><path d="M12 21.5l5 8" /></g>
+        <g className="bomber-arm-l"><path d="M12 13.5L9.2 19.6" /></g>
+        <g className="bomber-arm-r"><path d="M12 13.5L14.8 19.6" /></g>
+        <g className="bomber-leg-l"><path d="M12 21.5l-2.6 8" /></g>
+        <g className="bomber-leg-r"><path d="M12 21.5l2.6 8" /></g>
       </g>
     </svg>
   );
@@ -111,6 +113,12 @@ export default function BombermanGame() {
     game.result && game.result.winnerSeat !== null
       ? game.players.find((p) => p.seat === game.result!.winnerSeat)
       : null;
+  const winnerTeam = game.result?.winnerTeam ?? null;
+  const teamed = game.players.some((p) => p.team !== null);
+  // Group chips by team so sides read together.
+  const chipPlayers = teamed
+    ? [...game.players].sort((a, b) => (a.team ?? 9) - (b.team ?? 9) || a.seat - b.seat)
+    : game.players;
 
   const status = game.result
     ? ''
@@ -119,14 +127,16 @@ export default function BombermanGame() {
       : game.suddenDeathSecondsLeft !== null
         ? `Sudden death in ${fmt(game.suddenDeathSecondsLeft)}`
         : meAlive
-          ? 'Last one standing wins'
+          ? teamed
+            ? 'Last team standing wins'
+            : 'Last one standing wins'
           : 'You were eliminated — spectating';
 
   return (
     <div className="bomber">
       <div className="bomber-hud">
         <div className="bomber-chips">
-          {game.players.map((p) => (
+          {chipPlayers.map((p) => (
             <div key={p.seat} className={`bomber-chip${p.alive ? '' : ' dead'}`}>
               <span className="bomber-chip-dot" style={{ background: p.color }} />
               <span className="bomber-chip-name">
@@ -302,7 +312,12 @@ export default function BombermanGame() {
         <div className="overlay">
           <div className="overlay-card">
             <h2>
-              {winner ? (
+              {winnerTeam !== null ? (
+                <>
+                  <span className="bomber-chip-dot big" style={{ background: TEAM_COLORS[winnerTeam] }} />{' '}
+                  Team {TEAM_NAMES[winnerTeam]} wins!
+                </>
+              ) : winner ? (
                 <>
                   <span className="bomber-chip-dot big" style={{ background: winner.color }} />{' '}
                   {winner.nickname} wins!
@@ -311,6 +326,14 @@ export default function BombermanGame() {
                 'Everyone went out with a bang — draw.'
               )}
             </h2>
+            {winnerTeam !== null && (
+              <p className="hint">
+                {game.players
+                  .filter((p) => p.team === winnerTeam)
+                  .map((p) => p.nickname)
+                  .join(' · ')}
+              </p>
+            )}
             <table className="scoreboard">
               <tbody>
                 {[...game.players]

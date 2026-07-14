@@ -6,13 +6,17 @@ import {
   LIVES_CHOICES,
   PLAYER_COLORS,
   SUDDEN_DEATH_CHOICES,
+  TEAM_COLORS,
+  TEAM_COUNT_CHOICES,
+  TEAM_NAMES,
   type BomberMapId,
   type BombermanSettings,
   type ItemFrequency,
   type LivesCount,
   type SuddenDeathSeconds,
+  type TeamCount,
 } from '@shared/bomberman';
-import { setColor, updateSettings } from '../../socket';
+import { setColor, setTeam, updateSettings } from '../../socket';
 import { useStore } from '../../store';
 
 /** Bomberman rules panel: map, sudden-death timer, and your color. */
@@ -33,6 +37,18 @@ export default function BombermanSettingsPanel() {
   function pickColor(color: string) {
     void setColor(color).then((r) => setError(r.ok ? null : r.error));
   }
+
+  function pickTeam(team: number) {
+    void setTeam(team).then((r) => setError(r.ok ? null : r.error));
+  }
+
+  const teamsOn = settings.teamCount > 0;
+  // Effective team preview: explicit pick if valid, else the auto round-robin.
+  const teamFor = (seat: number) => {
+    const pick = lobby!.players.find((p) => p.seat === seat)?.team;
+    if (pick != null && pick < settings.teamCount) return pick;
+    return seat % settings.teamCount;
+  };
 
   return (
     <>
@@ -99,26 +115,70 @@ export default function BombermanSettingsPanel() {
             ))}
           </select>
         </label>
+
+        <label className="setting-row">
+          <span>🚩 Teams</span>
+          <select
+            disabled={!isHost}
+            value={settings.teamCount}
+            onChange={(e) => patch({ teamCount: Number(e.target.value) as TeamCount })}
+          >
+            {TEAM_COUNT_CHOICES.map((n) => (
+              <option key={n} value={n}>
+                {n === 0 ? 'Off — free-for-all' : `${n} teams`}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      <h2 className="section-title">Your color</h2>
-      <div className="color-row">
-        {PLAYER_COLORS.map((c) => {
-          const owner = takenBy(c);
-          const mine = me?.color === c;
-          return (
-            <button
-              key={c}
-              type="button"
-              className={`color-swatch${mine ? ' mine' : ''}`}
-              style={{ background: c }}
-              disabled={!!owner && !mine}
-              title={owner ? owner.nickname : 'Pick this color'}
-              onClick={() => pickColor(c)}
-            />
-          );
-        })}
-      </div>
+      {teamsOn ? (
+        <>
+          <h2 className="section-title">Your team</h2>
+          <div className="team-row">
+            {TEAM_NAMES.slice(0, settings.teamCount).map((name, t) => {
+              const members = lobby.players.filter((p) => teamFor(p.seat) === t);
+              const mine = me && teamFor(me.seat) === t;
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  className={`team-pick${mine ? ' mine' : ''}`}
+                  style={{ borderColor: TEAM_COLORS[t] }}
+                  onClick={() => pickTeam(t)}
+                >
+                  <span className="bomber-chip-dot" style={{ background: TEAM_COLORS[t] }} />
+                  <b>{name}</b>
+                  <small>
+                    {members.length === 0 ? 'empty' : members.map((p) => p.nickname).join(', ')}
+                  </small>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <>
+          <h2 className="section-title">Your color</h2>
+          <div className="color-row">
+            {PLAYER_COLORS.map((c) => {
+              const owner = takenBy(c);
+              const mine = me?.color === c;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  className={`color-swatch${mine ? ' mine' : ''}`}
+                  style={{ background: c }}
+                  disabled={!!owner && !mine}
+                  title={owner ? owner.nickname : 'Pick this color'}
+                  onClick={() => pickColor(c)}
+                />
+              );
+            })}
+          </div>
+        </>
+      )}
 
       <h2 className="section-title">How to play</h2>
       <div className="howto-body uttt-rules">
@@ -133,7 +193,8 @@ export default function BombermanSettingsPanel() {
           speed boots, a glove to throw bombs, and a hex that briefly slows everyone else. Powerups reset every
           game. With extra lives, a hit makes you blink — briefly untouchable — instead of taking
           you out. If sudden death is on, the walls close in toward the center when the timer runs
-          out (and they are always lethal).
+          out (and they are always lethal). With teams on, the last team standing wins — but
+          explosions don&apos;t pick sides, so mind your teammates!
         </p>
       </div>
 

@@ -34,6 +34,8 @@ interface RoomPlayer {
   botDifficulty?: BotDifficulty;
   /** Player-chosen color, for games that use one. */
   color?: string;
+  /** Player-chosen team, for games with team modes. */
+  team?: number;
 }
 
 const LOBBY_DISCONNECT_DROP_MS = 60_000;
@@ -218,6 +220,15 @@ export class Room {
     return ok(null);
   }
 
+  /** Any player may pick their own team (games with team modes). */
+  setTeam(socket: IoSocket, team: number): Result<null> {
+    const player = this.bySocket(socket);
+    if (!player) return err('not in this room');
+    player.team = team;
+    this.broadcastLobby();
+    return ok(null);
+  }
+
   start(socket: IoSocket): Result<null> {
     const player = this.bySocket(socket);
     if (!player) return err('not in this room');
@@ -318,7 +329,7 @@ export class Room {
       dealerSeat,
       this.round,
       seed,
-      this.players.map((p) => ({ isBot: p.isBot, botDifficulty: p.botDifficulty })),
+      this.players.map((p) => ({ isBot: p.isBot, botDifficulty: p.botDifficulty, team: p.team })),
     );
     this.game = state;
     this.broadcastLobby();
@@ -513,6 +524,7 @@ export class Room {
         isHost: p.token === this.hostToken,
         isBot: p.isBot,
         color: p.color,
+        team: p.team,
         wins: p.wins,
       })),
       settings: this.settings,

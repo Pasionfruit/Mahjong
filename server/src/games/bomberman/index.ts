@@ -7,6 +7,8 @@ import {
   LIVES_CHOICES,
   PLAYER_COLORS,
   SUDDEN_DEATH_CHOICES,
+  TEAM_COLORS,
+  TEAM_COUNT_CHOICES,
   type BombermanSettings,
 } from '@shared/bomberman';
 import { DISCONNECT_TURN_GRACE_MS } from '@shared/settings';
@@ -62,6 +64,10 @@ function sanitizeSettings(
     if (!ITEM_FREQUENCIES.includes(patch.itemFrequency)) return null;
     next.itemFrequency = patch.itemFrequency;
   }
+  if (patch.teamCount !== undefined) {
+    if (!TEAM_COUNT_CHOICES.includes(patch.teamCount)) return null;
+    next.teamCount = patch.teamCount;
+  }
   return next;
 }
 
@@ -112,7 +118,13 @@ function view(
         connected: meta.connected,
         isHost: meta.isHost,
         isBot: meta.isBot,
-        color: meta.color ?? PLAYER_COLORS[p.seat % PLAYER_COLORS.length]!,
+        // Team mode paints everyone in their team's color so sides read at
+        // a glance; free-for-all keeps personal colors.
+        color:
+          p.team !== null
+            ? TEAM_COLORS[p.team]!
+            : (meta.color ?? PLAYER_COLORS[p.seat % PLAYER_COLORS.length]!),
+        team: p.team,
         x: p.x,
         y: p.y,
         alive: p.alive,

@@ -63,6 +63,14 @@ export function buildMap(
   itemFrequency: ItemFrequency = 'normal',
 ): BuiltMap {
   const rand = mulberry32(seed);
+  // Random spawns each round: shuffle all eight canonical points and deal
+  // the first N out, so nobody owns "their" corner between rounds.
+  const candidates = spawnPoints(8);
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j]!, candidates[i]!];
+  }
+  const spawns = candidates.slice(0, playerCount);
   const grid = new Array<number>(W * H).fill(FLOOR);
 
   // Border walls on every map.
@@ -122,7 +130,7 @@ export function buildMap(
 
   // Clear each spawn cell and its orthogonal neighbours (walls included — map
   // structures may cross a spawn) so nobody starts boxed in or inside a wall.
-  for (const { x, y } of spawnPoints(playerCount)) {
+  for (const { x, y } of spawns) {
     for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const cx = x + dx!;
       const cy = y + dy!;
@@ -132,7 +140,7 @@ export function buildMap(
   }
 
   const hidden = grid.map((c) => (c === BRICK ? rollPowerup(rand, itemFrequency) : null));
-  return { grid, hidden, spawns: spawnPoints(playerCount) };
+  return { grid, hidden, spawns };
 }
 
 /**

@@ -1842,8 +1842,9 @@ body {
   }
 }
 
-/* Walk cycle: limbs pivot at shoulder/hip (view-box coords), opposite pairs
-   in antiphase, paced by --step (the player's server step time). */
+/* Run cycle: limbs pivot at shoulder/hip (view-box coords). Arms pump ACROSS
+   the torso (a runner's swing, not a jumping jack); legs scissor gently.
+   Opposite arm/leg pairs run in antiphase, paced by --step (ms per cell). */
 .bomber-arm-l,
 .bomber-arm-r {
   transform-box: view-box;
@@ -1856,22 +1857,49 @@ body {
   transform-origin: 12px 21.5px;
 }
 
-.bomber-player.walking .bomber-leg-l,
-.bomber-player.walking .bomber-arm-r {
-  animation: bomber-swing var(--step, 200ms) ease-in-out infinite alternate;
-}
-
-.bomber-player.walking .bomber-leg-r,
 .bomber-player.walking .bomber-arm-l {
-  animation: bomber-swing var(--step, 200ms) ease-in-out infinite alternate-reverse;
+  animation: bomber-arm-pump-l var(--step, 200ms) ease-in-out infinite alternate;
 }
 
-@keyframes bomber-swing {
+.bomber-player.walking .bomber-arm-r {
+  animation: bomber-arm-pump-r var(--step, 200ms) ease-in-out infinite alternate-reverse;
+}
+
+.bomber-player.walking .bomber-leg-r {
+  animation: bomber-leg-stride var(--step, 200ms) ease-in-out infinite alternate;
+}
+
+.bomber-player.walking .bomber-leg-l {
+  animation: bomber-leg-stride var(--step, 200ms) ease-in-out infinite alternate-reverse;
+}
+
+/* A runner's pump: each hand sweeps ACROSS the torso midline (negative for
+   the left arm, positive for the right) then slightly back — never splaying
+   outward, which read as jumping jacks. The pairs run in antiphase. */
+@keyframes bomber-arm-pump-l {
   from {
-    transform: rotate(-24deg);
+    transform: rotate(-34deg); /* hand crossed in front of the chest */
   }
   to {
-    transform: rotate(24deg);
+    transform: rotate(8deg); /* swung just behind the hip line */
+  }
+}
+
+@keyframes bomber-arm-pump-r {
+  from {
+    transform: rotate(34deg);
+  }
+  to {
+    transform: rotate(-8deg);
+  }
+}
+
+@keyframes bomber-leg-stride {
+  from {
+    transform: rotate(-13deg);
+  }
+  to {
+    transform: rotate(13deg);
   }
 }
 
@@ -1942,6 +1970,46 @@ body {
 .color-swatch.mine {
   border-color: var(--paper);
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.45);
+}
+
+/* team picker (bomberman lobby) */
+.team-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 4px 0 8px;
+}
+
+.team-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+  min-width: 0;
+}
+
+.team-pick:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.team-pick.mine {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+}
+
+.team-pick small {
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── font weight ───────────────────────────────────────────────────────── */

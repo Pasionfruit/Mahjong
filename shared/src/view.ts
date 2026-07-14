@@ -128,7 +128,8 @@ export interface BombermanView {
   paused: boolean;
   settings: BombermanSettings;
   round: number;
-  result: { winnerSeat: number | null } | null;
+  /** winnerTeam set on a team victory; both null on a draw. */
+  result: { winnerSeat: number | null; winnerTeam: number | null } | null;
 }
 
 /** The redacted per-seat snapshot, discriminated by which game is running. */
@@ -142,6 +143,8 @@ export interface LobbyPlayer {
   isBot?: boolean;
   /** Chosen player color (games that support it), else unset. */
   color?: string;
+  /** Chosen team index (games with team mode), else unset. */
+  team?: number;
   wins: number;
 }
 

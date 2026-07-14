@@ -26,7 +26,8 @@ function settings(overrides?: Partial<typeof DEFAULT_BOMBERMAN_SETTINGS>) {
   return { ...DEFAULT_BOMBERMAN_SETTINGS, suddenDeathSeconds: 0 as const, ...overrides };
 }
 
-/** Empty-floor arena for deterministic move/bomb tests. */
+/** Empty-floor arena for deterministic move/bomb tests. Spawns are random per
+ *  round now, so pin the seats to known corners for position assertions. */
 function openState(playerCount = 2): BombermanState {
   const s = newGame(settings(), playerCount, 1, 42);
   for (let i = 0; i < s.grid.length; i++) {
@@ -37,6 +38,18 @@ function openState(playerCount = 2): BombermanState {
     s.hidden[i] = null;
     s.floorPU[i] = null;
   }
+  const pins = [
+    { x: 1, y: 1 },
+    { x: W - 2, y: BOMBER_H - 2 },
+    { x: W - 2, y: 1 },
+  ];
+  s.players.forEach((p, i) => {
+    const pin = pins[i]!;
+    p.x = pin.x;
+    p.y = pin.y;
+    p.spawnX = pin.x;
+    p.spawnY = pin.y;
+  });
   return s;
 }
 
@@ -67,6 +80,16 @@ describe('bomberman maps', () => {
       if (pu) expect(grid[i]).toBe(BRICK);
     });
     expect(hidden.some((pu) => pu !== null)).toBe(true);
+  });
+
+  it('spawn assignment is shuffled per round seed', () => {
+    const firsts = new Set<string>();
+    for (let seed = 1; seed <= 12; seed++) {
+      const { spawns } = buildMap('classic', 4, seed);
+      firsts.add(`${spawns[0]!.x},${spawns[0]!.y}`);
+      expect(new Set(spawns.map((s) => idx(s.x, s.y))).size).toBe(4); // still distinct
+    }
+    expect(firsts.size).toBeGreaterThan(1); // seat 0 lands in different places
   });
 
   it('shrink spiral covers the interior except the 3×3 center', () => {
@@ -183,7 +206,7 @@ describe('bomberman engine', () => {
     expect(events.some((e) => e.t === 'death' && e.seat === 1)).toBe(true); // beside it
     expect(events.some((e) => e.t === 'death' && e.seat === 0)).toBe(true); // stood on it
     expect(s.over).toBe(true);
-    expect(s.result).toEqual({ winnerSeat: null }); // mutual kill → draw
+    expect(s.result).toEqual({ winnerSeat: null, winnerTeam: null }); // mutual kill → draw
   });
 
   it('explosions destroy the first brick and stop — unless pierce', () => {
@@ -265,7 +288,9 @@ describe('bomberman engine', () => {
     // Fast-forward to the start of sudden death.
     s.tick = s.suddenDeathAtTick! - 1;
     s.nextShrinkTick = 0;
-    const p = s.players[0]!; // spawned at (1,1) — the first spiral cell
+    const p = s.players[0]!;
+    p.x = 1;
+    p.y = 1; // parked on the spiral's first cell
     s.players[1]!.x = 7;
     s.players[1]!.y = 6;
     const results = ticks(s, 4);
@@ -274,7 +299,7 @@ describe('bomberman engine', () => {
     expect(p.alive).toBe(false);
     expect(events.some((e) => e.t === 'death' && e.seat === 0)).toBe(true);
     expect(s.over).toBe(true);
-    expect(s.result).toEqual({ winnerSeat: 1 });
+    expect(s.result).toEqual({ winnerSeat: 1, winnerTeam: null });
   });
 });
 
@@ -322,7 +347,50 @@ describe('bomberman lives', () => {
     expect(events.some((e) => e.t === 'death' && e.seat === 0 && e.fatal === true)).toBe(true);
     expect(p0.alive).toBe(false);
     expect(s.over).toBe(true);
-    expect(s.result).toEqual({ winnerSeat: 1 });
+    expect(s.result).toEqual({ winnerSeat: 1, winnerTeam: null });
+  });
+
+  it('an eliminated player’s powerups scatter back onto open floor', () => {
+    const s = openState();
+    const p0 = s.players[0]!;
+    s.players[1]!.x = 9;
+    s.players[1]!.y = 9;
+    p0.lives = 1;
+    p0.fire = 3; // 2 above base → 2 fire drops
+    p0.maxBombs = 2; // 1 above base → 1 bomb drop
+    p0.speed = 1; // 1 boots drop
+    p0.glove = true; // 1 glove drop
+    dropBomb(s, 0); // stand on it
+    ticks(s, FUSE_TICKS + 1);
+    expect(p0.alive).toBe(false);
+    const dropped = s.floorPU.filter((pu) => pu !== null);
+    expect(dropped).toHaveLength(5);
+    expect(dropped.filter((pu) => pu === 'fire')).toHaveLength(2);
+    expect(dropped).toContain('glove');
+    expect(dropped).toContain('boots');
+    expect(dropped).toContain('bombs');
+    // Nothing landed on walls or inside the live flames.
+    s.floorPU.forEach((pu, cell) => {
+      if (pu) {
+        expect(s.grid[cell]).toBe(FLOOR);
+        expect(s.explosions.has(cell)).toBe(false);
+      }
+    });
+  });
+
+  it('losing a spare life does NOT scatter your powerups', () => {
+    const s = openState();
+    const p0 = s.players[0]!;
+    s.players[1]!.x = 9;
+    s.players[1]!.y = 9;
+    p0.lives = 2;
+    p0.fire = 4;
+    p0.glove = true;
+    dropBomb(s, 0);
+    ticks(s, FUSE_TICKS + 1);
+    expect(p0.alive).toBe(true); // blinked, kept everything
+    expect(p0.fire).toBe(4);
+    expect(s.floorPU.every((pu) => pu === null)).toBe(true);
   });
 
   it('a mutual knockout emits gameOver', () => {
@@ -334,7 +402,7 @@ describe('bomberman lives', () => {
     dropBomb(s, 0);
     const results = ticks(s, FUSE_TICKS + 1);
     const events = results.flatMap((r) => r.events);
-    expect(s.result).toEqual({ winnerSeat: null });
+    expect(s.result).toEqual({ winnerSeat: null, winnerTeam: null });
     expect(events.some((e) => e.t === 'gameOver')).toBe(true);
   });
 
@@ -361,6 +429,8 @@ describe('bomberman lives', () => {
     const s = newGame(settings({ suddenDeathSeconds: 60, lives: 3 }), 2, 1, 5);
     s.tick = s.suddenDeathAtTick! - 1;
     s.nextShrinkTick = 0;
+    s.players[0]!.x = 1;
+    s.players[0]!.y = 1; // parked on the spiral's first cell
     s.players[1]!.x = 11;
     s.players[1]!.y = 8;
     ticks(s, 4); // spiral closes (1,1) under player 0
@@ -387,6 +457,109 @@ describe('bomberman items & config', () => {
     expect(second.players[0]!.fire).toBe(BASE_FIRE);
     expect(second.players[0]!.speed).toBe(0);
     expect(second.players[0]!.glove).toBe(false);
+  });
+});
+
+describe('bomberman teams', () => {
+  /** Open arena, 4 players on 2 teams: seats 0/2 = team 0, seats 1/3 = team 1. */
+  function teamState(): BombermanState {
+    const s = newGame(settings({ teamCount: 2 }), 4, 1, 42, [
+      { isBot: false, team: 0 },
+      { isBot: false, team: 1 },
+      { isBot: false, team: 0 },
+      { isBot: false, team: 1 },
+    ]);
+    for (let i = 0; i < s.grid.length; i++) {
+      const x = i % W;
+      const y = Math.floor(i / W);
+      const border = x === 0 || y === 0 || x === W - 1 || y === BOMBER_H - 1;
+      s.grid[i] = border ? WALL : FLOOR;
+      s.hidden[i] = null;
+      s.floorPU[i] = null;
+    }
+    const pins = [
+      { x: 1, y: 1 },
+      { x: W - 2, y: 1 },
+      { x: 1, y: BOMBER_H - 2 },
+      { x: W - 2, y: BOMBER_H - 2 },
+    ];
+    s.players.forEach((p, i) => {
+      p.x = pins[i]!.x;
+      p.y = pins[i]!.y;
+    });
+    return s;
+  }
+
+  it('honors lobby team picks and auto-assigns the rest round-robin', () => {
+    const s = newGame(settings({ teamCount: 2 }), 3, 1, 7, [
+      { isBot: false, team: 1 }, // explicit pick
+      { isBot: false }, // auto: seat 1 % 2 = 1
+      { isBot: false, team: 5 }, // out of range → auto: seat 2 % 2 = 0
+    ]);
+    expect(s.players.map((p) => p.team)).toEqual([1, 1, 0]);
+  });
+
+  it('degrades to FFA when everyone lands on one team', () => {
+    const s = newGame(settings({ teamCount: 2 }), 2, 1, 7, [
+      { isBot: false, team: 0 },
+      { isBot: false, team: 0 },
+    ]);
+    expect(s.players.every((p) => p.team === null)).toBe(true);
+    expect(s.over).toBe(false);
+  });
+
+  it('the game continues while two teammates survive, and the team wins together', () => {
+    const s = teamState();
+    // Wipe out team 1 (seats 1 and 3).
+    s.players[1]!.lives = 1;
+    s.players[3]!.lives = 1;
+    s.explosions.set(1 * W + (W - 2), 5); // flames on seat 1
+    const r1 = tick(s);
+    expect(s.players[1]!.alive).toBe(false);
+    expect(s.over).toBe(false); // three players from two teams remain
+    expect(r1.events.some((e) => e.t === 'win')).toBe(false);
+
+    s.explosions.set((BOMBER_H - 2) * W + (W - 2), 5); // flames on seat 3
+    const r2 = tick(s);
+    expect(s.players[3]!.alive).toBe(false);
+    expect(s.over).toBe(true); // only team 0 remains — two members alive
+    expect(s.result).toEqual({ winnerSeat: null, winnerTeam: 0 });
+    const winSeats = r2.events.filter((e) => e.t === 'win').map((e) => (e as { seat: number }).seat);
+    expect(winSeats.sort()).toEqual([0, 2]); // both members score the win
+  });
+
+  it('hard bots do not bomb teammates', () => {
+    const s = teamState();
+    const bot = s.players[0]!;
+    bot.isBot = true;
+    bot.botDifficulty = 'hard';
+    // Park the TEAMMATE adjacent (inside the blast footprint); the enemies sit
+    // ~19 cells away — unreachable within this window, so any bomb placed here
+    // could only have been aimed at the teammate.
+    s.players[2]!.x = 2;
+    s.players[2]!.y = 1;
+    const rand = mulberry32(0xb0b);
+    vi.spyOn(Math, 'random').mockImplementation(rand);
+    for (let i = 0; i < 40; i++) tick(s, botTick);
+    vi.restoreAllMocks();
+    expect(s.bombs).toHaveLength(0);
+
+    // Control: the identical setup in FFA (teammate becomes an enemy) bombs.
+    const s2 = teamState();
+    for (const p of s2.players) p.team = null;
+    const bot2 = s2.players[0]!;
+    bot2.isBot = true;
+    bot2.botDifficulty = 'hard';
+    s2.players[2]!.x = 2;
+    s2.players[2]!.y = 1;
+    vi.spyOn(Math, 'random').mockImplementation(mulberry32(0xb0b));
+    let bombed = false;
+    for (let i = 0; i < 40 && !bombed; i++) {
+      tick(s2, botTick);
+      bombed = s2.bombs.length > 0;
+    }
+    vi.restoreAllMocks();
+    expect(bombed).toBe(true);
   });
 });
 

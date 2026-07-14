@@ -5,6 +5,8 @@ import type { ClientGameView, GameEvent } from '@shared/view';
 export interface SeatInit {
   isBot: boolean;
   botDifficulty?: BotDifficulty;
+  /** Lobby-chosen team, for games with team modes. */
+  team?: number | null;
 }
 
 /** Public metadata every seat carries, independent of any game's rules. */

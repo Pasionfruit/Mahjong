@@ -75,6 +75,8 @@ export interface BomberPlayer {
   /** Tick of the last completed step (drives the walk animation). */
   lastStepTick: number;
   invulnUntil: number;
+  /** Team index, or null in free-for-all. */
+  team: number | null;
   isBot: boolean;
   botDifficulty: BotDifficulty | null;
   nextBotThink: number;
@@ -96,7 +98,7 @@ export interface BombermanState {
   tick: number;
   nextBombId: number;
   over: boolean;
-  result: { winnerSeat: number | null } | null;
+  result: { winnerSeat: number | null; winnerTeam: number | null } | null;
   suddenDeathAtTick: number | null;
   spiral: number[];
   shrinkIdx: number;
@@ -109,6 +111,8 @@ export type ApplyResult = { ok: true; events: GameEvent[] } | { ok: false; error
 export interface SeatInit {
   isBot: boolean;
   botDifficulty?: BotDifficulty;
+  /** Lobby-chosen team, if the player picked one. */
+  team?: number | null;
 }
 
 export function newGame(
@@ -119,6 +123,19 @@ export function newGame(
   seats: SeatInit[] = [],
 ): BombermanState {
   const { grid, hidden, spawns } = buildMap(settings.map, playerCount, seed, settings.itemFrequency);
+  // Resolve teams: a lobby pick wins if it fits, otherwise deal seats out
+  // round-robin. If everyone lands on one team the mode degrades to FFA
+  // (a one-team game would end the moment it started).
+  const teamOf = (seat: number): number | null => {
+    if (settings.teamCount === 0) return null;
+    const picked = seats[seat]?.team;
+    if (picked != null && picked >= 0 && picked < settings.teamCount) return picked;
+    return seat % settings.teamCount;
+  };
+  let teams: (number | null)[] = Array.from({ length: playerCount }, (_, s) => teamOf(s));
+  if (settings.teamCount > 0 && new Set(teams).size < 2) {
+    teams = teams.map(() => null);
+  }
   return {
     settings,
     grid,
@@ -146,6 +163,7 @@ export function newGame(
       lives: settings.lives,
       lastStepTick: -1000,
       invulnUntil: 0,
+      team: teams[seat] ?? null,
       isBot: seats[seat]?.isBot ?? false,
       botDifficulty: seats[seat]?.botDifficulty ?? null,
       nextBotThink: 0,
@@ -197,9 +215,10 @@ function active(p: BomberPlayer): boolean {
   return p.alive;
 }
 
-/** Gliding right now? (drives the walk animation) */
+/** Gliding right now? A slightly wide window so brief clamps against walls or
+ *  bot direction changes don't strobe the walk animation on and off. */
 export function isMoving(state: BombermanState, p: BomberPlayer): boolean {
-  return p.alive && state.tick - p.lastStepTick <= 2;
+  return p.alive && state.tick - p.lastStepTick <= 4;
 }
 
 // ── continuous movement ──────────────────────────────────────────────────────
@@ -479,13 +498,25 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
     if (p.invulnUntil === state.tick || p.slowedUntil === state.tick) changed = true;
   }
 
-  // Last one standing wins; a mutual kill is a draw.
+  // Last one (or last team) standing wins; a mutual wipe-out is a draw.
   const alive = state.players.filter((p) => p.alive);
-  if (alive.length <= 1) {
+  // In FFA every survivor is their own "team" (negative sentinel per seat).
+  const sidesAlive = new Set(alive.map((p) => p.team ?? -(p.seat + 1)));
+  if (alive.length === 0) {
     state.over = true;
-    state.result = { winnerSeat: alive[0]?.seat ?? null };
-    if (alive[0]) events.push({ t: 'win', seat: alive[0].seat, by: 'lastStanding' });
-    else events.push({ t: 'gameOver' });
+    state.result = { winnerSeat: null, winnerTeam: null };
+    events.push({ t: 'gameOver' });
+    changed = true;
+  } else if (sidesAlive.size === 1) {
+    state.over = true;
+    const team = alive[0]!.team;
+    state.result = {
+      winnerSeat: alive.length === 1 ? alive[0]!.seat : null,
+      winnerTeam: team,
+    };
+    // Every member of the winning team scores the win (fallen ones included).
+    const winners = team === null ? alive : state.players.filter((p) => p.team === team);
+    for (const w of winners) events.push({ t: 'win', seat: w.seat, by: 'lastStanding' });
     changed = true;
   }
 
@@ -494,7 +525,8 @@ export function tick(state: BombermanState, botThink?: BotThink): { events: Game
 
 /**
  * Lose a life. With a spare, the player stays exactly where they are and
- * blinks through a short protection window; the last life is final.
+ * blinks through a short protection window; the last life is final — and
+ * everything they collected scatters back onto the board for the survivors.
  */
 function kill(state: BombermanState, p: BomberPlayer, events: GameEvent[]): void {
   // A carried bomb drops where they fell.
@@ -506,6 +538,31 @@ function kill(state: BombermanState, p: BomberPlayer, events: GameEvent[]): void
     p.invulnUntil = state.tick + INVULN_TICKS;
   } else {
     p.alive = false;
+    scatterLoot(state, p);
+  }
+}
+
+/** Drop an eliminated player's collected powerups on random open cells. */
+function scatterLoot(state: BombermanState, p: BomberPlayer): void {
+  const drops: PowerupKind[] = [];
+  for (let i = BASE_FIRE; i < p.fire; i++) drops.push('fire');
+  for (let i = BASE_BOMBS; i < p.maxBombs; i++) drops.push('bombs');
+  for (let i = 0; i < p.speed; i++) drops.push('boots');
+  if (p.pierce) drops.push('pierce');
+  if (p.glove) drops.push('glove');
+  if (drops.length === 0) return;
+
+  const open: number[] = [];
+  for (let cell = 0; cell < state.grid.length; cell++) {
+    if (state.grid[cell] !== FLOOR || state.floorPU[cell] || state.explosions.has(cell)) continue;
+    if (state.bombs.some((b) => b.carriedBySeat === null && idx(b.x, b.y) === cell)) continue;
+    open.push(cell);
+  }
+  for (const drop of drops) {
+    if (open.length === 0) break;
+    const k = Math.floor(Math.random() * open.length);
+    state.floorPU[open[k]!] = drop;
+    open.splice(k, 1);
   }
 }
 

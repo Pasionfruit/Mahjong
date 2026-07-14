@@ -79,6 +79,17 @@ export function registerHandlers(io: IoServer): void {
       ack(room.setColor(socket, color));
     });
 
+    socket.on('lobby:team', (payload, ack) => {
+      if (typeof ack !== 'function') return;
+      const room = roomOf(socket);
+      if (!room) return ack(fail('not in a room'));
+      const team = payload?.team;
+      if (typeof team !== 'number' || !Number.isInteger(team) || team < 0 || team > 3) {
+        return ack(fail('invalid team'));
+      }
+      ack(room.setTeam(socket, team));
+    });
+
     socket.on('lobby:addBot', (payload, ack) => {
       if (typeof ack !== 'function') return;
       const room = roomOf(socket);

@@ -42,7 +42,7 @@ const cellOf = (p: BomberPlayer) => {
 const ARRIVE = 0.12;
 
 /** How often each difficulty re-plans targets (ticks). Fleeing ignores this. */
-const THINK_EVERY = { easy: 14, medium: 9, hard: 6 } as const;
+const THINK_EVERY = { easy: 8, medium: 9, hard: 6 } as const;
 /** Safety margin: escape must finish this many ticks before the fuse ends. */
 const ESCAPE_MARGIN_TICKS = 6;
 /** Roam target sampling for easy bots. */
@@ -60,14 +60,19 @@ export function botTick(state: BombermanState, p: BomberPlayer): void {
 
   // ── transitions ───────────────────────────────────────────────────────────
   if (p.botMode === 'flee') {
-    if (!inDanger) {
-      // Made it out — hold position until things calm down.
-      p.botMode = 'wait';
-      p.botPath = [];
-      p.inputDir = null;
-      p.nextBotThink = state.tick + THINK_EVERY[diff];
-    } else if (p.botPath.length === 0 || danger.has(p.botPath[p.botPath.length - 1]!)) {
-      planFlee(state, p, danger); // no path, or its destination got compromised
+    // Finish the planned escape before relaxing: exiting the moment the
+    // danger-set boundary is crossed made bots flap between flee/wait at the
+    // edge (visible as jittering in place).
+    if (p.botPath.length > 0 && danger.has(p.botPath[p.botPath.length - 1]!)) {
+      planFlee(state, p, danger); // refuge got compromised — re-plan
+    } else if (p.botPath.length === 0) {
+      if (inDanger) {
+        planFlee(state, p, danger);
+      } else {
+        p.botMode = 'wait';
+        p.inputDir = null;
+        p.nextBotThink = state.tick + THINK_EVERY[diff];
+      }
     }
   } else if (inDanger) {
     p.botMode = 'flee';
@@ -148,10 +153,16 @@ function followPath(state: BombermanState, p: BomberPlayer): void {
     p.inputDir = null;
     return;
   }
-  // Steer along whichever axis is further from the waypoint (paths are
-  // 4-adjacent, so this settles onto the lane then advances along it).
+  // Steer toward the waypoint — with hysteresis: keep the current heading
+  // while it still makes progress, so near-equal axis deltas don't flip the
+  // direction every tick (which read as jittering on screen).
   const ddx = nx - p.x;
   const ddy = ny - p.y;
+  if (p.inputDir) {
+    const { dx, dy } = DIRS[p.inputDir];
+    const progress = dx !== 0 ? ddx * dx : ddy * dy; // distance left along current heading
+    if (progress > ARRIVE) return; // current direction is still correct — hold it
+  }
   if (Math.abs(ddx) > Math.abs(ddy)) {
     p.inputDir = ddx > 0 ? 'right' : 'left';
   } else {
@@ -179,7 +190,9 @@ function planRoam(
   const safe = (cell: number) => !danger.has(cell) && !state.explosions.has(cell);
   const path =
     diff === 'easy'
-      ? wanderPath(state, p, safe)
+      ? // Easy still loves shiny things — chase powerups, otherwise amble.
+        (findPath(state, p, (cell) => safe(cell) && state.floorPU[cell] !== null, false) ??
+        wanderPath(state, p, safe))
       : (findPath(state, p, (cell) => safe(cell) && state.floorPU[cell] !== null, false) ??
         findPath(state, p, (cell) => safe(cell) && nextToBrick(state, cell), false) ??
         (diff === 'hard'
@@ -317,22 +330,26 @@ function nextToBrick(state: BombermanState, cell: number): boolean {
   });
 }
 
+/** An opponent — teammates are never targets. */
+function isEnemy(me: BomberPlayer, q: BomberPlayer): boolean {
+  if (q.seat === me.seat || !q.alive) return false;
+  return me.team === null || q.team !== me.team;
+}
+
 function nextToEnemy(state: BombermanState, me: BomberPlayer, cell: number): boolean {
   const x = cell % W;
   const y = Math.floor(cell / W);
   return state.players.some(
-    (q) => q.seat !== me.seat && q.alive && Math.abs(q.x - x) + Math.abs(q.y - y) <= 1,
+    (q) => isEnemy(me, q) && Math.abs(q.x - x) + Math.abs(q.y - y) <= 1,
   );
 }
 
 function wantsBomb(state: BombermanState, p: BomberPlayer, diff: 'easy' | 'medium' | 'hard'): boolean {
   const byBrick = nextToBrick(state, cellOf(p));
-  if (diff === 'easy') return byBrick && Math.random() < 0.25;
+  if (diff === 'easy') return byBrick && Math.random() < 0.5;
   if (byBrick) return true;
   if (diff !== 'hard') return false;
   // Hard: bomb when an enemy stands inside our blast footprint.
   const footprint = new Set(blastCells(state, { x: p.x, y: p.y, fire: p.fire, pierce: p.pierce }));
-  return state.players.some(
-    (q) => q.seat !== p.seat && q.alive && footprint.has(cellOf(q)),
-  );
+  return state.players.some((q) => isEnemy(p, q) && footprint.has(cellOf(q)));
 }
