@@ -26,6 +26,8 @@ interface AppState {
   game: ClientGameView | null;
   log: GameEvent[];
   notice: string | null;
+  /** Catalog id of a device-local game being played (no room/server). */
+  localGame: string | null;
   /**
    * Art games: vector strokes per canvas key. Fed by stroke events, local
    * echo while drawing, and authoritative view merges; keyed to `artRound`
@@ -36,6 +38,7 @@ interface AppState {
   setConnected(connected: boolean): void;
   setLobby(lobby: LobbyState | null): void;
   setGame(game: ClientGameView | null): void;
+  setLocalGame(id: string | null): void;
   pushEvent(e: GameEvent): void;
   setNotice(notice: string | null): void;
   artStrokeDelta(cv: string, stroke: ArtStroke, mode: 'append' | 'replace'): void;
@@ -52,9 +55,11 @@ export const useStore = create<AppState>((set) => ({
   game: null,
   log: [],
   notice: null,
+  localGame: null,
   artStrokes: {},
   artRound: 0,
   setConnected: (connected) => set({ connected }),
+  setLocalGame: (localGame) => set({ localGame }),
   setLobby: (lobby) =>
     set((s) => ({
       lobby,

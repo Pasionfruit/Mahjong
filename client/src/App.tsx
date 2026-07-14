@@ -7,13 +7,18 @@ export default function App() {
   const lobby = useStore((s) => s.lobby);
   const game = useStore((s) => s.game);
   const connected = useStore((s) => s.connected);
+  const localGame = useStore((s) => s.localGame);
   const screen = currentScreen(lobby, game);
   const theme = lobby && 'theme' in lobby.settings ? lobby.settings.theme : 'jade';
 
+  const LocalGame = localGame ? gameById(localGame)?.Game : undefined;
   const Game = lobby ? gameById(lobby.gameId)?.Game : undefined;
 
   let content;
-  if (screen === 'home') {
+  if (LocalGame && !lobby) {
+    // Device-local games (no room): rendered straight over the home screen.
+    content = <LocalGame />;
+  } else if (screen === 'home') {
     content = <Home />;
   } else if (screen === 'game' && Game) {
     content = <Game />;

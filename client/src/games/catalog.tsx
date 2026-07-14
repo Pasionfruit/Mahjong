@@ -7,6 +7,7 @@ import BombermanGame from './bomberman/BombermanGame';
 import BombermanSettingsPanel from './bomberman/Settings';
 import ArtGame from './art/ArtGame';
 import ArtSettingsPanel from './art/Settings';
+import QuoridorGame from './quoridor/QuoridorGame';
 import {
   IconTile,
   IconGrid,
@@ -34,6 +35,8 @@ export interface GameEntry {
   available: boolean;
   /** Requires a keyboard: creating/joining is blocked on touch-only devices. */
   desktopOnly?: boolean;
+  /** Played on this device only (hotseat/AI) — no room is created. */
+  local?: boolean;
   /** The in-game screen and the lobby settings panel for this game. */
   Game?: ComponentType;
   SettingsPanel?: ComponentType;
@@ -121,9 +124,11 @@ export const GAMES: GameEntry[] = [
     id: 'quoridor',
     name: 'Quoridor',
     tagline: 'Reach the far side; wall off your rival.',
-    players: '2–4 players',
+    players: '2 players · local or vs AI',
     Icon: IconQuoridor,
-    available: false,
+    available: true,
+    local: true,
+    Game: QuoridorGame,
   },
   {
     id: 'pacman',

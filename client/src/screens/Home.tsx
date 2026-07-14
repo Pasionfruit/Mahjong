@@ -37,6 +37,11 @@ export default function Home() {
     if (game.desktopOnly && !desktop) {
       return complain(`${game.name} needs a keyboard — play from a desktop.`);
     }
+    if (game.local) {
+      // Device-local game: no nickname, no room — straight to the table.
+      useStore.getState().setLocalGame(game.id);
+      return;
+    }
     if (!name) return complain('Pick a nickname before you play!', true);
     setBusy(true);
     const r = await createParty(name, game.id as GameId);
