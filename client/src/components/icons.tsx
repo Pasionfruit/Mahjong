@@ -208,6 +208,19 @@ export function IconQuoridor() {
   );
 }
 
+/** A spinning top mid-wobble — Spin Sumo. */
+export function IconSpinTop() {
+  return (
+    <I>
+      <path d="M6 8c0-2.2 2.7-4 6-4s6 1.8 6 4-2.7 4-6 4-6-1.8-6-4z" />
+      <path d="M8.5 10.5L12 20l3.5-9.5" />
+      <path d="M12 4V2" />
+      <path d="M19.5 14.5c1 .8 1.6 1.6 1.5 2.5" />
+      <path d="M4.5 14.5c-1 .8-1.6 1.6-1.5 2.5" />
+    </I>
+  );
+}
+
 /** A dot grid with one captured box — Dots and Boxes. */
 export function IconDotsBoxes() {
   return (

@@ -36,7 +36,7 @@ socket.on('lobby:state', (s) => useStore.getState().setLobby(s));
 
 /** Is it the viewer's move right now? Real-time games have no turn chime. */
 function myTurn(v: ClientGameView): boolean {
-  if (v.g === 'bomberman' || v.g === 'tetris') return false;
+  if (v.g === 'bomberman' || v.g === 'tetris' || v.g === 'sumo') return false;
   if (v.g === 'art') {
     // Chime when you become the drawer and must pick a word.
     return (
@@ -99,6 +99,12 @@ socket.on('game:event', (e) => {
       return;
   }
   switch (e.t) {
+    case 'ko':
+      play(e.seat === mySeat ? 'hurt' : 'boom');
+      break;
+    case 'clash':
+      play('bomb');
+      break;
     case 'edge':
       play('discard');
       break;

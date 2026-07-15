@@ -6,6 +6,7 @@ import type { BomberPlayerView, BombView, BombermanSettings } from './bomberman'
 import type { ArtSettings, ArtView } from './art';
 import type { TetrisSettings, TetrisView } from './tetris';
 import type { DotsSettings, DotsView } from './dots';
+import type { SumoSettings, SumoView } from './sumo';
 
 export type MeldType = 'pong' | 'chow' | 'kongExposed' | 'kongConcealed' | 'kongAdded';
 
@@ -136,7 +137,14 @@ export interface BombermanView {
 }
 
 /** The redacted per-seat snapshot, discriminated by which game is running. */
-export type ClientGameView = MahjongView | UtttView | BombermanView | ArtView | TetrisView | DotsView;
+export type ClientGameView =
+  | MahjongView
+  | UtttView
+  | BombermanView
+  | ArtView
+  | TetrisView
+  | DotsView
+  | SumoView;
 
 export interface LobbyPlayer {
   seat: number;
@@ -163,7 +171,8 @@ export interface LobbyState {
     | BombermanSettings
     | ArtSettings
     | TetrisSettings
-    | DotsSettings;
+    | DotsSettings
+    | SumoSettings;
   /** Player-count bounds for this game, so the lobby can render them. */
   minPlayers: number;
   maxPlayers: number;
@@ -223,4 +232,7 @@ export type GameEvent =
   | { t: 'garbage'; seat: number; rows: number }
   // Dots and Boxes
   | { t: 'edge'; seat: number }
-  | { t: 'box'; seat: number; count: number };
+  | { t: 'box'; seat: number; count: number }
+  // Spin Sumo
+  | { t: 'ko'; seat: number; by: number | null }
+  | { t: 'clash' };

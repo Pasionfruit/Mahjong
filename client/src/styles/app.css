@@ -3699,3 +3699,141 @@ body {
     animation: none;
   }
 }
+
+/* ── spin sumo ──────────────────────────────────────────────────────────── */
+
+.sumo {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.sumo-hud {
+  width: min(96vw, 820px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 30;
+}
+
+.sumo-players {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sumo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 13px;
+}
+
+.sumo-chip.out {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.sumo-chip-color {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+}
+
+.sumo-chip-stat {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+}
+
+.sumo-status {
+  font-size: 15px;
+  min-height: 20px;
+  opacity: 0.9;
+}
+
+.sumo-status.danger {
+  color: #f0a08a;
+  font-weight: 700;
+  animation: sumo-danger 0.9s ease-in-out infinite;
+}
+
+@keyframes sumo-danger {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.sumo-canvas {
+  width: min(92vw, 70vh, 640px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  touch-action: none;
+  cursor: crosshair;
+  display: block;
+}
+
+.sumo-joy {
+  position: fixed;
+  width: 112px;
+  height: 112px;
+  margin: -56px 0 0 -56px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  z-index: 40;
+}
+
+.sumo-joy-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.sumo-help {
+  text-align: center;
+  font-size: 12.5px;
+  margin: 0;
+  max-width: 92vw;
+}
+
+@media (max-width: 700px) {
+  .sumo-help {
+    display: none;
+  }
+  .sumo-canvas {
+    width: min(94vw, 62vh);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sumo-status.danger {
+    animation: none;
+  }
+}

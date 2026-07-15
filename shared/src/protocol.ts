@@ -5,10 +5,12 @@ import type { GameId } from './games';
 import type { ArtAction } from './art';
 import type { TetrisAction } from './tetris';
 import type { DotsAction } from './dots';
+import type { SumoAction } from './sumo';
 
 export type { ArtAction } from './art';
 export type { TetrisAction } from './tetris';
 export type { DotsAction } from './dots';
+export type { SumoAction } from './sumo';
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type Ack<T = null> = (r: Result<T>) => void;
@@ -40,7 +42,8 @@ export type PlayerAction =
   | BombermanAction
   | ArtAction
   | TetrisAction
-  | DotsAction;
+  | DotsAction
+  | SumoAction;
 
 export interface JoinInfo {
   roomCode: string;

@@ -12,6 +12,8 @@ import TetrisGame from './tetris/TetrisGame';
 import TetrisSettingsPanel from './tetris/Settings';
 import DotsGame from './dots/DotsGame';
 import DotsSettingsPanel from './dots/Settings';
+import SumoGame from './sumo/SumoGame';
+import SumoSettingsPanel from './sumo/Settings';
 import {
   IconTile,
   IconGrid,
@@ -24,6 +26,7 @@ import {
   IconQuoridor,
   IconTetromino,
   IconDotsBoxes,
+  IconSpinTop,
   IconPac,
 } from '../components/icons';
 
@@ -124,6 +127,17 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: DotsGame,
     SettingsPanel: DotsSettingsPanel,
+  },
+
+  {
+    id: 'sumo',
+    name: 'Spin Sumo',
+    tagline: 'Beyblade brawls — shove your rivals off the ring.',
+    players: '2–8 players · bots',
+    Icon: IconSpinTop,
+    available: true,
+    Game: SumoGame,
+    SettingsPanel: SumoSettingsPanel,
   },
 
   // Coming soon — placeholders for future games.
