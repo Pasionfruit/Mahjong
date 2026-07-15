@@ -60,6 +60,8 @@ export default function QuoridorBoard({ game, version, interactive, onMove, hint
   const [wallDir, setWallDir] = useState<Orientation>('h');
   const [hover, setHover] = useState<{ r: number; c: number; o: Orientation } | null>(null);
   const [pending, setPending] = useState<Move | null>(null);
+  /** Keyboard wall cursor (W + arrows + Enter): a slot, or null when off. */
+  const [kbSlot, setKbSlot] = useState<{ r: number; c: number } | null>(null);
   const [rejectKey, setRejectKey] = useState(0);
   const boardRef = useRef<HTMLDivElement>(null);
 
@@ -71,26 +73,59 @@ export default function QuoridorBoard({ game, version, interactive, onMove, hint
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game, version, interactive]);
 
-  // Keyboard: R rotates the wall, Escape cancels previews. The handler is
-  // registered once; rotate() lives in a ref so it never goes stale.
-  const rotateRef = useRef<() => void>(() => {});
+  // Keyboard controls: R rotates, Escape cancels, W opens a wall cursor that
+  // the arrows steer and Enter commits — so walls are placeable without a
+  // pointer. Registered once; the handler lives in a ref so it never staleness.
+  const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'r' || e.key === 'R') {
-        rotateRef.current();
-      } else if (e.key === 'Escape') {
-        setHover(null);
-        setPending(null);
-      }
-    };
+    const onKey = (e: KeyboardEvent) => keyRef.current(e);
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  keyRef.current = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setHover(null);
+      setPending(null);
+      setKbSlot(null);
+      return;
+    }
+    if (e.key === 'r' || e.key === 'R') {
+      rotate();
+      return;
+    }
+    if (!interactive) return;
+    if (e.key === 'w' || e.key === 'W') {
+      setKbSlot((k) => (k ? null : { r: 3, c: 3 }));
+      return;
+    }
+    if (!kbSlot) return;
+    const ARROWS: Record<string, [number, number]> = {
+      ArrowUp: [-1, 0],
+      ArrowDown: [1, 0],
+      ArrowLeft: [0, -1],
+      ArrowRight: [0, 1],
+    };
+    const step = ARROWS[e.key];
+    if (step) {
+      e.preventDefault();
+      setKbSlot({
+        r: Math.max(0, Math.min(WGRID - 1, kbSlot.r + step[0])),
+        c: Math.max(0, Math.min(WGRID - 1, kbSlot.c + step[1])),
+      });
+      return;
+    }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      tryPlaceWall(kbSlot.r, kbSlot.c, wallDir);
+    }
+  };
 
   // A new position invalidates any half-made decision.
   useEffect(() => {
     setPending(null);
     setHover(null);
+    setKbSlot(null);
   }, [version]);
 
   /**
@@ -121,7 +156,6 @@ export default function QuoridorBoard({ game, version, interactive, onMove, hint
       return { t: 'wall', r: slot.r, c: slot.c, o: slot.o };
     });
   }
-  rotateRef.current = rotate;
 
   function tryPlaceWall(r: number, c: number, o: Orientation): void {
     const slot = resolveSlot(r, c, o);
@@ -160,10 +194,12 @@ export default function QuoridorBoard({ game, version, interactive, onMove, hint
     else tryPlaceWall(move.r, move.c, move.o);
   }
 
-  // What wall ghost to draw (touch pending beats mouse hover).
+  // What wall ghost to draw: touch pending, then keyboard cursor, then hover.
   let preview: WallPreview | null = null;
   if (pending?.t === 'wall') {
     preview = { ...resolveSlot(pending.r, pending.c, pending.o) };
+  } else if (kbSlot && interactive) {
+    preview = resolveSlot(kbSlot.r, kbSlot.c, wallDir);
   } else if (hover && interactive && !coarse) {
     preview = resolveSlot(hover.r, hover.c, hover.o);
   }
@@ -271,6 +307,7 @@ export default function QuoridorBoard({ game, version, interactive, onMove, hint
         {cells}
         {slots}
         <div className="quor-overlay">
+          {wallPieces}
           {preview && (
             <div
               key={`p${rejectKey}`}
@@ -330,7 +367,7 @@ export default function QuoridorBoard({ game, version, interactive, onMove, hint
               ⤢ Rotate
             </button>
           )}
-          <button className="btn" onClick={() => setPending(null)}>
+          <button className="btn" aria-label="Cancel" onClick={() => setPending(null)}>
             ✕
           </button>
         </div>
@@ -338,7 +375,8 @@ export default function QuoridorBoard({ game, version, interactive, onMove, hint
       {interactive && !coarse && (
         <p className="quor-help hint">
           Click a highlighted square to move · hover a gap and click to wall ·{' '}
-          <kbd>R</kbd>/right-click rotates · <kbd>Esc</kbd> cancels
+          <kbd>R</kbd>/right-click rotates · <kbd>W</kbd>+arrows+<kbd>Enter</kbd> walls by keyboard ·{' '}
+          <kbd>Esc</kbd> cancels
         </p>
       )}
     </div>

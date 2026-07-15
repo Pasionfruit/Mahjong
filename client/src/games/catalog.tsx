@@ -87,6 +87,17 @@ export const GAMES: GameEntry[] = [
     SettingsPanel: ArtSettingsPanel,
   },
 
+  {
+    id: 'quoridor',
+    name: 'Quoridor',
+    tagline: 'Reach the far side; wall off your rival.',
+    players: '2 players · local or vs AI',
+    Icon: IconQuoridor,
+    available: true,
+    local: true,
+    Game: QuoridorGame,
+  },
+
   // Coming soon — placeholders for future games.
   {
     id: 'mafia',
@@ -119,16 +130,6 @@ export const GAMES: GameEntry[] = [
     players: '2–8 players',
     Icon: IconTiles,
     available: false,
-  },
-  {
-    id: 'quoridor',
-    name: 'Quoridor',
-    tagline: 'Reach the far side; wall off your rival.',
-    players: '2 players · local or vs AI',
-    Icon: IconQuoridor,
-    available: true,
-    local: true,
-    Game: QuoridorGame,
   },
   {
     id: 'pacman',

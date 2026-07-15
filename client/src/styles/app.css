@@ -2759,7 +2759,7 @@ body {
 
 .quor {
   --quor-p0: #f0c454; /* gold, round pawn */
-  --quor-p1: #7fd0e8; /* sky, square pawn */
+  --quor-p1: #63c6ec; /* sky, square pawn — deliberately ≠ any theme accent */
   --quor-size: min(86vmin, calc(100vw - 250px - 60px), 620px);
   min-height: 100%;
   display: flex;
@@ -3290,7 +3290,12 @@ body {
   .quor-wall,
   .quor-pawn.winner,
   .quor-cell.hint::after,
-  .quor-cell.pending::after {
+  .quor-cell.pending::after,
+  .quor-wall.preview.illegal.rejected,
+  .quor-thinking i {
     animation: none;
+  }
+  .quor-thinking i {
+    opacity: 0.8;
   }
 }

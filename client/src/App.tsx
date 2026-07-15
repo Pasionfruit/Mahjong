@@ -15,8 +15,9 @@ export default function App() {
   const Game = lobby ? gameById(lobby.gameId)?.Game : undefined;
 
   let content;
-  if (LocalGame && !lobby) {
-    // Device-local games (no room): rendered straight over the home screen.
+  if (LocalGame) {
+    // Device-local games take priority: a lobby state arriving mid-game
+    // (e.g. another tab's room session) must never unmount the board.
     content = <LocalGame />;
   } else if (screen === 'home') {
     content = <Home />;

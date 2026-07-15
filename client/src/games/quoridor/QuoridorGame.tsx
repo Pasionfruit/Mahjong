@@ -326,9 +326,15 @@ export default function QuoridorGame() {
     if (mode) startGame(mode);
   }
 
+  /** Can undo rewind to a human decision point right now? */
+  const canUndo =
+    game.history.length > 0 &&
+    !thinking &&
+    (mode?.kind !== 'ai' || game.history.some((h) => h.player !== AI_SEAT));
+
   /** Undo one decision: in AI games, rewind to the human's previous turn. */
   function undo() {
-    if (!mode || thinking) return;
+    if (!mode || !canUndo) return;
     const s = gameRef.current;
     window.clearTimeout(winTimer.current);
     setShowWin(false);
@@ -336,7 +342,8 @@ export default function QuoridorGame() {
     if (mode.kind === 'ai') {
       while (s.history.length > 0 && s.turn === AI_SEAT) undoMove(s);
     }
-    recentKeys.current = recentKeys.current.slice(0, Math.max(1, recentKeys.current.length - 1));
+    // The soft repetition memory restarts from here.
+    recentKeys.current = [positionKey(s)];
     setHint(null);
     persist(mode);
     bump();
@@ -349,6 +356,13 @@ export default function QuoridorGame() {
     setHint(best);
     window.clearTimeout(hintTimer.current);
     hintTimer.current = window.setTimeout(() => setHint(null), 1600);
+  }
+
+  /** Back to the setup screen without leaking a staged win overlay/jingle. */
+  function gotoSetup() {
+    window.clearTimeout(winTimer.current);
+    setShowWin(false);
+    setMode(null);
   }
 
   function leave() {
@@ -397,7 +411,7 @@ export default function QuoridorGame() {
                 className="btn"
                 onClick={() => {
                   setMenuOpen(false);
-                  setMode(null);
+                  gotoSetup();
                 }}
               >
                 Change mode
@@ -450,7 +464,7 @@ export default function QuoridorGame() {
           ))}
 
           <div className="quor-actions">
-            <button className="btn" disabled={game.history.length === 0 || thinking} onClick={undo}>
+            <button className="btn" disabled={!canUndo} onClick={undo}>
               Undo
             </button>
             <button className="btn" disabled={!humanTurn} onClick={showHint}>
@@ -484,7 +498,7 @@ export default function QuoridorGame() {
               {20 - game.wallsLeft[0]! - game.wallsLeft[1]!} walls placed
             </p>
             <div className="overlay-actions">
-              <button className="btn" onClick={() => setMode(null)}>
+              <button className="btn" onClick={gotoSetup}>
                 Change mode
               </button>
               <button

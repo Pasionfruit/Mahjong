@@ -18,7 +18,9 @@ export const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
 socket.on('connect', () => {
   useStore.getState().setConnected(true);
   const session = loadSession();
-  if (session && !useStore.getState().lobby) {
+  // Never yank someone out of a device-local game to rejoin a room; the
+  // saved session stays put and reconnects normally once they leave.
+  if (session && !useStore.getState().lobby && !useStore.getState().localGame) {
     socket.emit('room:rejoin', { roomCode: session.roomCode, token: session.token }, (r) => {
       if (r.ok) {
         useStore.getState().setLobby(r.value.lobby);
