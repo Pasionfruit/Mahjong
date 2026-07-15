@@ -10,6 +10,8 @@ import ArtSettingsPanel from './art/Settings';
 import QuoridorGame from './quoridor/QuoridorGame';
 import TetrisGame from './tetris/TetrisGame';
 import TetrisSettingsPanel from './tetris/Settings';
+import DotsGame from './dots/DotsGame';
+import DotsSettingsPanel from './dots/Settings';
 import {
   IconTile,
   IconGrid,
@@ -21,6 +23,7 @@ import {
   IconTiles,
   IconQuoridor,
   IconTetromino,
+  IconDotsBoxes,
   IconPac,
 } from '../components/icons';
 
@@ -110,6 +113,17 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: TetrisGame,
     SettingsPanel: TetrisSettingsPanel,
+  },
+
+  {
+    id: 'dots',
+    name: 'Dots & Boxes',
+    tagline: 'Close a box, keep your turn, steal the grid.',
+    players: '2–6 players · bots',
+    Icon: IconDotsBoxes,
+    available: true,
+    Game: DotsGame,
+    SettingsPanel: DotsSettingsPanel,
   },
 
   // Coming soon — placeholders for future games.

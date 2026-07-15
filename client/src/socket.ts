@@ -99,6 +99,12 @@ socket.on('game:event', (e) => {
       return;
   }
   switch (e.t) {
+    case 'edge':
+      play('discard');
+      break;
+    case 'box':
+      play(e.seat === mySeat ? 'powerup' : 'pong');
+      break;
     case 'lines':
       if (e.seat === mySeat) play(e.count >= 4 ? 'kong' : 'pong');
       break;

@@ -4,9 +4,11 @@ import type { TileKind } from './tiles';
 import type { GameId } from './games';
 import type { ArtAction } from './art';
 import type { TetrisAction } from './tetris';
+import type { DotsAction } from './dots';
 
 export type { ArtAction } from './art';
 export type { TetrisAction } from './tetris';
+export type { DotsAction } from './dots';
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type Ack<T = null> = (r: Result<T>) => void;
@@ -32,7 +34,13 @@ export type BombermanAction =
   | { t: 'bomb' }
   | { t: 'grab' };
 
-export type PlayerAction = MahjongAction | UtttAction | BombermanAction | ArtAction | TetrisAction;
+export type PlayerAction =
+  | MahjongAction
+  | UtttAction
+  | BombermanAction
+  | ArtAction
+  | TetrisAction
+  | DotsAction;
 
 export interface JoinInfo {
   roomCode: string;

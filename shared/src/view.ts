@@ -5,6 +5,7 @@ import type { Cell, Mark, SmallResult, UtttPlayer, UtttResult, UtttSettings } fr
 import type { BomberPlayerView, BombView, BombermanSettings } from './bomberman';
 import type { ArtSettings, ArtView } from './art';
 import type { TetrisSettings, TetrisView } from './tetris';
+import type { DotsSettings, DotsView } from './dots';
 
 export type MeldType = 'pong' | 'chow' | 'kongExposed' | 'kongConcealed' | 'kongAdded';
 
@@ -135,7 +136,7 @@ export interface BombermanView {
 }
 
 /** The redacted per-seat snapshot, discriminated by which game is running. */
-export type ClientGameView = MahjongView | UtttView | BombermanView | ArtView | TetrisView;
+export type ClientGameView = MahjongView | UtttView | BombermanView | ArtView | TetrisView | DotsView;
 
 export interface LobbyPlayer {
   seat: number;
@@ -156,7 +157,13 @@ export interface LobbyState {
   gameId: GameId;
   phase: 'lobby' | 'playing';
   players: LobbyPlayer[];
-  settings: GameSettings | UtttSettings | BombermanSettings | ArtSettings | TetrisSettings;
+  settings:
+    | GameSettings
+    | UtttSettings
+    | BombermanSettings
+    | ArtSettings
+    | TetrisSettings
+    | DotsSettings;
   /** Player-count bounds for this game, so the lobby can render them. */
   minPlayers: number;
   maxPlayers: number;
@@ -213,4 +220,7 @@ export type GameEvent =
   | { t: 'artPhase'; phase: string }
   // Tetris
   | { t: 'lines'; seat: number; count: number }
-  | { t: 'garbage'; seat: number; rows: number };
+  | { t: 'garbage'; seat: number; rows: number }
+  // Dots and Boxes
+  | { t: 'edge'; seat: number }
+  | { t: 'box'; seat: number; count: number };

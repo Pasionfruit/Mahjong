@@ -208,6 +208,24 @@ export function IconQuoridor() {
   );
 }
 
+/** A dot grid with one captured box — Dots and Boxes. */
+export function IconDotsBoxes() {
+  return (
+    <I>
+      <path d="M5 5h7M5 5v7M12 5v7M5 12h7" />
+      <circle cx="5" cy="5" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="5" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="5" cy="19" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="19" r="1.4" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
 /** A falling T-tetromino — Tetris. */
 export function IconTetromino() {
   return (
