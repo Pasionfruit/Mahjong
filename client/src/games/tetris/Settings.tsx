@@ -72,7 +72,7 @@ export default function TetrisSettingsPanel() {
         </p>
         <p className="hint">
           ←→ move · ↑/tap rotate · ↓ soft drop · space/drag-down hard drop · C or a quick swipe
-          stores your piece (or trades it with the stored one).
+          (sideways or up) stores your piece — or trades it with the stored one.
         </p>
       </div>
 

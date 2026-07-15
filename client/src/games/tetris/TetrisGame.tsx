@@ -131,6 +131,8 @@ function BoardCanvas({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      // A long press must never open the selection / copy-paste callout.
+      onContextMenu={(e) => e.preventDefault()}
     />
   );
 }
@@ -165,7 +167,8 @@ export default function TetrisGame() {
     t0: number;
     movedCells: number;
     dragged: boolean;
-    dropped: boolean;
+    /** A one-shot gesture (drop / store) already fired for this touch. */
+    consumed: boolean;
   } | null>(null);
   const cssCell = useRef(24);
 
@@ -250,20 +253,27 @@ export default function TetrisGame() {
       t0: performance.now(),
       movedCells: 0,
       dragged: false,
-      dropped: false,
+      consumed: false,
     };
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
     const g = gesture.current;
-    if (!g || g.id !== e.pointerId || g.dropped) return;
+    if (!g || g.id !== e.pointerId || g.consumed) return;
     const dx = e.clientX - g.x0;
     const dy = e.clientY - g.y0;
     // Drag down → hard drop (once).
     if (!g.dragged && dy > 70 && Math.abs(dy) > Math.abs(dx) * 1.4) {
-      g.dropped = true;
+      g.consumed = true;
       send('hard');
       play('discard');
+      return;
+    }
+    // Swipe up → store / trade (once).
+    if (!g.dragged && dy < -60 && Math.abs(dy) > Math.abs(dx) * 1.4) {
+      g.consumed = true;
+      send('hold');
+      play('draw');
       return;
     }
     // Sideways drag → move cell by cell.
@@ -283,7 +293,7 @@ export default function TetrisGame() {
   function onPointerUp(e: React.PointerEvent<HTMLCanvasElement>) {
     const g = gesture.current;
     gesture.current = null;
-    if (!g || g.id !== e.pointerId || g.dropped || !playing) return;
+    if (!g || g.id !== e.pointerId || g.consumed || !playing) return;
     const dx = e.clientX - g.x0;
     const dy = e.clientY - g.y0;
     const dt = performance.now() - g.t0;
@@ -393,7 +403,7 @@ export default function TetrisGame() {
       </div>
 
       <p className="tet-help hint">
-        ←→ move · ↑ or tap rotates · ↓ soft drop · space / drag down drops · C or swipe ⇄
+        ←→ move · ↑ or tap rotates · ↓ soft drop · space / drag down drops · C or swipe ⇄/↑
         stores &amp; trades
       </p>
 

@@ -3309,6 +3309,11 @@ body {
   align-items: center;
   gap: 10px;
   padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  /* Holding a finger down must play the game, not start a text selection
+     or summon the copy/paste callout (iOS) / long-press menu (Android). */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .tet-hud {
