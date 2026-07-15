@@ -3,8 +3,10 @@ import type { ClientGameView, GameEvent, LobbyState } from './view';
 import type { TileKind } from './tiles';
 import type { GameId } from './games';
 import type { ArtAction } from './art';
+import type { TetrisAction } from './tetris';
 
 export type { ArtAction } from './art';
+export type { TetrisAction } from './tetris';
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type Ack<T = null> = (r: Result<T>) => void;
@@ -30,7 +32,7 @@ export type BombermanAction =
   | { t: 'bomb' }
   | { t: 'grab' };
 
-export type PlayerAction = MahjongAction | UtttAction | BombermanAction | ArtAction;
+export type PlayerAction = MahjongAction | UtttAction | BombermanAction | ArtAction | TetrisAction;
 
 export interface JoinInfo {
   roomCode: string;

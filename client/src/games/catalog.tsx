@@ -8,6 +8,8 @@ import BombermanSettingsPanel from './bomberman/Settings';
 import ArtGame from './art/ArtGame';
 import ArtSettingsPanel from './art/Settings';
 import QuoridorGame from './quoridor/QuoridorGame';
+import TetrisGame from './tetris/TetrisGame';
+import TetrisSettingsPanel from './tetris/Settings';
 import {
   IconTile,
   IconGrid,
@@ -18,6 +20,7 @@ import {
   IconBus,
   IconTiles,
   IconQuoridor,
+  IconTetromino,
   IconPac,
 } from '../components/icons';
 
@@ -96,6 +99,17 @@ export const GAMES: GameEntry[] = [
     available: true,
     local: true,
     Game: QuoridorGame,
+  },
+
+  {
+    id: 'tetris',
+    name: 'Tetris',
+    tagline: 'Stack, clear, and bury your rivals in garbage.',
+    players: '1–4 players',
+    Icon: IconTetromino,
+    available: true,
+    Game: TetrisGame,
+    SettingsPanel: TetrisSettingsPanel,
   },
 
   // Coming soon — placeholders for future games.

@@ -208,6 +208,18 @@ export function IconQuoridor() {
   );
 }
 
+/** A falling T-tetromino — Tetris. */
+export function IconTetromino() {
+  return (
+    <I>
+      <rect x="3" y="8" width="6" height="6" />
+      <rect x="9" y="8" width="6" height="6" />
+      <rect x="15" y="8" width="6" height="6" />
+      <rect x="9" y="14" width="6" height="6" />
+    </I>
+  );
+}
+
 /** Pac-Man with a pellet. */
 export function IconPac() {
   return (
