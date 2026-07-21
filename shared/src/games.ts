@@ -2,7 +2,17 @@
  * Games the server can actually host. The client's dashboard may advertise more
  * as "coming soon", but only these ids may be created or joined.
  */
-export const GAME_IDS = ['mahjong', 'uttt', 'bomberman', 'art', 'tetris', 'dots', 'sumo'] as const;
+export const GAME_IDS = [
+  'mahjong',
+  'uttt',
+  'bomberman',
+  'art',
+  'tetris',
+  'dots',
+  'sumo',
+  'quoridor',
+  'party',
+] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 export function isGameId(x: unknown): x is GameId {

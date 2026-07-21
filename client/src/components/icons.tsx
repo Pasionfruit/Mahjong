@@ -208,6 +208,20 @@ export function IconQuoridor() {
   );
 }
 
+/** A die showing five — Party Board. */
+export function IconDie() {
+  return (
+    <I>
+      <rect x="4" y="4" width="16" height="16" rx="3.5" />
+      <circle cx="9" cy="9" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="9" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="9" cy="15" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="15" r="1.3" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
 /** A spinning top mid-wobble — Spin Sumo. */
 export function IconSpinTop() {
   return (

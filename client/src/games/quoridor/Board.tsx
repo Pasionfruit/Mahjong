@@ -11,7 +11,7 @@ import {
   type PlayerIndex,
   type Pos,
   type QuoridorState,
-} from './engine';
+} from '@shared/quoridor';
 
 /** Track units: 9 cells × 7 + 8 gutters × 2. */
 const UNITS = 9 * 7 + 8 * 2; // 79

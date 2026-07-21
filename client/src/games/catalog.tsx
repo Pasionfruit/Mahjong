@@ -8,12 +8,15 @@ import BombermanSettingsPanel from './bomberman/Settings';
 import ArtGame from './art/ArtGame';
 import ArtSettingsPanel from './art/Settings';
 import QuoridorGame from './quoridor/QuoridorGame';
+import QuoridorSettingsPanel from './quoridor/Settings';
 import TetrisGame from './tetris/TetrisGame';
 import TetrisSettingsPanel from './tetris/Settings';
 import DotsGame from './dots/DotsGame';
 import DotsSettingsPanel from './dots/Settings';
 import SumoGame from './sumo/SumoGame';
 import SumoSettingsPanel from './sumo/Settings';
+import PartyGame from './party/PartyGame';
+import PartySettingsPanel from './party/Settings';
 import {
   IconTile,
   IconGrid,
@@ -27,6 +30,7 @@ import {
   IconTetromino,
   IconDotsBoxes,
   IconSpinTop,
+  IconDie,
   IconPac,
 } from '../components/icons';
 
@@ -100,11 +104,11 @@ export const GAMES: GameEntry[] = [
     id: 'quoridor',
     name: 'Quoridor',
     tagline: 'Reach the far side; wall off your rival.',
-    players: '2 players · local or vs AI',
+    players: '2 players · bots',
     Icon: IconQuoridor,
     available: true,
-    local: true,
     Game: QuoridorGame,
+    SettingsPanel: QuoridorSettingsPanel,
   },
 
   {
@@ -138,6 +142,17 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: SumoGame,
     SettingsPanel: SumoSettingsPanel,
+  },
+
+  {
+    id: 'party',
+    name: 'Party Board',
+    tagline: 'Roll the die, chase the star, betray your friends.',
+    players: '2–8 players · bots',
+    Icon: IconDie,
+    available: true,
+    Game: PartyGame,
+    SettingsPanel: PartySettingsPanel,
   },
 
   // Coming soon — placeholders for future games.

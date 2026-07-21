@@ -7,6 +7,8 @@ import type { ArtSettings, ArtView } from './art';
 import type { TetrisSettings, TetrisView } from './tetris';
 import type { DotsSettings, DotsView } from './dots';
 import type { SumoSettings, SumoView } from './sumo';
+import type { QuoridorOnlineView, QuoridorSettings } from './quoridor/meta';
+import type { PartySettings, PartyView } from './party';
 
 export type MeldType = 'pong' | 'chow' | 'kongExposed' | 'kongConcealed' | 'kongAdded';
 
@@ -144,7 +146,9 @@ export type ClientGameView =
   | ArtView
   | TetrisView
   | DotsView
-  | SumoView;
+  | SumoView
+  | QuoridorOnlineView
+  | PartyView;
 
 export interface LobbyPlayer {
   seat: number;
@@ -172,7 +176,9 @@ export interface LobbyState {
     | ArtSettings
     | TetrisSettings
     | DotsSettings
-    | SumoSettings;
+    | SumoSettings
+    | QuoridorSettings
+    | PartySettings;
   /** Player-count bounds for this game, so the lobby can render them. */
   minPlayers: number;
   maxPlayers: number;
@@ -235,4 +241,8 @@ export type GameEvent =
   | { t: 'box'; seat: number; count: number }
   // Spin Sumo
   | { t: 'ko'; seat: number; by: number | null }
-  | { t: 'clash' };
+  | { t: 'clash' }
+  // Party Board
+  | { t: 'die'; seat: number; value: number }
+  | { t: 'coins'; seat: number; delta: number }
+  | { t: 'star'; seat: number };

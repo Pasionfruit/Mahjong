@@ -6,11 +6,15 @@ import type { ArtAction } from './art';
 import type { TetrisAction } from './tetris';
 import type { DotsAction } from './dots';
 import type { SumoAction } from './sumo';
+import type { QuoridorAction } from './quoridor/meta';
+import type { PartyAction } from './party';
 
 export type { ArtAction } from './art';
 export type { TetrisAction } from './tetris';
 export type { DotsAction } from './dots';
 export type { SumoAction } from './sumo';
+export type { QuoridorAction } from './quoridor/meta';
+export type { PartyAction } from './party';
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type Ack<T = null> = (r: Result<T>) => void;
@@ -43,7 +47,9 @@ export type PlayerAction =
   | ArtAction
   | TetrisAction
   | DotsAction
-  | SumoAction;
+  | SumoAction
+  | QuoridorAction
+  | PartyAction;
 
 export interface JoinInfo {
   roomCode: string;

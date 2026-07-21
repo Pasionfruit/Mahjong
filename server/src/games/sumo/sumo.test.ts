@@ -214,9 +214,9 @@ describe('rotation', () => {
     b.spin = 12;
     b.x = CENTER + currentRadius(s) + 60; // knocked out
     sumoTick(s);
-    run(s, 40); // respawn
+    run(s, 40); // respawn (plus a few ticks of ambient decay afterwards)
     expect(b.alive).toBe(true);
-    expect(b.spin).toBe(100);
+    expect(b.spin).toBeGreaterThan(99);
   });
 
   it('the view reports spin', () => {

@@ -1,67 +1,33 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
-import { play } from '../../audio';
-import { useStore } from '../../store';
-import VolumeControl from '../../components/VolumeControl';
-import { IconMenu, IconTrophy } from '../../components/icons';
+import { useMemo, useRef, useState } from 'react';
 import {
   WALLS_PER_PLAYER,
-  applyMove,
   cellIndex,
-  deserialize,
   goalDistanceField,
-  legalMoves,
-  moveNotation,
   newGame,
   pawnMoves,
-  serialize,
-  undoMove,
   type Move,
   type PlayerIndex,
   type Pos,
+  type QuoridorOnlineView,
   type QuoridorState,
-} from './engine';
-import { AI_NAMES, type AiDifficulty } from './ai/chooser';
-import { disposeAiWorker, requestAiMove } from './ai/client';
-import { positionKey } from './ai/search';
+} from '@shared/quoridor';
+import { backToLobby, leaveParty, nextRound, pauseGame, resumeGame, sendAction } from '../../socket';
+import { useStore } from '../../store';
+import TimerBar from '../../components/TimerBar';
+import VolumeControl from '../../components/VolumeControl';
+import { IconBot, IconMenu, IconPause, IconTrophy } from '../../components/icons';
 import QuoridorBoard, { PawnGlyph } from './Board';
 
-type Mode = { kind: 'local' } | { kind: 'ai'; difficulty: AiDifficulty };
-
-const SAVE_KEY = 'quoridor.save';
-const SETUP_KEY = 'quoridor.setup';
-/** Even an instant AI reply waits this long — instant moves feel broken. */
-const MIN_THINK_MS = 450;
-/** In vs-AI games the human plays the bottom pawn; the bot opens. */
-const AI_SEAT: PlayerIndex = 0;
-
-interface SaveBlob {
-  mode: Mode;
-  state: string;
-}
-
-function loadSave(): { mode: Mode; state: QuoridorState } | null {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return null;
-    const blob = JSON.parse(raw) as SaveBlob;
-    if (blob.mode?.kind !== 'local' && blob.mode?.kind !== 'ai') return null;
-    if (
-      blob.mode.kind === 'ai' &&
-      !['easy', 'medium', 'hard'].includes((blob.mode as { difficulty?: string }).difficulty ?? '')
-    ) {
-      return null;
-    }
-    const state = deserialize(blob.state);
-    if (!state || state.winner !== null) return null;
-    return { mode: blob.mode, state };
-  } catch {
-    return null;
-  }
-}
-
-function playerName(mode: Mode, player: PlayerIndex): string {
-  if (mode.kind === 'ai') return player === AI_SEAT ? AI_NAMES[mode.difficulty] : 'You';
-  return player === 0 ? 'Player 1' : 'Player 2';
+/** Rebuild an engine state from the redacted view (walls, pawns, turn). */
+function toState(v: QuoridorOnlineView): QuoridorState {
+  const s = newGame();
+  s.pawns = [{ ...v.pawns[0] }, { ...v.pawns[1] }];
+  for (const i of v.hWalls) s.hWalls[i] = 1;
+  for (const i of v.vWalls) s.vWalls[i] = 1;
+  s.wallsLeft = [v.wallsLeft[0], v.wallsLeft[1]];
+  s.turn = v.turnSeat as PlayerIndex;
+  s.winner = v.result?.winnerSeat ?? null;
+  return s;
 }
 
 /** The pawn move that best shortens the current player's path (hints). */
@@ -80,306 +46,39 @@ function bestPawnStep(s: QuoridorState): Pos | null {
   return best;
 }
 
-// ── setup screen ────────────────────────────────────────────────────────────
-
-function Setup({
-  onStart,
-  onResume,
-  hasSave,
-}: {
-  onStart: (mode: Mode) => void;
-  onResume: () => void;
-  hasSave: boolean;
-}) {
-  const [kind, setKind] = useState<'local' | 'ai'>('ai');
-  const [difficulty, setDifficulty] = useState<AiDifficulty>('medium');
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SETUP_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw) as { kind?: string; difficulty?: string };
-      if (saved.kind === 'local' || saved.kind === 'ai') setKind(saved.kind);
-      if (saved.difficulty === 'easy' || saved.difficulty === 'medium' || saved.difficulty === 'hard') {
-        setDifficulty(saved.difficulty);
-      }
-    } catch {
-      /* defaults */
-    }
-  }, []);
-
-  function start() {
-    localStorage.setItem(SETUP_KEY, JSON.stringify({ kind, difficulty }));
-    onStart(kind === 'local' ? { kind: 'local' } : { kind: 'ai', difficulty });
-  }
-
-  return (
-    <div className="quor-setup">
-      <div className="lobby-card">
-        <h2 className="quor-setup-title">Quoridor</h2>
-        <p className="hint">
-          Race your pawn to the far side — or spend a wall to send your rival the long way round.
-        </p>
-
-        <h2 className="section-title">Mode</h2>
-        <div className="quor-mode-grid">
-          <button
-            className={`quor-mode-card${kind === 'ai' ? ' selected' : ''}`}
-            onClick={() => setKind('ai')}
-          >
-            <span className="quor-mode-name">vs Computer</span>
-            <span className="quor-mode-tag">You take the bottom pawn</span>
-          </button>
-          <button
-            className={`quor-mode-card${kind === 'local' ? ' selected' : ''}`}
-            onClick={() => setKind('local')}
-          >
-            <span className="quor-mode-name">Local 2 players</span>
-            <span className="quor-mode-tag">Share this device, take turns</span>
-          </button>
-        </div>
-
-        {kind === 'ai' && (
-          <>
-            <h2 className="section-title">Difficulty</h2>
-            <div className="quor-mode-grid three">
-              {(
-                [
-                  ['easy', 'Easy', 'Wanders, rarely walls'],
-                  ['medium', 'Medium', 'Plans a move or two ahead'],
-                  ['hard', 'Hard', 'Searches deep, punishes mistakes'],
-                ] as const
-              ).map(([d, label, blurb]) => (
-                <button
-                  key={d}
-                  className={`quor-mode-card${difficulty === d ? ' selected' : ''}`}
-                  onClick={() => setDifficulty(d)}
-                >
-                  <span className="quor-mode-name">{label}</span>
-                  <span className="quor-mode-tag">{blurb}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        <div className="quor-setup-actions">
-          {hasSave && (
-            <button className="btn" onClick={onResume}>
-              Resume game
-            </button>
-          )}
-          <button className="btn btn-primary" onClick={start}>
-            Start game
-          </button>
-        </div>
-
-        <h2 className="section-title">How to play</h2>
-        <div className="howto-body quor-rules">
-          <p>
-            Each turn: step your pawn one square, or place one of your 10 walls. Walls block both
-            players — but may never seal anyone's last route. Face-to-face pawns can be jumped.
-            First to the opposite edge wins.
-          </p>
-        </div>
-
-        <div className="lobby-actions">
-          <button className="btn" onClick={() => useStore.getState().setLocalGame(null)}>
-            Back
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── game screen ─────────────────────────────────────────────────────────────
-
 export default function QuoridorGame() {
-  const [mode, setMode] = useState<Mode | null>(null);
-  const gameRef = useRef<QuoridorState>(newGame());
-  const [version, bump] = useReducer((x: number) => x + 1, 0);
-  const [thinking, setThinking] = useState(false);
-  const [hint, setHint] = useState<Pos | null>(null);
+  const game = useStore((s) => s.game);
+  const lobby = useStore((s) => s.lobby);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showWin, setShowWin] = useState(false);
-  const recentKeys = useRef<number[]>([]);
+  const [hint, setHint] = useState<Pos | null>(null);
   const hintTimer = useRef(0);
-  const winTimer = useRef(0);
-  const [hasSave, setHasSave] = useState(() => loadSave() !== null);
 
-  const game = gameRef.current;
+  const view = game && game.g === 'quoridor' ? (game as QuoridorOnlineView) : null;
+  const state = useMemo(() => (view ? toState(view) : null), [view]);
+  if (!view || !state || !lobby) return null;
 
-  useEffect(
-    () => () => {
-      disposeAiWorker();
-      window.clearTimeout(hintTimer.current);
-      window.clearTimeout(winTimer.current);
-    },
-    [],
-  );
+  const isHost = lobby.players.find((p) => p.seat === lobby.yourSeat)?.isHost ?? false;
+  const myMove = view.turnSeat === view.yourSeat && !view.result && !view.paused;
+  const turnPlayer = view.players.find((p) => p.seat === view.turnSeat);
+  const winnerName =
+    view.result !== null
+      ? view.players.find((p) => p.seat === view.result!.winnerSeat)?.nickname
+      : null;
 
-  const persist = useCallback(
-    (m: Mode) => {
-      const s = gameRef.current;
-      if (s.winner !== null) {
-        localStorage.removeItem(SAVE_KEY);
-        setHasSave(false);
-      } else {
-        localStorage.setItem(SAVE_KEY, JSON.stringify({ mode: m, state: serialize(s) } satisfies SaveBlob));
-        setHasSave(true);
-      }
-    },
-    [],
-  );
-
-  const humanTurn =
-    mode !== null &&
-    game.winner === null &&
-    !(mode.kind === 'ai' && game.turn === AI_SEAT) &&
-    !thinking;
-
-  /** Apply a validated move with sounds, persistence, and win staging. */
-  const commitMove = useCallback(
-    (move: Move, m: Mode) => {
-      const s = gameRef.current;
-      if (!applyMove(s, move)) {
-        play('hurt');
-        return false;
-      }
-      recentKeys.current = [...recentKeys.current.slice(-11), positionKey(s)];
-      play(move.t === 'pawn' ? 'draw' : 'discard');
-      setHint(null);
-      persist(m);
-      if (s.winner !== null) {
-        // Let the final slide land before the overlay + jingle.
-        winTimer.current = window.setTimeout(() => {
-          setShowWin(true);
-          const humanLost = m.kind === 'ai' && s.winner === AI_SEAT;
-          play(humanLost ? 'lose' : 'win');
-        }, 900);
-      }
-      bump();
-      return true;
-    },
-    [persist],
-  );
-
-  // AI turns: think off-thread, land with a natural delay, chime on handback.
-  useEffect(() => {
-    if (!mode || mode.kind !== 'ai') return;
-    const s = gameRef.current;
-    if (s.winner !== null || s.turn !== AI_SEAT) return;
-    let cancelled = false;
-    setThinking(true);
-    const t0 = performance.now();
-    void requestAiMove(s, mode.difficulty, recentKeys.current).then(({ move }) => {
-      if (cancelled) return;
-      const wait = Math.max(0, MIN_THINK_MS - (performance.now() - t0));
-      window.setTimeout(() => {
-        if (cancelled) return;
-        setThinking(false);
-        const current = gameRef.current;
-        if (current !== s || current.turn !== AI_SEAT || current.winner !== null) return;
-        if (!commitMove(move, mode)) {
-          // Never happens (AI is validated), but never let the game hang.
-          const fallback = legalMoves(current)[0];
-          if (fallback) commitMove(fallback, mode);
-        }
-        if (gameRef.current.winner === null) play('yourTurn');
-      }, wait);
-    });
-    return () => {
-      cancelled = true;
-      setThinking(false);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, mode]);
-
-  function startGame(m: Mode, resume = false) {
-    window.clearTimeout(winTimer.current);
-    setShowWin(false);
-    setThinking(false);
-    setHint(null);
-    if (!resume) {
-      gameRef.current = newGame();
-      recentKeys.current = [positionKey(gameRef.current)];
-      localStorage.removeItem(SAVE_KEY);
-      setHasSave(false);
-    }
-    setMode(m);
-    bump();
-  }
-
-  function resumeSave() {
-    const save = loadSave();
-    if (!save) return;
-    gameRef.current = save.state;
-    recentKeys.current = [positionKey(save.state)];
-    startGame(save.mode, true);
-  }
-
-  function restart() {
-    if (game.history.length > 0 && game.winner === null) {
-      if (!confirm('Restart the game?')) return;
-    }
-    if (mode) startGame(mode);
-  }
-
-  /** Can undo rewind to a human decision point right now? */
-  const canUndo =
-    game.history.length > 0 &&
-    !thinking &&
-    (mode?.kind !== 'ai' || game.history.some((h) => h.player !== AI_SEAT));
-
-  /** Undo one decision: in AI games, rewind to the human's previous turn. */
-  function undo() {
-    if (!mode || !canUndo) return;
-    const s = gameRef.current;
-    window.clearTimeout(winTimer.current);
-    setShowWin(false);
-    if (!undoMove(s)) return;
-    if (mode.kind === 'ai') {
-      while (s.history.length > 0 && s.turn === AI_SEAT) undoMove(s);
-    }
-    // The soft repetition memory restarts from here.
-    recentKeys.current = [positionKey(s)];
-    setHint(null);
-    persist(mode);
-    bump();
-  }
+  const status = view.result
+    ? ''
+    : myMove
+      ? 'Your move'
+      : `${turnPlayer?.nickname ?? 'Opponent'}'s move`;
 
   function showHint() {
-    if (!humanTurn) return;
-    const best = bestPawnStep(gameRef.current);
+    if (!myMove || !state) return;
+    const best = bestPawnStep(state);
     if (!best) return;
     setHint(best);
     window.clearTimeout(hintTimer.current);
     hintTimer.current = window.setTimeout(() => setHint(null), 1600);
   }
-
-  /** Back to the setup screen without leaking a staged win overlay/jingle. */
-  function gotoSetup() {
-    window.clearTimeout(winTimer.current);
-    setShowWin(false);
-    setMode(null);
-  }
-
-  function leave() {
-    useStore.getState().setLocalGame(null);
-  }
-
-  if (!mode) {
-    return <Setup onStart={startGame} onResume={resumeSave} hasSave={hasSave} />;
-  }
-
-  const winnerName = game.winner !== null ? playerName(mode, game.winner) : null;
-  const status =
-    game.winner !== null
-      ? ''
-      : thinking
-        ? `${playerName(mode, AI_SEAT)} is thinking…`
-        : `${playerName(mode, game.turn)} to move`;
 
   return (
     <div className="quor">
@@ -388,6 +87,7 @@ export default function QuoridorGame() {
           <span className="quor-hud-title">Quoridor</span>
           <span className="quor-hud-status">{status}</span>
         </div>
+        <TimerBar deadline={view.paused ? null : view.deadline} tickAudible={myMove} />
         <div className="hud-menu">
           <button className="btn hud-btn" onClick={() => setMenuOpen((o) => !o)}>
             <IconMenu /> Menu
@@ -398,25 +98,29 @@ export default function QuoridorGame() {
                 <span className="menu-section-title">Sound</span>
                 <VolumeControl />
               </div>
-              <button
-                className="btn"
-                onClick={() => {
-                  restart();
-                  setMenuOpen(false);
-                }}
-              >
-                Restart
-              </button>
-              <button
-                className="btn"
-                onClick={() => {
-                  setMenuOpen(false);
-                  gotoSetup();
-                }}
-              >
-                Change mode
-              </button>
-              <button className="btn" onClick={leave}>
+              {isHost &&
+                !view.result &&
+                (view.paused ? (
+                  <button className="btn" onClick={() => void resumeGame().then(() => setMenuOpen(false))}>
+                    Resume
+                  </button>
+                ) : (
+                  <button className="btn" onClick={() => void pauseGame().then(() => setMenuOpen(false))}>
+                    Pause
+                  </button>
+                ))}
+              {isHost && (
+                <button
+                  className="btn"
+                  onClick={() => {
+                    if (confirm('End the game and return everyone to the lobby?')) void backToLobby();
+                    setMenuOpen(false);
+                  }}
+                >
+                  End game
+                </button>
+              )}
+              <button className="btn" onClick={leaveParty}>
                 Leave
               </button>
             </div>
@@ -426,60 +130,62 @@ export default function QuoridorGame() {
 
       <div className="quor-arena">
         <QuoridorBoard
-          game={game}
-          version={version}
-          interactive={humanTurn}
-          onMove={(move) => {
-            if (humanTurn) commitMove(move, mode);
+          game={state}
+          version={view.history.length}
+          interactive={myMove}
+          onMove={(move: Move) => {
+            if (myMove) void sendAction(move);
           }}
           hint={hint}
-          winner={game.winner}
+          winner={view.result?.winnerSeat ?? null}
         />
 
         <div className="quor-side">
-          {([0, 1] as const).map((p) => (
-            <div
-              key={p}
-              className={`quor-player-card${game.turn === p && game.winner === null ? ' active' : ''}`}
-            >
-              <div className="quor-player-row">
-                <span className="quor-player-pawn">
-                  <PawnGlyph player={p} />
-                </span>
-                <span className="quor-player-name">{playerName(mode, p)}</span>
-                {mode.kind === 'ai' && p === AI_SEAT && thinking && (
-                  <span className="quor-thinking" title="AI thinking">
-                    <i />
-                    <i />
-                    <i />
+          {([0, 1] as const).map((p) => {
+            const pl = view.players[p];
+            if (!pl) return null;
+            return (
+              <div
+                key={p}
+                className={`quor-player-card${view.turnSeat === p && !view.result ? ' active' : ''}`}
+              >
+                <div className="quor-player-row">
+                  <span className="quor-player-pawn">
+                    <PawnGlyph player={p} />
                   </span>
-                )}
+                  <span className={`conn-dot ${pl.connected ? 'on' : 'off'}`} />
+                  <span className="quor-player-name">
+                    {pl.isBot && (
+                      <span className="bot-glyph">
+                        <IconBot />
+                      </span>
+                    )}
+                    {pl.nickname}
+                    {p === view.yourSeat && <span className="you-tag"> (you)</span>}
+                  </span>
+                  {pl.wins > 0 && <span className="win-count">{pl.wins}</span>}
+                </div>
+                <div className="quor-wallstack" title={`${pl.wallsLeft} walls left`}>
+                  {Array.from({ length: WALLS_PER_PLAYER }, (_, i) => (
+                    <i key={i} className={i < pl.wallsLeft ? '' : 'spent'} />
+                  ))}
+                </div>
               </div>
-              <div className="quor-wallstack" title={`${game.wallsLeft[p]} walls left`}>
-                {Array.from({ length: WALLS_PER_PLAYER }, (_, i) => (
-                  <i key={i} className={i < game.wallsLeft[p]! ? '' : 'spent'} />
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div className="quor-actions">
-            <button className="btn" disabled={!canUndo} onClick={undo}>
-              Undo
-            </button>
-            <button className="btn" disabled={!humanTurn} onClick={showHint}>
+            <button className="btn" disabled={!myMove} onClick={showHint}>
               Hint
-            </button>
-            <button className="btn" onClick={restart}>
-              Restart
             </button>
           </div>
 
-          {game.history.length > 0 && (
+          {view.history.length > 0 && (
             <div className="quor-history">
-              {game.history.map((h, i) => (
-                <span key={i} className={`quor-move p${h.player}`}>
-                  {i + 1}. {moveNotation(h.move)}
+              {view.history.map((n, i) => (
+                // The opening move alternates by round; colors follow the mover.
+                <span key={i} className={`quor-move p${((view.round - 1) % 2 + i) % 2}`}>
+                  {i + 1}. {n}
                 </span>
               ))}
             </div>
@@ -487,33 +193,56 @@ export default function QuoridorGame() {
         </div>
       </div>
 
-      {showWin && game.winner !== null && (
+      {view.paused && !view.result && (
+        <div className="overlay">
+          <div className="overlay-card pause-card">
+            <h2>
+              <IconPause /> Game paused
+            </h2>
+            {isHost ? (
+              <button className="btn btn-primary" onClick={() => void resumeGame()}>
+                Resume
+              </button>
+            ) : (
+              <p className="hint">Waiting for the host to resume…</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {view.result && (
         <div className="overlay">
           <div className="overlay-card">
             <h2>
               <IconTrophy /> {winnerName} wins!
             </h2>
-            <p className="hint">
-              {game.history.length} moves ·{' '}
-              {20 - game.wallsLeft[0]! - game.wallsLeft[1]!} walls placed
-            </p>
-            <div className="overlay-actions">
-              <button className="btn" onClick={gotoSetup}>
-                Change mode
-              </button>
-              <button
-                className="btn"
-                onClick={() => {
-                  setShowWin(false);
-                  undo();
-                }}
-              >
-                Undo last move
-              </button>
-              <button className="btn btn-primary" onClick={() => startGame(mode)}>
-                Play again
-              </button>
-            </div>
+            <table className="scoreboard">
+              <tbody>
+                {[...view.players]
+                  .sort((a, b) => b.wins - a.wins)
+                  .map((p) => (
+                    <tr key={p.seat}>
+                      <td>
+                        {p.nickname}
+                        {p.seat === view.yourSeat ? ' (you)' : ''}
+                      </td>
+                      <td className="score-wins">{p.wins}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+            {isHost ? (
+              <div className="overlay-actions">
+                <button className="btn" onClick={() => void backToLobby()}>
+                  Back to lobby
+                </button>
+                <button className="btn btn-primary" onClick={() => void nextRound()}>
+                  Play again
+                </button>
+              </div>
+            ) : (
+              <p className="hint">Waiting for the host to continue…</p>
+            )}
           </div>
         </div>
       )}

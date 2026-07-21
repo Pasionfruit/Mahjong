@@ -99,6 +99,15 @@ socket.on('game:event', (e) => {
       return;
   }
   switch (e.t) {
+    case 'die':
+      play('draw');
+      break;
+    case 'coins':
+      if (e.seat === mySeat) play(e.delta > 0 ? 'powerup' : 'hurt');
+      break;
+    case 'star':
+      play('kong');
+      break;
     case 'ko':
       play(e.seat === mySeat ? 'hurt' : 'boom');
       break;
