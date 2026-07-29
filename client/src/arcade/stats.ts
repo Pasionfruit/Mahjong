@@ -35,6 +35,20 @@ export interface StreakState {
 
 export const EMPTY_STREAK: StreakState = { streak: 0, graceUsed: false, lastPlayedDateKey: null };
 
+/**
+ * XP awarded for one completed result. Deliberately simple and
+ * participation/score-based rather than win/loss-aware — StoredResult
+ * doesn't carry a won/lost flag (see the design doc: win/loss nuance was
+ * scoped out to avoid a game_results schema change for MVP). Tuning the
+ * curve is a numbers question, not an architecture one — see the design
+ * doc's open questions.
+ */
+export function xpForResult(mode: 'daily' | 'endless', score: number): number {
+  const base = mode === 'daily' ? 30 : 15;
+  const bonus = Math.min(50, Math.max(0, Math.round(score / 20)));
+  return base + bonus;
+}
+
 const DAY_MS = 86_400_000;
 
 function daysBetween(earlier: string, later: string): number {

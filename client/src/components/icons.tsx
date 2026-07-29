@@ -274,3 +274,37 @@ export function IconPac() {
     </I>
   );
 }
+
+/** Three letter tiles, one lit — Word Guess. */
+export function IconWordTiles() {
+  return (
+    <I>
+      <rect x="2" y="9" width="6" height="6" rx="1.2" />
+      <rect x="9" y="9" width="6" height="6" rx="1.2" fill="currentColor" stroke="none" />
+      <rect x="16" y="9" width="6" height="6" rx="1.2" />
+    </I>
+  );
+}
+
+/** A mine with spikes — Minesweeper. */
+export function IconMine() {
+  return (
+    <I>
+      <circle cx="12" cy="13" r="6" />
+      <path d="M12 3v3M12 20v1M3 13h2M19 13h2M5.5 6.5l1.5 1.5M18.5 6.5l-1.5 1.5" />
+      <circle cx="9.5" cy="10.5" r="1" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
+/** Four merging tiles — 2048. */
+export function IconMergeTiles() {
+  return (
+    <I>
+      <rect x="3" y="3" width="7.5" height="7.5" rx="1.4" />
+      <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.4" />
+      <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.4" />
+      <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.4" fill="currentColor" stroke="none" />
+    </I>
+  );
+}

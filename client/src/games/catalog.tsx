@@ -17,6 +17,9 @@ import SumoGame from './sumo/SumoGame';
 import SumoSettingsPanel from './sumo/Settings';
 import PartyGame from './party/PartyGame';
 import PartySettingsPanel from './party/Settings';
+import WordGuessGame from './wordguess/WordGuessGame';
+import MinesweeperGame from './minesweeper/MinesweeperGame';
+import Twenty48Game from './twenty48/Twenty48Game';
 import {
   IconTile,
   IconGrid,
@@ -32,6 +35,9 @@ import {
   IconSpinTop,
   IconDie,
   IconPac,
+  IconWordTiles,
+  IconMine,
+  IconMergeTiles,
 } from '../components/icons';
 
 /**
@@ -221,6 +227,51 @@ export const GAMES: GameEntry[] = [
     SettingsPanel: PartySettingsPanel,
     category: 'party',
     competitive: true,
+  },
+
+  {
+    id: 'wordguess',
+    name: 'Word Guess',
+    tagline: 'Five letters, six tries — solve today’s word.',
+    players: '1 player',
+    Icon: IconWordTiles,
+    available: true,
+    local: true,
+    Game: WordGuessGame,
+    category: 'word',
+    competitive: false,
+    hasDaily: true,
+    hasLeaderboard: true,
+  },
+
+  {
+    id: 'minesweeper',
+    name: 'Minesweeper',
+    tagline: 'Clear the board without going boom.',
+    players: '1 player',
+    Icon: IconMine,
+    available: true,
+    local: true,
+    Game: MinesweeperGame,
+    category: 'logic',
+    competitive: false,
+    hasDaily: true,
+    hasLeaderboard: true,
+  },
+
+  {
+    id: 'twenty48',
+    name: '2048',
+    tagline: 'Slide, merge, chase a new high score.',
+    players: '1 player',
+    Icon: IconMergeTiles,
+    available: true,
+    local: true,
+    Game: Twenty48Game,
+    category: 'arcade',
+    competitive: false,
+    hasDaily: true,
+    hasLeaderboard: true,
   },
 
   // Coming soon — placeholders for future games.

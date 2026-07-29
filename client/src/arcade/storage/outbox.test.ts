@@ -24,10 +24,15 @@ function deleteDatabase(): Promise<void> {
   });
 }
 
-type UpsertResult = { error: { code?: string; message?: string } | null };
+type OpResult = { error: { code?: string; message?: string } | null };
 
-function fakeClient(upsert: (row: unknown) => Promise<UpsertResult>) {
-  return { from: () => ({ upsert }) } as unknown as ReturnType<typeof getSupabase>;
+function fakeClient(opts: {
+  upsert?: (row: unknown) => Promise<OpResult>;
+  insert?: (row: unknown) => Promise<OpResult>;
+}) {
+  const upsert = opts.upsert ?? (async () => ({ error: null }));
+  const insert = opts.insert ?? (async () => ({ error: null }));
+  return { from: () => ({ upsert, insert }) } as unknown as ReturnType<typeof getSupabase>;
 }
 
 beforeEach(async () => {
@@ -77,7 +82,7 @@ describe('flushOutbox', () => {
   it('does nothing while offline, leaving results queued', async () => {
     vi.stubGlobal('navigator', { onLine: false });
     const upsert = vi.fn();
-    mockedGetSupabase.mockReturnValue(fakeClient(upsert));
+    mockedGetSupabase.mockReturnValue(fakeClient({ upsert }));
     await recordResult(baseResult); // recordResult's own flush call also sees offline
     upsert.mockClear();
     await flushOutbox();
@@ -88,7 +93,7 @@ describe('flushOutbox', () => {
     mockedGetSupabase.mockReturnValue(null); // block recordResult's own auto-flush
     await recordResult(baseResult);
     const upsert = vi.fn();
-    mockedGetSupabase.mockReturnValue(fakeClient(upsert));
+    mockedGetSupabase.mockReturnValue(fakeClient({ upsert }));
     mockedCurrentUser.mockResolvedValue(null);
 
     await flushOutbox();
@@ -102,7 +107,7 @@ describe('flushOutbox', () => {
     const upsert = vi.fn().mockResolvedValue({ error: null });
     mockedGetSupabase.mockReturnValue(null); // block recordResult's own auto-flush
     const row = await recordResult(baseResult);
-    mockedGetSupabase.mockReturnValue(fakeClient(upsert));
+    mockedGetSupabase.mockReturnValue(fakeClient({ upsert }));
 
     await flushOutbox();
 
@@ -124,7 +129,7 @@ describe('flushOutbox', () => {
     const upsert = vi.fn().mockResolvedValue({ error: { code: '23505', message: 'duplicate' } });
     mockedGetSupabase.mockReturnValue(null);
     await recordResult(baseResult);
-    mockedGetSupabase.mockReturnValue(fakeClient(upsert));
+    mockedGetSupabase.mockReturnValue(fakeClient({ upsert }));
 
     await flushOutbox();
 
@@ -136,7 +141,7 @@ describe('flushOutbox', () => {
     const upsert = vi.fn().mockResolvedValue({ error: { code: '500', message: 'server error' } });
     mockedGetSupabase.mockReturnValue(null);
     await recordResult(baseResult);
-    mockedGetSupabase.mockReturnValue(fakeClient(upsert));
+    mockedGetSupabase.mockReturnValue(fakeClient({ upsert }));
 
     await flushOutbox();
 
@@ -148,7 +153,7 @@ describe('flushOutbox', () => {
     const upsert = vi.fn().mockResolvedValue({ error: null });
     mockedGetSupabase.mockReturnValue(null); // block recordResult's own fire-and-forget flush
     await recordResult(baseResult);
-    mockedGetSupabase.mockReturnValue(fakeClient(upsert));
+    mockedGetSupabase.mockReturnValue(fakeClient({ upsert }));
 
     await flushOutbox(); // first explicit flush: syncs it, upsert called once
     expect(upsert).toHaveBeenCalledTimes(1);
@@ -163,7 +168,7 @@ describe('flushOutbox', () => {
     const upsert = vi.fn().mockResolvedValue({ error: null });
     mockedGetSupabase.mockReturnValue(null);
     await recordResult(baseResult);
-    mockedGetSupabase.mockReturnValue(fakeClient(upsert));
+    mockedGetSupabase.mockReturnValue(fakeClient({ upsert }));
     mockedGetDisplayName.mockResolvedValue(null);
 
     await flushOutbox();
@@ -172,5 +177,31 @@ describe('flushOutbox', () => {
       expect.objectContaining({ display_name: 'Puzzler' }),
       { onConflict: 'id' },
     );
+  });
+
+  it('awards xp on a genuine first sync', async () => {
+    const upsert = vi.fn().mockResolvedValue({ error: null });
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    mockedGetSupabase.mockReturnValue(null);
+    await recordResult(baseResult); // score: 99, mode: daily
+    mockedGetSupabase.mockReturnValue(fakeClient({ upsert, insert }));
+
+    await flushOutbox();
+
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-1', delta: 35, reason: 'minesweeper:daily', game_id: 'minesweeper' }),
+    );
+  });
+
+  it('does not award xp on a daily-uniqueness conflict — another device already claimed it', async () => {
+    const upsert = vi.fn().mockResolvedValue({ error: { code: '23505', message: 'duplicate' } });
+    const insert = vi.fn().mockResolvedValue({ error: null });
+    mockedGetSupabase.mockReturnValue(null);
+    await recordResult(baseResult);
+    mockedGetSupabase.mockReturnValue(fakeClient({ upsert, insert }));
+
+    await flushOutbox();
+
+    expect(insert).not.toHaveBeenCalled();
   });
 });

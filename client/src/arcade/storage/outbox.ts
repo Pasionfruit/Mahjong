@@ -1,6 +1,7 @@
 import type { StoredResult } from '../types';
 import { currentUser, getDisplayName } from '../auth';
 import { getSupabase } from '../supabase';
+import { xpForResult } from '../stats';
 import { getAllResults, getUnsyncedResults, putResult } from './db';
 
 /**
@@ -34,6 +35,24 @@ function toRow(r: StoredResult, userId: string, displayName: string) {
 const UNIQUE_VIOLATION = '23505';
 
 /**
+ * Award XP for a freshly-synced result — best-effort, never blocks marking
+ * the result synced. Only called on a genuine first insert, never on a
+ * 23505 (another device already claimed this daily slot first, so that
+ * device's own sync already awarded the XP for it).
+ */
+async function awardXp(userId: string, row: StoredResult): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  const { error } = await supabase.from('xp_ledger').insert({
+    user_id: userId,
+    delta: xpForResult(row.mode, row.score),
+    reason: `${row.gameId}:${row.mode}`,
+    game_id: row.gameId,
+  });
+  if (error) console.error('[arcade] failed to award xp', row.id, error);
+}
+
+/**
  * Push every unsynced local result to Supabase. The client-generated UUID
  * primary key makes this idempotent — a retried upsert after a flaky
  * connection is a no-op, never a duplicate row. A daily-uniqueness conflict
@@ -62,6 +81,7 @@ export async function flushOutbox(): Promise<void> {
       .upsert(toRow(row, user.id, displayName), { onConflict: 'id' });
     if (!error || error.code === UNIQUE_VIOLATION) {
       await putResult({ ...row, syncedAt: new Date().toISOString() });
+      if (!error) void awardXp(user.id, row);
     } else {
       console.error('[arcade] failed to sync result', row.id, error);
     }
