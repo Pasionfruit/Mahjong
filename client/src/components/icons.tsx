@@ -308,3 +308,14 @@ export function IconMergeTiles() {
     </I>
   );
 }
+
+/** An hourglass of falling grains — Sand Play. */
+export function IconHourglass() {
+  return (
+    <I>
+      <path d="M6 3h12M6 21h12" />
+      <path d="M7 3c0 4 3.5 6 5 8-1.5 2-5 4-5 8M17 3c0 4-3.5 6-5 8 1.5 2 5 4 5 8" />
+      <circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    </I>
+  );
+}

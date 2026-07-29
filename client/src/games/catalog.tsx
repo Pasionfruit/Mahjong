@@ -20,6 +20,7 @@ import PartySettingsPanel from './party/Settings';
 import WordGuessGame from './wordguess/WordGuessGame';
 import MinesweeperGame from './minesweeper/MinesweeperGame';
 import Twenty48Game from './twenty48/Twenty48Game';
+import SandPlayGame from './sandplay/SandPlayGame';
 import {
   IconTile,
   IconGrid,
@@ -38,6 +39,7 @@ import {
   IconWordTiles,
   IconMine,
   IconMergeTiles,
+  IconHourglass,
 } from '../components/icons';
 
 /**
@@ -272,6 +274,19 @@ export const GAMES: GameEntry[] = [
     competitive: false,
     hasDaily: true,
     hasLeaderboard: true,
+  },
+
+  {
+    id: 'sandplay',
+    name: 'Sand Play',
+    tagline: 'Sort falling sand into the right color buckets.',
+    players: '1 player',
+    Icon: IconHourglass,
+    available: true,
+    local: true,
+    Game: SandPlayGame,
+    category: 'relaxing',
+    competitive: false,
   },
 
   // Coming soon — placeholders for future games.

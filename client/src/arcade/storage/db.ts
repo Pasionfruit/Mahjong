@@ -76,6 +76,19 @@ export async function deleteSave(key: string): Promise<void> {
   await request(SAVES_STORE, 'readwrite', (s) => s.delete(key));
 }
 
+// ── relax state: generic local key/value slot, for toys with no win/loss/
+// score (Zen Garden, Sand Play) that don't fit SavedGame's {seed, settings,
+// moveLog} replay shape. Same store as saves — arcade_saves has no keyPath,
+// so it's just a plain key/value bucket underneath either API.
+
+export function getRelaxState<T>(key: string): Promise<T | undefined> {
+  return request(SAVES_STORE, 'readonly', (s) => s.get(key));
+}
+
+export async function putRelaxState<T>(key: string, value: T): Promise<void> {
+  await request(SAVES_STORE, 'readwrite', (s) => s.put(value, key));
+}
+
 // ── results: completed runs; this store doubles as the sync outbox ─────────
 // (unsynced rows are just `syncedAt === null` — one store, not a store plus
 // a mirrored outbox, which would be its own dual-write bug surface).
