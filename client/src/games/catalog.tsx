@@ -35,6 +35,48 @@ import {
 } from '../components/icons';
 
 /**
+ * Two wings of one catalog: `competitive` games are room-based real-time
+ * multiplayer (today's entire shipped lineup); everything else is Brain
+ * Arcade — solo, offline-capable, daily/endless puzzles. `category` picks
+ * which section of its wing a card renders under on the home screen.
+ */
+export type GameCategory =
+  | 'tabletop'
+  | 'action'
+  | 'party'
+  | 'word'
+  | 'logic'
+  | 'sorting'
+  | 'matching'
+  | 'arcade'
+  | 'relaxing';
+
+/** Render order for category sections within a wing; also the section label. */
+export const CATEGORY_LABELS: Record<GameCategory, string> = {
+  tabletop: 'Tabletop & Strategy',
+  action: 'Action & Arcade',
+  party: 'Party & Social',
+  word: 'Word',
+  logic: 'Logic',
+  sorting: 'Sorting',
+  matching: 'Matching',
+  arcade: 'Arcade',
+  relaxing: 'Relaxing',
+};
+
+export const CATEGORY_ORDER: GameCategory[] = [
+  'tabletop',
+  'action',
+  'party',
+  'word',
+  'logic',
+  'sorting',
+  'matching',
+  'arcade',
+  'relaxing',
+];
+
+/**
  * The game catalog powers the home dashboard and routes lobby/game screens.
  * Adding a game = add an entry here (and, for a hostable one, its server module).
  */
@@ -53,6 +95,14 @@ export interface GameEntry {
   /** The in-game screen and the lobby settings panel for this game. */
   Game?: ComponentType;
   SettingsPanel?: ComponentType;
+  /** Which section this card renders under within its wing. */
+  category: GameCategory;
+  /** Room-based real-time multiplayer (Party Games wing) vs. solo (Brain Arcade wing). */
+  competitive: boolean;
+  /** Has a once-a-day challenge mode. */
+  hasDaily?: boolean;
+  /** Contributes to a global leaderboard. */
+  hasLeaderboard?: boolean;
 }
 
 export const GAMES: GameEntry[] = [
@@ -65,6 +115,8 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: GameTable,
     SettingsPanel: MahjongSettings,
+    category: 'tabletop',
+    competitive: true,
   },
   {
     id: 'uttt',
@@ -75,6 +127,8 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: UtttGame,
     SettingsPanel: UtttSettingsPanel,
+    category: 'tabletop',
+    competitive: true,
   },
 
   {
@@ -87,6 +141,8 @@ export const GAMES: GameEntry[] = [
     desktopOnly: true,
     Game: BombermanGame,
     SettingsPanel: BombermanSettingsPanel,
+    category: 'action',
+    competitive: true,
   },
 
   {
@@ -98,6 +154,8 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: ArtGame,
     SettingsPanel: ArtSettingsPanel,
+    category: 'party',
+    competitive: true,
   },
 
   {
@@ -109,6 +167,8 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: QuoridorGame,
     SettingsPanel: QuoridorSettingsPanel,
+    category: 'tabletop',
+    competitive: true,
   },
 
   {
@@ -120,6 +180,8 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: TetrisGame,
     SettingsPanel: TetrisSettingsPanel,
+    category: 'action',
+    competitive: true,
   },
 
   {
@@ -131,6 +193,8 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: DotsGame,
     SettingsPanel: DotsSettingsPanel,
+    category: 'tabletop',
+    competitive: true,
   },
 
   {
@@ -142,6 +206,8 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: SumoGame,
     SettingsPanel: SumoSettingsPanel,
+    category: 'action',
+    competitive: true,
   },
 
   {
@@ -153,6 +219,8 @@ export const GAMES: GameEntry[] = [
     available: true,
     Game: PartyGame,
     SettingsPanel: PartySettingsPanel,
+    category: 'party',
+    competitive: true,
   },
 
   // Coming soon — placeholders for future games.
@@ -163,6 +231,8 @@ export const GAMES: GameEntry[] = [
     players: '5–12 players',
     Icon: IconMask,
     available: false,
+    category: 'party',
+    competitive: true,
   },
   {
     id: 'dare',
@@ -171,6 +241,8 @@ export const GAMES: GameEntry[] = [
     players: '2–10 players',
     Icon: IconDare,
     available: false,
+    category: 'party',
+    competitive: true,
   },
   {
     id: 'ridethebus',
@@ -179,6 +251,8 @@ export const GAMES: GameEntry[] = [
     players: '2–8 players',
     Icon: IconBus,
     available: false,
+    category: 'party',
+    competitive: true,
   },
   {
     id: 'bananagrams',
@@ -187,6 +261,8 @@ export const GAMES: GameEntry[] = [
     players: '2–8 players',
     Icon: IconTiles,
     available: false,
+    category: 'tabletop',
+    competitive: true,
   },
   {
     id: 'pacman',
@@ -195,6 +271,8 @@ export const GAMES: GameEntry[] = [
     players: '1 player',
     Icon: IconPac,
     available: false,
+    category: 'action',
+    competitive: true,
   },
 ];
 

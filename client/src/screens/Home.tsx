@@ -3,15 +3,18 @@ import type { GameId } from '@shared/games';
 import { createParty, joinParty } from '../socket';
 import { loadNickname } from '../session';
 import { useStore } from '../store';
-import { GAMES, type GameEntry } from '../games/catalog';
+import { CATEGORY_LABELS, CATEGORY_ORDER, GAMES, type GameEntry } from '../games/catalog';
 import { IconController } from '../components/icons';
 import { isDesktop } from '../device';
+
+type Wing = 'party' | 'arcade';
 
 export default function Home() {
   const [nickname, setNickname] = useState(loadNickname());
   const [code, setCode] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [wing, setWing] = useState<Wing>('party');
   const notice = useStore((s) => s.notice);
   const nickRef = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<number>(0);
@@ -57,6 +60,12 @@ export default function Home() {
     setBusy(false);
     if (!r.ok) complain(r.error);
   }
+
+  const wingGames = GAMES.filter((g) => (wing === 'party' ? g.competitive : !g.competitive));
+  const sections = CATEGORY_ORDER.map((cat) => ({
+    cat,
+    games: wingGames.filter((g) => g.category === cat),
+  })).filter((s) => s.games.length > 0);
 
   return (
     <div className="home">
@@ -107,31 +116,56 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="home-divider">or start a new table</div>
+        <div className="home-divider">or pick something to play</div>
 
-        <div className="game-grid">
-          {GAMES.map((g) => (
-            <div key={g.id} className={`game-card${g.available ? '' : ' soon'}`}>
-              <div className="game-card-icon">
-                <g.Icon />
-              </div>
-              <div className="game-card-title">
-                {g.name}
-                {!g.available && <span className="soon-badge">Soon</span>}
-              </div>
-              <div className="game-card-tagline">{g.tagline}</div>
-              <div className="game-card-players">{g.players}</div>
-              <button
-                className="btn btn-primary game-card-btn"
-                disabled={busy || !g.available || (g.desktopOnly && !desktop)}
-                onClick={() => create(g)}
-              >
-                {!g.available ? 'Coming soon' : g.desktopOnly && !desktop ? 'Desktop only' : 'Play'}
-              </button>
-            </div>
-          ))}
+        <div className="home-tabs">
+          <button
+            className={`home-tab${wing === 'party' ? ' active' : ''}`}
+            onClick={() => setWing('party')}
+          >
+            🎉 Party Games
+          </button>
+          <button
+            className={`home-tab${wing === 'arcade' ? ' active' : ''}`}
+            onClick={() => setWing('arcade')}
+          >
+            🧠 Brain Arcade
+          </button>
         </div>
 
+        {sections.length === 0 ? (
+          <p className="home-empty hint">
+            New solo puzzle games are on their way — check back soon!
+          </p>
+        ) : (
+          sections.map(({ cat, games }) => (
+            <section key={cat} className="category-section">
+              <h2 className="category-heading">{CATEGORY_LABELS[cat]}</h2>
+              <div className="game-grid">
+                {games.map((g) => (
+                  <div key={g.id} className={`game-card${g.available ? '' : ' soon'}`}>
+                    <div className="game-card-icon">
+                      <g.Icon />
+                    </div>
+                    <div className="game-card-title">
+                      {g.name}
+                      {!g.available && <span className="soon-badge">Soon</span>}
+                    </div>
+                    <div className="game-card-tagline">{g.tagline}</div>
+                    <div className="game-card-players">{g.players}</div>
+                    <button
+                      className="btn btn-primary game-card-btn"
+                      disabled={busy || !g.available || (g.desktopOnly && !desktop)}
+                      onClick={() => create(g)}
+                    >
+                      {!g.available ? 'Coming soon' : g.desktopOnly && !desktop ? 'Desktop only' : 'Play'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))
+        )}
       </div>
     </div>
   );

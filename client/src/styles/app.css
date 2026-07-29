@@ -389,6 +389,60 @@ body {
   margin: 20px 0 16px;
 }
 
+.home-tabs {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.home-tab {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--paper);
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.home-tab:hover {
+  opacity: 0.85;
+}
+
+.home-tab.active {
+  opacity: 1;
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.home-empty {
+  text-align: center;
+  margin: 30px 0;
+}
+
+.category-section {
+  margin-bottom: 26px;
+}
+
+.category-section:last-child {
+  margin-bottom: 24px;
+}
+
+.category-heading {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+  margin: 0 0 10px;
+  padding-left: 2px;
+}
+
 /* ── lobby ──────────────────────────────────────────────────────────────── */
 
 .lobby {
@@ -2123,6 +2177,8 @@ body {
   .room-code { font-size: 26px; letter-spacing: 0.2em; }
   .overlay-actions,
   .lobby-actions { flex-wrap: wrap; }
+  .home-tab { flex: 1; padding: 9px 10px; font-size: 13px; text-align: center; }
+  .category-heading { font-size: 13px; }
 
   /* Compact game cards: two per row, tighter spacing. */
   .game-grid {
