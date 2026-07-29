@@ -45,7 +45,7 @@ export interface MinesweeperMove {
   at: number;
 }
 
-function neighborsOf(index: number, rows: number, cols: number): number[] {
+export function neighborsOf(index: number, rows: number, cols: number): number[] {
   const r = Math.floor(index / cols);
   const c = index % cols;
   const result: number[] = [];
@@ -95,6 +95,40 @@ function floodFrom(start: number, cells: Cell[], rows: number, cols: number): nu
   return toReveal;
 }
 
+/** Reveals every cell in `targets`, flood-filling from each. Stops at the
+ *  first mine encountered (a wrongly-placed flag elsewhere let a mine
+ *  through) rather than revealing the rest — matches the fresh-reveal
+ *  path's single-mine-ends-the-round behavior. */
+function revealTargets(
+  cells: Cell[],
+  targets: number[],
+  rows: number,
+  cols: number,
+): { cells: Cell[]; hitMine: number | null } {
+  const hitMine = targets.find((n) => cells[n]!.mine);
+  if (hitMine !== undefined) {
+    const next = cells.slice();
+    next[hitMine] = { ...next[hitMine]!, revealed: true };
+    return { cells: next, hitMine };
+  }
+  const toReveal = new Set<number>();
+  for (const t of targets) for (const i of floodFrom(t, cells, rows, cols)) toReveal.add(i);
+  const next = cells.slice();
+  for (const i of toReveal) next[i] = { ...next[i]!, revealed: true };
+  return { cells: next, hitMine: null };
+}
+
+/** Whether a revealed numbered cell's neighboring flags already match its
+ *  count — i.e. clicking it will chord (auto-reveal the rest). Exported so
+ *  the UI can hint this affordance before the click happens. */
+export function isChordReady(state: MinesweeperState, index: number): boolean {
+  const cell = state.cells[index];
+  if (!cell || !cell.revealed || cell.adjacent === 0) return false;
+  const neighbors = neighborsOf(index, state.rows, state.cols);
+  const flagged = neighbors.filter((n) => state.cells[n]!.flagged).length;
+  return flagged === cell.adjacent && neighbors.some((n) => !state.cells[n]!.flagged && !state.cells[n]!.revealed);
+}
+
 function isWon(state: MinesweeperState): boolean {
   if (!state.minesPlaced) return false;
   return state.cells.every((c) => c.mine || c.revealed);
@@ -132,7 +166,20 @@ function applyMove(state: MinesweeperState, move: MinesweeperMove): MinesweeperS
     return { ...state, cells, lastMoveAt: move.at };
   }
 
-  if (existing.flagged || existing.revealed) return null;
+  if (existing.revealed) {
+    // Chording: clicking an already-revealed number whose adjacent flags
+    // already match its count reveals the rest of its neighbors. A wrong
+    // flag elsewhere can still expose a mine and end the round, same as
+    // any other reveal.
+    if (!isChordReady(state, move.index)) return null;
+    const neighbors = neighborsOf(move.index, state.rows, state.cols);
+    const targets = neighbors.filter((n) => !state.cells[n]!.flagged && !state.cells[n]!.revealed);
+    const { cells, hitMine } = revealTargets(state.cells, targets, state.rows, state.cols);
+    if (hitMine !== null) return { ...state, cells, lastMoveAt: move.at, exploded: hitMine };
+    return { ...state, cells, lastMoveAt: move.at };
+  }
+
+  if (existing.flagged) return null;
 
   let cells = state.cells;
   let minesPlaced = state.minesPlaced;

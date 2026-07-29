@@ -3,7 +3,7 @@ import { dateKeyUTC } from '../../arcade/dailySeed';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
-import { COLS, ROWS, minesweeperModule } from './engine';
+import { COLS, isChordReady, minesweeperModule } from './engine';
 
 function formatTime(ms: number): string {
   return (ms / 1000).toFixed(1) + 's';
@@ -72,6 +72,7 @@ export default function MinesweeperGame() {
             </button>
           )}
         </div>
+        {playing && <p className="hint minesweeper-hint">Tip: click a satisfied number to clear around it.</p>}
 
         <div
           className="minesweeper-grid"
@@ -80,6 +81,7 @@ export default function MinesweeperGame() {
           {state.cells.map((cell, i) => {
             const showMine = cell.revealed && cell.mine;
             const exploded = state.exploded === i;
+            const chordReady = playing && isChordReady(state, i);
             let label = '';
             if (cell.flagged && !cell.revealed) label = '🚩';
             else if (showMine) label = exploded ? '💥' : '💣';
@@ -87,7 +89,8 @@ export default function MinesweeperGame() {
             return (
               <button
                 key={i}
-                className={`minesweeper-cell${cell.revealed ? ' revealed' : ''}${cell.revealed && cell.adjacent > 0 ? ` n${cell.adjacent}` : ''}${exploded ? ' exploded' : ''}`}
+                className={`minesweeper-cell${cell.revealed ? ' revealed' : ''}${cell.revealed && cell.adjacent > 0 ? ` n${cell.adjacent}` : ''}${exploded ? ' exploded' : ''}${chordReady ? ' chord-ready' : ''}`}
+                title={chordReady ? 'Click to reveal the rest' : undefined}
                 onClick={() => onCellClick(i)}
                 onContextMenu={(e) => onCellContextMenu(e, i)}
                 disabled={!playing && !cell.revealed}

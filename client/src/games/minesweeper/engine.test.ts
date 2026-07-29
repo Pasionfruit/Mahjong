@@ -1,11 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { COLS, MINE_COUNT, ROWS, minesweeperModule } from './engine';
+import { COLS, MINE_COUNT, ROWS, isChordReady, minesweeperModule, neighborsOf } from './engine';
 
-function reveal(state: ReturnType<typeof minesweeperModule.generate>, index: number, at = 0) {
+type MinesweeperState = ReturnType<typeof minesweeperModule.generate>;
+
+function reveal(state: MinesweeperState, index: number, at = 0) {
   return minesweeperModule.applyMove(state, { type: 'reveal', index, at })!;
 }
-function flag(state: ReturnType<typeof minesweeperModule.generate>, index: number, at = 0) {
+function flag(state: MinesweeperState, index: number, at = 0) {
   return minesweeperModule.applyMove(state, { type: 'flag', index, at })!;
+}
+
+/** Finds a revealed numbered cell with at least one mine neighbor and at
+ *  least one non-mine unrevealed neighbor — the shape chording tests need. */
+function findChordableCell(state: MinesweeperState) {
+  for (let i = 0; i < state.cells.length; i++) {
+    const cell = state.cells[i]!;
+    if (!cell.revealed || cell.adjacent === 0) continue;
+    const neighbors = neighborsOf(i, state.rows, state.cols);
+    const mineNeighbors = neighbors.filter((n) => state.cells[n]!.mine);
+    const nonMineUnrevealed = neighbors.filter((n) => !state.cells[n]!.mine && !state.cells[n]!.revealed);
+    if (mineNeighbors.length === cell.adjacent && mineNeighbors.length > 0 && nonMineUnrevealed.length > 0) {
+      return { index: i, mineNeighbors, nonMineUnrevealed };
+    }
+  }
+  return null;
 }
 
 describe('minesweeperModule', () => {
@@ -99,5 +117,54 @@ describe('minesweeperModule', () => {
   it('board dimensions match the exported constants', () => {
     const state = minesweeperModule.generate(1, undefined);
     expect(state.cells).toHaveLength(ROWS * COLS);
+  });
+
+  describe('chording', () => {
+    it('is not ready until every neighboring mine is flagged', () => {
+      let state = reveal(minesweeperModule.generate(7, undefined), 0);
+      const target = findChordableCell(state);
+      expect(target).not.toBeNull();
+      expect(isChordReady(state, target!.index)).toBe(false);
+
+      // Flag all but one of its mine neighbors — still not satisfied.
+      for (const m of target!.mineNeighbors.slice(0, -1)) state = flag(state, m);
+      expect(isChordReady(state, target!.index)).toBe(false);
+    });
+
+    it('reveals the remaining neighbors once every adjacent mine is flagged', () => {
+      let state = reveal(minesweeperModule.generate(7, undefined), 0);
+      const target = findChordableCell(state)!;
+      for (const m of target.mineNeighbors) state = flag(state, m);
+      expect(isChordReady(state, target.index)).toBe(true);
+
+      state = reveal(state, target.index, 900);
+      expect(minesweeperModule.status(state)).toBe('playing');
+      for (const n of target.nonMineUnrevealed) expect(state.cells[n]!.revealed).toBe(true);
+      // The correctly-flagged mines stay untouched, not revealed.
+      for (const m of target.mineNeighbors) expect(state.cells[m]!.revealed).toBe(false);
+    });
+
+    it('does nothing when clicked with no unrevealed neighbors left to clear', () => {
+      let state = reveal(minesweeperModule.generate(7, undefined), 0);
+      const target = findChordableCell(state)!;
+      for (const m of target.mineNeighbors) state = flag(state, m);
+      state = reveal(state, target.index, 900); // first chord clears everything
+      expect(minesweeperModule.applyMove(state, { type: 'reveal', index: target.index, at: 950 })).toBeNull();
+    });
+
+    it('explodes if a wrongly-placed flag lets chording expose a real mine', () => {
+      let state = reveal(minesweeperModule.generate(7, undefined), 0);
+      const target = findChordableCell(state)!;
+      // Flag one WRONG cell (a non-mine neighbor) enough times to match the
+      // count without ever flagging the real mine(s).
+      const wrongFlags = target.nonMineUnrevealed.slice(0, target.mineNeighbors.length);
+      expect(wrongFlags).toHaveLength(target.mineNeighbors.length); // sanity: enough decoys existed
+      for (const n of wrongFlags) state = flag(state, n);
+      expect(isChordReady(state, target.index)).toBe(true);
+
+      state = reveal(state, target.index, 900);
+      expect(minesweeperModule.status(state)).toBe('lost');
+      expect(target.mineNeighbors).toContain(state.exploded);
+    });
   });
 });

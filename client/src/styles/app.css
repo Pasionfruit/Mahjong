@@ -4448,6 +4448,15 @@ body {
   background: #c0453f;
 }
 
+.minesweeper-cell.chord-ready {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.minesweeper-hint {
+  margin: -6px 0 10px;
+  font-size: 12px;
+}
+
 .minesweeper-cell.n1 { color: #7fb8e8; }
 .minesweeper-cell.n2 { color: #6bd68a; }
 .minesweeper-cell.n3 { color: #e08a8a; }
