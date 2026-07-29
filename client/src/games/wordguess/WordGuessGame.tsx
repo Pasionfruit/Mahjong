@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { mulberry32 } from '@shared/rng';
 import { dateKeyUTC } from '../../arcade/dailySeed';
+import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useStore } from '../../store';
 import { fetchDailyAnswer } from './dailyWord';
@@ -30,6 +31,7 @@ export default function WordGuessGame() {
     );
   const [current, setCurrent] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<'play' | 'leaderboard'>('play');
 
   const playing = status === 'playing';
 
@@ -79,6 +81,7 @@ export default function WordGuessGame() {
 
   return (
     <div className="arcade-screen">
+      <AuthWidget />
       <div className="arcade-card">
         <h1>🔤 Word Guess</h1>
         <p className="hint arcade-head">
@@ -88,85 +91,105 @@ export default function WordGuessGame() {
 
         <div className="arcade-tabs">
           <button
-            className={`arcade-tab${mode === 'daily' ? ' active' : ''}`}
-            onClick={() => void start('daily')}
+            className={`arcade-tab${view === 'play' && mode === 'daily' ? ' active' : ''}`}
+            onClick={() => { setView('play'); void start('daily'); }}
           >
             Today's Word
           </button>
           <button
-            className={`arcade-tab${mode === 'endless' ? ' active' : ''}`}
-            onClick={() => void start('endless', { fresh: true })}
+            className={`arcade-tab${view === 'play' && mode === 'endless' ? ' active' : ''}`}
+            onClick={() => { setView('play'); void start('endless', { fresh: true }); }}
           >
             Endless
           </button>
+          <button
+            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
+            onClick={() => setView('leaderboard')}
+          >
+            🏆 Leaderboard
+          </button>
         </div>
 
-        <div className="wordguess-grid">
-          {rows.map((row, i) => (
-            <div className="wordguess-row" key={i}>
-              {row.letters.map((letter, j) => (
-                <div
-                  key={j}
-                  className={`wordguess-cell${row.feedback ? ` wordguess-cell-${row.feedback[j]}` : letter.trim() ? ' wordguess-cell-filled' : ''}`}
-                >
-                  {letter.trim().toUpperCase()}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        {playing ? (
-          <>
-            {error && <p className="toast" role="alert">{error}</p>}
-            <div className="wordguess-keyboard">
-              {KEY_ROWS.map((row, i) => (
-                <div className="wordguess-key-row" key={i}>
-                  {i === 2 && (
-                    <button className="wordguess-key wordguess-key-wide" onClick={submit}>
-                      Enter
-                    </button>
-                  )}
-                  {row.split('').map((letter) => (
-                    <button
-                      key={letter}
-                      className={`wordguess-key${keyState[letter] ? ` wordguess-key-${keyState[letter]}` : ''}`}
-                      onClick={() => typeLetter(letter)}
-                    >
-                      {letter}
-                    </button>
-                  ))}
-                  {i === 2 && (
-                    <button className="wordguess-key wordguess-key-wide" onClick={backspace}>
-                      ⌫
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="wordguess-result">
-            <h2>{result?.status === 'won' ? 'Solved it! 🎉' : `The word was ${state.answer.toUpperCase()}`}</h2>
-            <p>
-              Sync:{' '}
-              <span className={`arcade-badge arcade-badge-${sync}`}>{sync === 'saving' ? 'saving…' : sync}</span>{' '}
-              <button className="btn" onClick={() => void forceSync()}>
-                Force sync
-              </button>
-            </p>
-            <h3>{mode === 'daily' ? "Today's Leaderboard" : 'All-Time Best'}</h3>
-            <LeaderboardPanel gameId="wordguess" mode={mode} dateKey={dateKeyUTC()} ascending={false} refreshKey={sync === 'synced' ? 1 : 0} />
+        {view === 'leaderboard' ? (
+          <div className="arcade-leaderboard-view">
+            <h3>All-Time Best (Endless)</h3>
+            <LeaderboardPanel gameId="wordguess" mode="endless" dateKey={dateKeyUTC()} ascending={false} />
             <div className="arcade-actions">
-              {mode === 'daily' ? (
-                <p className="hint">{dailyDoneToday ? 'Come back tomorrow for a new word!' : ''}</p>
-              ) : (
-                <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
-                  Play again
-                </button>
-              )}
+              <button className="btn" onClick={() => setView('play')}>
+                Back to game
+              </button>
             </div>
           </div>
+        ) : (
+          <>
+            <div className="wordguess-grid">
+              {rows.map((row, i) => (
+                <div className="wordguess-row" key={i}>
+                  {row.letters.map((letter, j) => (
+                    <div
+                      key={j}
+                      className={`wordguess-cell${row.feedback ? ` wordguess-cell-${row.feedback[j]}` : letter.trim() ? ' wordguess-cell-filled' : ''}`}
+                    >
+                      {letter.trim().toUpperCase()}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {playing ? (
+              <>
+                {error && <p className="toast" role="alert">{error}</p>}
+                <div className="wordguess-keyboard">
+                  {KEY_ROWS.map((row, i) => (
+                    <div className="wordguess-key-row" key={i}>
+                      {i === 2 && (
+                        <button className="wordguess-key wordguess-key-wide" onClick={submit}>
+                          Enter
+                        </button>
+                      )}
+                      {row.split('').map((letter) => (
+                        <button
+                          key={letter}
+                          className={`wordguess-key${keyState[letter] ? ` wordguess-key-${keyState[letter]}` : ''}`}
+                          onClick={() => typeLetter(letter)}
+                        >
+                          {letter}
+                        </button>
+                      ))}
+                      {i === 2 && (
+                        <button className="wordguess-key wordguess-key-wide" onClick={backspace}>
+                          ⌫
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="wordguess-result">
+                <h2>{result?.status === 'won' ? 'Solved it! 🎉' : `The word was ${state.answer.toUpperCase()}`}</h2>
+                <p>
+                  Sync:{' '}
+                  <span className={`arcade-badge arcade-badge-${sync}`}>{sync === 'saving' ? 'saving…' : sync}</span>{' '}
+                  <button className="btn" onClick={() => void forceSync()}>
+                    Force sync
+                  </button>
+                </p>
+                <h3>{mode === 'daily' ? "Today's Leaderboard" : 'All-Time Best'}</h3>
+                <LeaderboardPanel gameId="wordguess" mode={mode} dateKey={dateKeyUTC()} ascending={false} refreshKey={sync === 'synced' ? 1 : 0} />
+                <div className="arcade-actions">
+                  {mode === 'daily' ? (
+                    <p className="hint">{dailyDoneToday ? 'Come back tomorrow for a new word!' : ''}</p>
+                  ) : (
+                    <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
+                      Play again
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <button className="btn arcade-leave" onClick={() => useStore.getState().setLocalGame(null)}>

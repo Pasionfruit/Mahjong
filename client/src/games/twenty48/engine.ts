@@ -4,15 +4,28 @@ export const SIZE = 4;
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 
+/** A tile carries a stable id across slides so the UI can key elements by
+ *  id and let CSS transitions animate position changes — see engine.ts's
+ *  header comment in MinesweeperGame for the same "timestamps as move
+ *  data" philosophy: identity here is plain data too, not a rendering
+ *  side-channel, so replay() stays a pure fold with zero special-casing. */
+export interface Tile {
+  id: number;
+  value: number;
+}
+
 export interface TwentyFortyEightState {
   /** 16 cells, row-major (index = row * SIZE + col). null = empty. */
-  grid: (number | null)[];
+  grid: (Tile | null)[];
   score: number;
   /** The mulberry32 internal "a" value — plain-data RNG cursor so state
    *  stays JSON-serializable (no closures) and replay() is a pure fold.
    *  See stepRng below: same formula as shared/src/rng.ts's mulberry32,
    *  factored to take/return state instead of closing over it. */
   rngState: number;
+  /** Next tile id to assign on spawn — plain-data counter, same reasoning
+   *  as rngState. */
+  nextId: number;
 }
 
 export interface TwentyFortyEightMove {
@@ -28,30 +41,42 @@ function stepRng(a: number): [number, number] {
   return [value, nextA];
 }
 
-function spawnTile(grid: (number | null)[], rngState: number): [(number | null)[], number] {
+function spawnTile(
+  grid: (Tile | null)[],
+  rngState: number,
+  nextId: number,
+): [(Tile | null)[], number, number] {
   const empties = grid.map((v, i) => (v === null ? i : -1)).filter((i) => i >= 0);
-  if (empties.length === 0) return [grid, rngState];
+  if (empties.length === 0) return [grid, rngState, nextId];
   const [r1, a1] = stepRng(rngState);
   const index = empties[Math.floor(r1 * empties.length)]!;
   const [r2, a2] = stepRng(a1);
   const next = grid.slice();
-  next[index] = r2 < 0.9 ? 2 : 4;
-  return [next, a2];
+  next[index] = { id: nextId, value: r2 < 0.9 ? 2 : 4 };
+  return [next, a2, nextId + 1];
 }
 
-export function slideLine(line: (number | null)[]): { line: (number | null)[]; gained: number } {
-  const nums = line.filter((v): v is number => v !== null);
-  const result: (number | null)[] = [];
+/**
+ * Slides tiles together and merges adjacent equal pairs, exactly once per
+ * tile per move (classic 2048 rule — a freshly-merged tile never merges
+ * again in the same slide). The surviving tile of a merge keeps the
+ * leading (in slide-direction) tile's id; the trailing one simply drops
+ * out of the line — the UI reads that disappearance as "this tile got
+ * absorbed" when diffing consecutive states by id.
+ */
+export function slideLine(line: (Tile | null)[]): { line: (Tile | null)[]; gained: number } {
+  const tiles = line.filter((v): v is Tile => v !== null);
+  const result: (Tile | null)[] = [];
   let gained = 0;
   let i = 0;
-  while (i < nums.length) {
-    if (i + 1 < nums.length && nums[i] === nums[i + 1]) {
-      const merged = nums[i]! * 2;
-      result.push(merged);
-      gained += merged;
+  while (i < tiles.length) {
+    if (i + 1 < tiles.length && tiles[i]!.value === tiles[i + 1]!.value) {
+      const value = tiles[i]!.value * 2;
+      result.push({ id: tiles[i]!.id, value });
+      gained += value;
       i += 2;
     } else {
-      result.push(nums[i]!);
+      result.push(tiles[i]!);
       i += 1;
     }
   }
@@ -66,12 +91,11 @@ function lineIndices(dir: Direction, i: number): number[] {
 }
 
 export function applyDirection(
-  grid: (number | null)[],
+  grid: (Tile | null)[],
   dir: Direction,
-): { grid: (number | null)[]; gained: number; changed: boolean } {
+): { grid: (Tile | null)[]; gained: number; changed: boolean } {
   const next = grid.slice();
   let gained = 0;
-  let changed = false;
   const reversed = dir === 'right' || dir === 'down';
 
   for (let i = 0; i < SIZE; i++) {
@@ -82,41 +106,44 @@ export function applyDirection(
     gained += slid.gained;
     const finalLine = reversed ? slid.line.slice().reverse() : slid.line;
     indices.forEach((idx, j) => {
-      const value = finalLine[j] ?? null;
-      if (next[idx] !== value) changed = true;
-      next[idx] = value;
+      next[idx] = finalLine[j] ?? null;
     });
   }
+  // Compare id arrangement, not values — a merge always changes which ids
+  // occupy which slots (the absorbed id disappears), so this alone is
+  // enough to detect any real change, slide or merge.
+  const changed = grid.map((t) => t?.id ?? null).join(',') !== next.map((t) => t?.id ?? null).join(',');
   return { grid: next, gained, changed };
 }
 
-function hasMovesLeft(grid: (number | null)[]): boolean {
+function hasMovesLeft(grid: (Tile | null)[]): boolean {
   if (grid.some((v) => v === null)) return true;
   for (let r = 0; r < SIZE; r++) {
     for (let c = 0; c < SIZE; c++) {
       const idx = r * SIZE + c;
-      const val = grid[idx];
-      if (c < SIZE - 1 && grid[idx + 1] === val) return true;
-      if (r < SIZE - 1 && grid[idx + SIZE] === val) return true;
+      const val = grid[idx]!.value; // grid is full here (checked above)
+      if (c < SIZE - 1 && grid[idx + 1]!.value === val) return true;
+      if (r < SIZE - 1 && grid[idx + SIZE]!.value === val) return true;
     }
   }
   return false;
 }
 
 function generate(seed: number, _settings: void): TwentyFortyEightState {
-  let grid: (number | null)[] = new Array(SIZE * SIZE).fill(null);
+  let grid: (Tile | null)[] = new Array(SIZE * SIZE).fill(null);
   let rngState = seed;
-  [grid, rngState] = spawnTile(grid, rngState);
-  [grid, rngState] = spawnTile(grid, rngState);
-  return { grid, score: 0, rngState };
+  let nextId = 1;
+  [grid, rngState, nextId] = spawnTile(grid, rngState, nextId);
+  [grid, rngState, nextId] = spawnTile(grid, rngState, nextId);
+  return { grid, score: 0, rngState, nextId };
 }
 
 function applyMove(state: TwentyFortyEightState, move: TwentyFortyEightMove): TwentyFortyEightState | null {
   if (!hasMovesLeft(state.grid)) return null;
   const { grid, gained, changed } = applyDirection(state.grid, move.dir);
   if (!changed) return null;
-  const [spawned, rngState] = spawnTile(grid, state.rngState);
-  return { grid: spawned, score: state.score + gained, rngState };
+  const [spawned, rngState, nextId] = spawnTile(grid, state.rngState, state.nextId);
+  return { grid: spawned, score: state.score + gained, rngState, nextId };
 }
 
 function status(state: TwentyFortyEightState): SoloStatus {
@@ -131,7 +158,7 @@ function status(state: TwentyFortyEightState): SoloStatus {
  */
 function result(state: TwentyFortyEightState): SoloResult | null {
   if (status(state) === 'playing') return null;
-  const highestTile = state.grid.reduce((max: number, v) => (v !== null && v > max ? v : max), 0);
+  const highestTile = state.grid.reduce((max: number, t) => (t !== null && t.value > max ? t.value : max), 0);
   return { status: 'lost', score: state.score, stats: { highestTile } };
 }
 
@@ -143,7 +170,7 @@ function replay(seed: number, settings: void, moveLog: TwentyFortyEightMove[]): 
 
 function shareText(state: TwentyFortyEightState): string {
   if (status(state) === 'playing') return '';
-  const highest = state.grid.reduce((max: number, v) => (v !== null && v > max ? v : max), 0);
+  const highest = state.grid.reduce((max: number, t) => (t !== null && t.value > max ? t.value : max), 0);
   return `2048 — Score: ${state.score}, Highest tile: ${highest}`;
 }
 

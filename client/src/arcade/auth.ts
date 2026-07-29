@@ -81,3 +81,23 @@ export async function linkEmail(email: string): Promise<LinkResult> {
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
+
+/**
+ * Link a Google identity to the current session (same auth.uid(), zero
+ * data migration — see linkEmail above and the design doc's B7). Redirects
+ * the whole page to Google's consent screen; on success the browser never
+ * returns to this line — it comes back to `redirectTo` with the session
+ * already linked (supabase-js parses the callback automatically on load).
+ * Requires "Manual linking" enabled and a Google provider configured in
+ * the Supabase dashboard — see the setup instructions.
+ */
+export async function linkGoogle(): Promise<LinkResult> {
+  const supabase = getSupabase();
+  if (!supabase) return { ok: false, error: 'Brain Arcade is not configured yet.' };
+  const { error } = await supabase.auth.linkIdentity({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}

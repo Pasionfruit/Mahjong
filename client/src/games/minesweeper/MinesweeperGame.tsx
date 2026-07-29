@@ -1,5 +1,6 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { dateKeyUTC } from '../../arcade/dailySeed';
+import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
@@ -14,6 +15,7 @@ export default function MinesweeperGame() {
     useSoloGame(minesweeperModule, () => undefined);
   const [flagMode, setFlagMode] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [view, setView] = useState<'play' | 'leaderboard'>('play');
 
   const playing = status === 'playing';
 
@@ -41,6 +43,7 @@ export default function MinesweeperGame() {
 
   return (
     <div className="arcade-screen">
+      <AuthWidget />
       <div className="arcade-card arcade-card-wide">
         <h1>💣 Minesweeper</h1>
         <p className="hint arcade-head">
@@ -49,87 +52,116 @@ export default function MinesweeperGame() {
         </p>
 
         <div className="arcade-tabs">
-          <button className={`arcade-tab${mode === 'daily' ? ' active' : ''}`} onClick={() => void start('daily')}>
+          <button
+            className={`arcade-tab${view === 'play' && mode === 'daily' ? ' active' : ''}`}
+            onClick={() => { setView('play'); void start('daily'); }}
+          >
             Today's Board
           </button>
           <button
-            className={`arcade-tab${mode === 'endless' ? ' active' : ''}`}
-            onClick={() => void start('endless', { fresh: true })}
+            className={`arcade-tab${view === 'play' && mode === 'endless' ? ' active' : ''}`}
+            onClick={() => { setView('play'); void start('endless', { fresh: true }); }}
           >
             Endless
           </button>
+          <button
+            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
+            onClick={() => setView('leaderboard')}
+          >
+            🏆 Leaderboard
+          </button>
         </div>
 
-        <div className="minesweeper-status">
-          <span>💣 {state.mineCount - flaggedCount}</span>
-          <span>⏱ {formatTime(elapsedMs)}</span>
-          {playing && (
-            <button
-              className={`btn minesweeper-flag-toggle${flagMode ? ' active' : ''}`}
-              onClick={() => setFlagMode((f) => !f)}
-            >
-              {flagMode ? '🚩 Flagging' : '👆 Revealing'}
-            </button>
-          )}
-        </div>
-        {playing && <p className="hint minesweeper-hint">Tip: click a satisfied number to clear around it.</p>}
-
-        <div
-          className="minesweeper-grid"
-          style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
-        >
-          {state.cells.map((cell, i) => {
-            const showMine = cell.revealed && cell.mine;
-            const exploded = state.exploded === i;
-            const chordReady = playing && isChordReady(state, i);
-            let label = '';
-            if (cell.flagged && !cell.revealed) label = '🚩';
-            else if (showMine) label = exploded ? '💥' : '💣';
-            else if (cell.revealed && cell.adjacent > 0) label = String(cell.adjacent);
-            return (
-              <button
-                key={i}
-                className={`minesweeper-cell${cell.revealed ? ' revealed' : ''}${cell.revealed && cell.adjacent > 0 ? ` n${cell.adjacent}` : ''}${exploded ? ' exploded' : ''}${chordReady ? ' chord-ready' : ''}`}
-                title={chordReady ? 'Click to reveal the rest' : undefined}
-                onClick={() => onCellClick(i)}
-                onContextMenu={(e) => onCellContextMenu(e, i)}
-                disabled={!playing && !cell.revealed}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {!playing && (
-          <div className="minesweeper-result">
-            <h2>{result?.status === 'won' ? `Cleared in ${formatTime(elapsedMs)}! 🎉` : 'Boom. 💥'}</h2>
-            <p>
-              Sync:{' '}
-              <span className={`arcade-badge arcade-badge-${sync}`}>{sync === 'saving' ? 'saving…' : sync}</span>{' '}
-              <button className="btn" onClick={() => void forceSync()}>
-                Force sync
-              </button>
-            </p>
-            <h3>{mode === 'daily' ? "Today's Fastest" : 'All-Time Fastest'}</h3>
+        {view === 'leaderboard' ? (
+          <div className="arcade-leaderboard-view">
+            <h3>All-Time Fastest (Endless)</h3>
             <LeaderboardPanel
               gameId="minesweeper"
-              mode={mode}
+              mode="endless"
               dateKey={dateKeyUTC()}
               ascending
               formatScore={(s) => (s >= 999_999_999 ? 'DNF' : formatTime(s))}
-              refreshKey={sync === 'synced' ? 1 : 0}
             />
             <div className="arcade-actions">
-              {mode === 'daily' ? (
-                <p className="hint">{dailyDoneToday ? "Come back tomorrow for a new board!" : ''}</p>
-              ) : (
-                <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
-                  Play again
+              <button className="btn" onClick={() => setView('play')}>
+                Back to game
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="minesweeper-status">
+              <span>💣 {state.mineCount - flaggedCount}</span>
+              <span>⏱ {formatTime(elapsedMs)}</span>
+              {playing && (
+                <button
+                  className={`btn minesweeper-flag-toggle${flagMode ? ' active' : ''}`}
+                  onClick={() => setFlagMode((f) => !f)}
+                >
+                  {flagMode ? '🚩 Flagging' : '👆 Revealing'}
                 </button>
               )}
             </div>
-          </div>
+            {playing && <p className="hint minesweeper-hint">Tip: click a satisfied number to clear around it.</p>}
+
+            <div
+              className="minesweeper-grid"
+              style={{ gridTemplateColumns: `repeat(${COLS}, 1fr)` }}
+            >
+              {state.cells.map((cell, i) => {
+                const showMine = cell.revealed && cell.mine;
+                const exploded = state.exploded === i;
+                const chordReady = playing && isChordReady(state, i);
+                let label = '';
+                if (cell.flagged && !cell.revealed) label = '🚩';
+                else if (showMine) label = exploded ? '💥' : '💣';
+                else if (cell.revealed && cell.adjacent > 0) label = String(cell.adjacent);
+                return (
+                  <button
+                    key={i}
+                    className={`minesweeper-cell${cell.revealed ? ' revealed' : ''}${cell.revealed && cell.adjacent > 0 ? ` n${cell.adjacent}` : ''}${exploded ? ' exploded' : ''}${chordReady ? ' chord-ready' : ''}`}
+                    title={chordReady ? 'Click to reveal the rest' : undefined}
+                    onClick={() => onCellClick(i)}
+                    onContextMenu={(e) => onCellContextMenu(e, i)}
+                    disabled={!playing && !cell.revealed}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {!playing && (
+              <div className="minesweeper-result">
+                <h2>{result?.status === 'won' ? `Cleared in ${formatTime(elapsedMs)}! 🎉` : 'Boom. 💥'}</h2>
+                <p>
+                  Sync:{' '}
+                  <span className={`arcade-badge arcade-badge-${sync}`}>{sync === 'saving' ? 'saving…' : sync}</span>{' '}
+                  <button className="btn" onClick={() => void forceSync()}>
+                    Force sync
+                  </button>
+                </p>
+                <h3>{mode === 'daily' ? "Today's Fastest" : 'All-Time Fastest'}</h3>
+                <LeaderboardPanel
+                  gameId="minesweeper"
+                  mode={mode}
+                  dateKey={dateKeyUTC()}
+                  ascending
+                  formatScore={(s) => (s >= 999_999_999 ? 'DNF' : formatTime(s))}
+                  refreshKey={sync === 'synced' ? 1 : 0}
+                />
+                <div className="arcade-actions">
+                  {mode === 'daily' ? (
+                    <p className="hint">{dailyDoneToday ? "Come back tomorrow for a new board!" : ''}</p>
+                  ) : (
+                    <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
+                      Play again
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <button className="btn arcade-leave" onClick={() => useStore.getState().setLocalGame(null)}>

@@ -1,11 +1,17 @@
+import dictionary from './dictionary.json';
+
 /**
  * Word Guess's word lists. ANSWER_WORDS is the curated pool used to pick
  * endless-mode answers and to seed the wordle_answers table's dated rows
- * (see the SQL bundle) — common, unambiguous, non-offensive words only.
- * VALID_GUESSES is the broader set accepted as a guess (superset of
- * ANSWER_WORDS). Both are hand-curated for MVP — smaller than a real
- * ~13,000-word Wordle dictionary by design; see the design doc's content-
- * work risk callout. Widening it later is just appending to these arrays.
+ * (see the SQL bundle) — common, unambiguous, non-offensive words only,
+ * hand-picked so a daily answer is never obscure.
+ *
+ * VALID_GUESSES is deliberately much broader: dictionary.json is a ~15.9k-
+ * word English 5-letter dictionary (filtered from a public-domain word
+ * list, plus a small exact-match profanity blocklist), so common words
+ * typed as guesses — "lover", "hotel", etc. — aren't rejected just because
+ * they're unlikely to ever BE a curated answer. Every answer is still
+ * guaranteed guessable (unioned in below).
  */
 
 export const ANSWER_WORDS: string[] = [
@@ -80,39 +86,12 @@ export const ANSWER_WORDS: string[] = [
   'wound', 'wrist', 'write', 'wrong', 'wrote', 'yield', 'young', 'youth',
 ];
 
-/** Extra accepted guesses beyond the answer pool — real words, less common
- *  as puzzle answers but shouldn't be rejected when typed. */
-const EXTRA_GUESSES: string[] = [
-  'aback', 'abbey', 'abide', 'acids', 'acorn', 'adage', 'adieu', 'affix', 'afoot', 'aider',
-  'algae', 'alloy', 'alpha', 'amber', 'amend', 'amity', 'ample', 'amuse', 'aorta', 'apron',
-  'aptly', 'arbor', 'ardor', 'armed', 'aroma', 'array', 'arrow', 'atlas', 'atoll', 'attic',
-  'audio', 'audit', 'avert', 'axiom', 'axion', 'bacon', 'badge', 'bagel', 'balmy', 'banjo',
-  'barge', 'baron', 'basil', 'batch', 'baton', 'bayou', 'beady', 'beast', 'beefy', 'befit',
-  'belly', 'berth', 'beset', 'bevel', 'bicep', 'biome', 'bison', 'blaze', 'bleak', 'blimp',
-  'bliss', 'bloat', 'blond', 'bluff', 'blunt', 'blurb', 'blurt', 'boast', 'bogus', 'bolts',
-  'bonus', 'booty', 'borax', 'bossy', 'bowel', 'boxer', 'brace', 'braid', 'brawn', 'brine',
-  'briny', 'brisk', 'broil', 'broth', 'bugle', 'bulky', 'bunny', 'burly', 'cache', 'cacti',
-  'camel', 'canoe', 'caper', 'cargo', 'carol', 'carve', 'caste', 'cedar', 'cello',
-  'chard', 'charm', 'chasm', 'cheek', 'cheer', 'cheat', 'chess', 'chewy', 'chirp', 'choke',
-  'chomp', 'chord', 'chunk', 'churn', 'cider', 'cigar', 'cinch', 'circa', 'civic', 'clamp',
-  'clang', 'clash', 'clasp', 'cleft', 'clone', 'cobra', 'cocoa', 'colon', 'comet', 'comic',
-  'comma', 'condo', 'conic', 'coral', 'corny', 'couch', 'cough', 'creek', 'creme',
-  'crepe', 'crick', 'crimp', 'crisp', 'croak', 'crony', 'crook', 'croon', 'crypt',
-  'cubic', 'cumin', 'curly', 'curry', 'curse', 'curvy', 'cyber', 'daddy', 'daisy', 'decal',
-  'decor', 'decoy', 'delta', 'demon', 'dense', 'depot', 'devil',
-  'digit', 'dimly', 'diner', 'dingo', 'disco', 'ditch', 'ditty', 'diver', 'dizzy', 'donor',
-  'donut', 'doubt', 'dowel', 'downy', 'dozen', 'drape', 'drier', 'droop', 'droll', 'drown',
-  'dryer', 'dusky', 'dwarf', 'dwell', 'eagle', 'ebony', 'eerie', 'egret', 'eject',
-  'elbow', 'elope', 'elude', 'emote', 'emcee', 'enact', 'endow', 'envoy', 'epoch', 'epoxy',
-  'evoke', 'exalt', 'exile', 'expel', 'extol', 'fable', 'facet', 'faded', 'fairy',
-];
-
 function normalize(list: string[]): string[] {
   return Array.from(new Set(list.map((w) => w.trim().toLowerCase()))).filter((w) => /^[a-z]{5}$/.test(w));
 }
 
 export const NORMALIZED_ANSWER_WORDS: string[] = normalize(ANSWER_WORDS);
-export const VALID_GUESSES: Set<string> = new Set([...NORMALIZED_ANSWER_WORDS, ...normalize(EXTRA_GUESSES)]);
+export const VALID_GUESSES: Set<string> = new Set([...NORMALIZED_ANSWER_WORDS, ...normalize(dictionary as string[])]);
 
 export function isValidGuess(word: string): boolean {
   return VALID_GUESSES.has(word.trim().toLowerCase());

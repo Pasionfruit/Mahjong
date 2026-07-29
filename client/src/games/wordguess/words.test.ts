@@ -24,6 +24,16 @@ describe('word lists', () => {
     expect(isValidGuess('zzzzz')).toBe(false);
   });
 
+  it('accepts common words that a small hand-curated list would miss', () => {
+    for (const w of ['lover', 'hotel', 'mango', 'crane', 'pizza', 'ninja', 'zebra']) {
+      expect(isValidGuess(w)).toBe(true);
+    }
+  });
+
+  it('has a comprehensive guess dictionary, not just the curated answer pool', () => {
+    expect(VALID_GUESSES.size).toBeGreaterThan(10_000);
+  });
+
   it('pickAnswer deterministically maps an rng draw to a word in the pool', () => {
     const word = pickAnswer(() => 0.1);
     expect(NORMALIZED_ANSWER_WORDS).toContain(word);
