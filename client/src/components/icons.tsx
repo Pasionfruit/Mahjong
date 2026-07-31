@@ -107,7 +107,7 @@ export function IconTile() {
   );
 }
 
-/** A game controller, for the GameNight brand. */
+/** A game controller, for the LocalRot brand. */
 export function IconController() {
   return (
     <I>
@@ -316,6 +316,161 @@ export function IconHourglass() {
       <path d="M6 3h12M6 21h12" />
       <path d="M7 3c0 4 3.5 6 5 8-1.5 2-5 4-5 8M17 3c0 4-3.5 6-5 8 1.5 2 5 4 5 8" />
       <circle cx="12" cy="12" r="0.9" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
+/** A plump bird mid-flap between two pipes — Flappy Bird. */
+export function IconFlappy() {
+  return (
+    <I>
+      <path d="M3 3v7M3 14v7M21 3v5M21 12v9" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M8.5 11.5c-1.5-.5-2-2-1.5-3" />
+      <circle cx="13.5" cy="10.8" r="0.8" fill="currentColor" stroke="none" />
+      <path d="M16 12.5h2" />
+    </I>
+  );
+}
+
+/** A springy platform bounce — Doodle Jump. */
+export function IconSpring() {
+  return (
+    <I>
+      <path d="M5 20h6M13 12h6" />
+      <circle cx="8" cy="12" r="2.5" />
+      <path d="M8 14.5V17M6.5 20L8 17l1.5 3" />
+      <path d="M14 8l2-2 2 2M16 6v4" />
+    </I>
+  );
+}
+
+/** A paddle, ball, and brick row — Brick Breaker. */
+export function IconPaddle() {
+  return (
+    <I>
+      <rect x="3" y="4" width="5" height="3" rx="0.8" />
+      <rect x="9.5" y="4" width="5" height="3" rx="0.8" />
+      <rect x="16" y="4" width="5" height="3" rx="0.8" />
+      <circle cx="12" cy="13" r="1.6" />
+      <rect x="7" y="18" width="10" height="2.5" rx="1.2" />
+    </I>
+  );
+}
+
+/** A ball banking through round pegs — Peggle. */
+export function IconPegs() {
+  return (
+    <I>
+      <circle cx="12" cy="4" r="1.8" />
+      <path d="M12 6.5c0 3-4.5 3.5-4.5 7" strokeDasharray="1.5 2" />
+      <circle cx="6" cy="10" r="1.4" />
+      <circle cx="17" cy="9" r="1.4" />
+      <circle cx="12" cy="14" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="15" r="1.4" />
+      <path d="M8 21h8l-1-3h-6z" />
+    </I>
+  );
+}
+
+/** A cat face atop a pogo spring — Pogo Cat. */
+export function IconPogoCat() {
+  return (
+    <I>
+      <path d="M8 4l1.5 2h5L16 4v4.5a4 4 0 0 1-8 0z" />
+      <circle cx="10" cy="8" r="0.7" fill="currentColor" stroke="none" />
+      <circle cx="14" cy="8" r="0.7" fill="currentColor" stroke="none" />
+      <path d="M12 13v2M10 17h4M10.5 15h3M12 19v2M9 21h6" />
+    </I>
+  );
+}
+
+/** Three flasks of layered liquid — Magic Sort. */
+export function IconFlasks() {
+  return (
+    <I>
+      <path d="M5 3v6l-2 8a2.5 2.5 0 0 0 2.4 3h.2" />
+      <path d="M9 3v6l2 8" />
+      <path d="M7 3h4" />
+      <path d="M4 13h4" />
+      <path d="M15 3v14a3 3 0 0 0 6 0V3" />
+      <path d="M14 3h8M15 11h6M15 15h6" />
+    </I>
+  );
+}
+
+/** Two crossing ropes with pin ends — Rope Untangle. */
+export function IconKnot() {
+  return (
+    <I>
+      <circle cx="5" cy="5" r="1.6" />
+      <circle cx="19" cy="5" r="1.6" />
+      <circle cx="5" cy="19" r="1.6" />
+      <circle cx="19" cy="19" r="1.6" />
+      <path d="M6.2 6.2c4 4 7.6 8.6 11.6 11.6" />
+      <path d="M17.8 6.2C15 9 11 10.5 6.2 17.8" />
+    </I>
+  );
+}
+
+/** A numbered grid with brush — Paint by Number. */
+export function IconPaintGrid() {
+  return (
+    <I>
+      <rect x="3" y="3" width="13" height="13" rx="1.5" />
+      <path d="M3 9.5h13M9.5 3v13" />
+      <rect x="4.5" y="4.5" width="3.5" height="3.5" fill="currentColor" stroke="none" rx="0.5" />
+      <path d="M20.5 3.5L14 10l-1 3 3-1 6.5-6.5a1.4 1.4 0 0 0-2-2z" />
+      <path d="M15 19.5h.01" />
+    </I>
+  );
+}
+
+/** A 9×9 grid with a lone digit cell — Sudoku. */
+export function IconSudoku() {
+  return (
+    <I>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 3v18M15 3v18M3 9h18M3 15h18" />
+      <circle cx="6" cy="6" r="1" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="18" r="1" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
+/** A car boxed in on a grid — Parking Jam. */
+export function IconCar() {
+  return (
+    <I>
+      <path d="M5 12l1.5-4.5A2 2 0 0 1 8.4 6h7.2a2 2 0 0 1 1.9 1.5L19 12" />
+      <rect x="4" y="12" width="16" height="5" rx="1.5" />
+      <circle cx="8" cy="17" r="1.6" />
+      <circle cx="16" cy="17" r="1.6" />
+      <path d="M3 3h2M19 3h2" />
+    </I>
+  );
+}
+
+/** A tiny crossword grid — Crossword Mini. */
+export function IconCrossword() {
+  return (
+    <I>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M10.2 3v18M17.4 3v18M3 10.2h18M3 17.4h18" />
+      <rect x="10.2" y="3" width="7.2" height="7.2" fill="currentColor" stroke="none" />
+      <rect x="3" y="10.2" width="7.2" height="7.2" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
+/** A calendar page with a check — the Daily wing. */
+export function IconCalendarCheck() {
+  return (
+    <I>
+      <rect x="3" y="5" width="18" height="16" rx="2.5" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+      <path d="M9 15.5l2 2 4-4" />
     </I>
   );
 }

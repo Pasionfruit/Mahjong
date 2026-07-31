@@ -1,0 +1,43 @@
+/* ── brick breaker ──────────────────────────────────────────────────────── */
+
+.brickbreaker-canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 380 / 540;
+  margin: 0 auto 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #0b1f17;
+  touch-action: none;
+  user-select: none;
+  cursor: crosshair;
+}
+
+.brickbreaker-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0 10px;
+  flex-wrap: wrap;
+}
+
+.brickbreaker-lives {
+  color: #e08a8a;
+  letter-spacing: 2px;
+}
+
+.brickbreaker-hint {
+  font-size: 12px;
+  margin: -2px 0 10px;
+}
+
+.brickbreaker-result h3 {
+  font-size: 14px;
+  margin: 14px 0 4px;
+  opacity: 0.85;
+}

@@ -77,9 +77,9 @@ export async function deleteSave(key: string): Promise<void> {
 }
 
 // ── relax state: generic local key/value slot, for toys with no win/loss/
-// score (Zen Garden, Sand Play) that don't fit SavedGame's {seed, settings,
-// moveLog} replay shape. Same store as saves — arcade_saves has no keyPath,
-// so it's just a plain key/value bucket underneath either API.
+// score that don't fit SavedGame's {seed, settings, moveLog} replay shape.
+// Same store as saves — arcade_saves has no keyPath, so it's just a plain
+// key/value bucket underneath either API.
 
 export function getRelaxState<T>(key: string): Promise<T | undefined> {
   return request(SAVES_STORE, 'readonly', (s) => s.get(key));

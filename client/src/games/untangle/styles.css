@@ -1,0 +1,95 @@
+/* Rope Untangle — planarity puzzle on the dark-jade shell. */
+
+.untangle-hud {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.untangle-board-wrap {
+  position: relative;
+  width: min(420px, 100%);
+  margin: 0 auto 12px;
+}
+
+.untangle-board {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.untangle-rope {
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  transition: stroke 0.15s ease;
+}
+
+.untangle-rope-clear {
+  stroke: rgba(107, 214, 138, 0.75);
+}
+
+.untangle-rope-crossed {
+  stroke: rgba(230, 106, 100, 0.85);
+}
+
+.untangle-pin {
+  fill: #e8c15a;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 0.6;
+  pointer-events: none;
+}
+
+.untangle-pin-drag {
+  fill: #f3d980;
+}
+
+/* Generous invisible touch target over each pin. */
+.untangle-hit {
+  fill: transparent;
+  cursor: grab;
+}
+
+.untangle-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: rgba(11, 31, 23, 0.55);
+  pointer-events: none;
+  animation: untangle-fade-in 0.35s ease;
+}
+
+.untangle-overlay span {
+  font-size: 26px;
+  font-weight: 700;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+@keyframes untangle-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.untangle-result h2 {
+  margin: 10px 0 6px;
+  font-size: 20px;
+}
+
+.untangle-result h3 {
+  font-size: 14px;
+  margin: 12px 0 4px;
+  opacity: 0.85;
+}

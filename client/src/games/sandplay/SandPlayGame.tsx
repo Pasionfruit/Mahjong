@@ -52,6 +52,7 @@ export default function SandPlayGame() {
   const [mode, setMode] = useState<Mode>('daily');
   const [view, setView] = useState<View>('play');
   const [level, setLevel] = useState<Level>(() => generateLevel(dailySeed(GAME_ID, dateKeyUTC())));
+  const [endlessLevel, setEndlessLevel] = useState(1);
 
   const gridRef = useRef<SandGrid>(level.grid);
   const activeColorRef = useRef<string | null>(null);
@@ -136,10 +137,13 @@ export default function SandPlayGame() {
     setSync(unsynced.length > 0 ? 'queued' : 'synced');
   }
 
-  function startMode(nextMode: Mode) {
+  /** Endless is a true level chain: "Next level" keeps counting, switching
+   *  modes from the tabs starts the run over at level 1. */
+  function startMode(nextMode: Mode, opts: { chain?: boolean } = {}) {
     setMode(nextMode);
     setView('play');
     setSync('idle');
+    setEndlessLevel(nextMode === 'endless' && opts.chain ? (n) => n + 1 : () => 1);
     const seed = nextMode === 'daily' ? dailySeed(GAME_ID, dateKeyUTC()) : randomSeed();
     setLevel(generateLevel(seed));
   }
@@ -148,7 +152,7 @@ export default function SandPlayGame() {
     <div className="arcade-screen">
       <AuthWidget />
       <div className="arcade-card arcade-card-wide">
-        <h1>🪣 Sand Sort</h1>
+        <h1>🪣 Sand Play</h1>
         <p className="hint arcade-head">
           {signedIn ? '✓ signed in' : 'signing in…'} · Open a bucket to drain that color. Clear the sand to win.
         </p>
@@ -177,7 +181,9 @@ export default function SandPlayGame() {
           </div>
         ) : (
           <>
-            <p className="sandsort-timer">⏱ {formatTime(elapsedMs)}</p>
+            <p className="sandsort-timer">
+              {mode === 'endless' ? `Level ${endlessLevel} · ` : ''}⏱ {formatTime(elapsedMs)}
+            </p>
 
             <canvas ref={canvasRef} className="sandplay-canvas" width={SAND_COLS * CELL} height={SAND_ROWS * CELL} />
 
@@ -219,7 +225,7 @@ export default function SandPlayGame() {
                   {mode === 'daily' ? (
                     <p className="hint">Come back tomorrow for a new level!</p>
                   ) : (
-                    <button className="btn btn-primary" onClick={() => startMode('endless')}>
+                    <button className="btn btn-primary" onClick={() => startMode('endless', { chain: true })}>
                       Next level
                     </button>
                   )}

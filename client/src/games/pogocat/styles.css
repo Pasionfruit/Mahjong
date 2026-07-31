@@ -1,0 +1,37 @@
+/* ── pogo cat ───────────────────────────────────────────────────────────── */
+
+.pogocat-canvas {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 380 / 540;
+  margin: 0 auto 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #06130d;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pogocat-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin: 4px 0 10px;
+}
+
+.pogocat-hint {
+  font-size: 12px;
+  margin: -2px 0 10px;
+}
+
+.pogocat-result h3 {
+  font-size: 14px;
+  margin: 14px 0 4px;
+  opacity: 0.85;
+}

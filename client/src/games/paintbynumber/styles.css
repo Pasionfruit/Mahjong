@@ -1,0 +1,130 @@
+/* Paint by Number — 16×16 coloring page on the dark-jade shell. */
+
+.paintbynumber-hud {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.paintbynumber-hint {
+  margin: 0 0 10px;
+}
+
+.paintbynumber-board {
+  display: grid;
+  grid-template-columns: repeat(var(--pbn-size, 16), 1fr);
+  gap: 2px;
+  width: min(400px, 100%);
+  margin: 0 auto 14px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.paintbynumber-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(8px, 2.4vw, 12px);
+  font-weight: 600;
+  line-height: 1;
+  transition: background 0.25s ease, color 0.35s ease;
+}
+
+/* Background: not part of the picture — near-invisible, not paintable. */
+.paintbynumber-cell-bg {
+  background: rgba(255, 255, 255, 0.015);
+  pointer-events: none;
+}
+
+/* Unpainted figure cell: dim tile showing its palette number. */
+.paintbynumber-cell-open {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(244, 239, 226, 0.55);
+  cursor: pointer;
+}
+
+/* Painted: flat color, the number fades out. */
+.paintbynumber-cell-done {
+  background: var(--pbn-color);
+  color: transparent;
+}
+
+.paintbynumber-celebrate {
+  animation: paintbynumber-pop 0.7s ease;
+}
+
+@keyframes paintbynumber-pop {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.05); }
+  65% { transform: scale(0.99); }
+  100% { transform: scale(1); }
+}
+
+.paintbynumber-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 4px 0 10px;
+}
+
+.paintbynumber-color {
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 48px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--paper);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+
+.paintbynumber-color.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.paintbynumber-color.complete {
+  opacity: 0.45;
+}
+
+.paintbynumber-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+.paintbynumber-color-num {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.paintbynumber-color-count {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.paintbynumber-result h2 {
+  margin: 10px 0 6px;
+  font-size: 20px;
+}
+
+.paintbynumber-result h3 {
+  font-size: 14px;
+  margin: 12px 0 4px;
+  opacity: 0.85;
+}

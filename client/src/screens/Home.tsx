@@ -3,11 +3,12 @@ import type { GameId } from '@shared/games';
 import { createParty, joinParty } from '../socket';
 import { loadNickname } from '../session';
 import { useStore } from '../store';
-import { CATEGORY_LABELS, CATEGORY_ORDER, GAMES, type GameEntry } from '../games/catalog';
+import { CATEGORY_LABELS, CATEGORY_ORDER, GAMES, dailyGames, type GameEntry } from '../games/catalog';
+import { useDailyProgress } from '../arcade/useDailyProgress';
 import { IconController } from '../components/icons';
 import { isDesktop } from '../device';
 
-type Wing = 'party' | 'arcade';
+type Wing = 'party' | 'zen' | 'daily';
 
 export default function Home() {
   const [nickname, setNickname] = useState(loadNickname());
@@ -16,6 +17,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [wing, setWing] = useState<Wing>('party');
   const notice = useStore((s) => s.notice);
+  const dailyDone = useDailyProgress();
   const nickRef = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<number>(0);
 
@@ -61,11 +63,37 @@ export default function Home() {
     if (!r.ok) complain(r.error);
   }
 
+  function gameCard(g: GameEntry) {
+    return (
+      <div key={g.id} className={`game-card${g.available ? '' : ' soon'}`}>
+        <div className="game-card-icon">
+          <g.Icon />
+        </div>
+        <div className="game-card-title">
+          {g.name}
+          {!g.available && <span className="soon-badge">Soon</span>}
+        </div>
+        <div className="game-card-tagline">{g.tagline}</div>
+        <div className="game-card-players">{g.players}</div>
+        <button
+          className="btn btn-primary game-card-btn"
+          disabled={busy || !g.available || (g.desktopOnly && !desktop)}
+          onClick={() => create(g)}
+        >
+          {!g.available ? 'Coming soon' : g.desktopOnly && !desktop ? 'Desktop only' : 'Play'}
+        </button>
+      </div>
+    );
+  }
+
   const wingGames = GAMES.filter((g) => (wing === 'party' ? g.competitive : !g.competitive));
   const sections = CATEGORY_ORDER.map((cat) => ({
     cat,
     games: wingGames.filter((g) => g.category === cat),
   })).filter((s) => s.games.length > 0);
+
+  const dailies = dailyGames();
+  const doneCount = dailies.filter((g) => dailyDone.has(g.id)).length;
 
   return (
     <div className="home">
@@ -75,9 +103,9 @@ export default function Home() {
             <span className="landing-glyph">
               <IconController />
             </span>{' '}
-            GameNight
+            LocalRot
           </h1>
-          <p className="home-sub">Pick a game, start a table, and share the code with friends.</p>
+          <p className="home-sub">Party with friends, zen out solo, or clear today’s dailies.</p>
         </header>
 
         {notice && <div className="notice">{notice}</div>}
@@ -88,36 +116,6 @@ export default function Home() {
           </div>
         )}
 
-        <label className="field home-nick">
-          <span>Nickname</span>
-          <input
-            ref={nickRef}
-            value={nickname}
-            maxLength={16}
-            placeholder="Your name at the table"
-            onChange={(e) => setNickname(e.target.value)}
-          />
-        </label>
-
-        <div className="join-panel">
-          <span className="join-label">Joining a friend? Enter their table code.</span>
-          <div className="join-row">
-            <input
-              className="code-input"
-              value={code}
-              maxLength={4}
-              placeholder="CODE"
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === 'Enter' && join()}
-            />
-            <button className="btn" disabled={busy} onClick={join}>
-              Join
-            </button>
-          </div>
-        </div>
-
-        <div className="home-divider">or pick something to play</div>
-
         <div className="home-tabs">
           <button
             className={`home-tab${wing === 'party' ? ' active' : ''}`}
@@ -126,43 +124,101 @@ export default function Home() {
             🎉 Party Games
           </button>
           <button
-            className={`home-tab${wing === 'arcade' ? ' active' : ''}`}
-            onClick={() => setWing('arcade')}
+            className={`home-tab${wing === 'zen' ? ' active' : ''}`}
+            onClick={() => setWing('zen')}
           >
-            🧠 Brain Arcade
+            🧘 Zen Endless
+          </button>
+          <button
+            className={`home-tab${wing === 'daily' ? ' active' : ''}`}
+            onClick={() => setWing('daily')}
+          >
+            📅 Daily
+            <span className={`daily-tab-count${doneCount === dailies.length ? ' complete' : ''}`}>
+              {doneCount}/{dailies.length}
+            </span>
           </button>
         </div>
 
-        {sections.length === 0 ? (
-          <p className="home-empty hint">
-            New solo puzzle games are on their way — check back soon!
-          </p>
+        {wing === 'party' && (
+          <>
+            <label className="field home-nick">
+              <span>Nickname</span>
+              <input
+                ref={nickRef}
+                value={nickname}
+                maxLength={16}
+                placeholder="Your name at the table"
+                onChange={(e) => setNickname(e.target.value)}
+              />
+            </label>
+
+            <div className="join-panel">
+              <span className="join-label">Joining a friend? Enter their table code.</span>
+              <div className="join-row">
+                <input
+                  className="code-input"
+                  value={code}
+                  maxLength={4}
+                  placeholder="CODE"
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && join()}
+                />
+                <button className="btn" disabled={busy} onClick={join}>
+                  Join
+                </button>
+              </div>
+            </div>
+
+            <div className="home-divider">or start a table</div>
+          </>
+        )}
+
+        {wing === 'daily' ? (
+          <section className="category-section">
+            <div className="daily-summary">
+              <h2 className="category-heading">Today’s Challenges</h2>
+              <p className="hint daily-summary-hint">
+                {doneCount === dailies.length
+                  ? '🏆 All dailies done — see you tomorrow!'
+                  : `${doneCount} of ${dailies.length} done today — same puzzle for everyone, once a day.`}
+              </p>
+              <div className="daily-progress">
+                <div
+                  className="daily-progress-fill"
+                  style={{ width: `${dailies.length ? (doneCount / dailies.length) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+            <div className="game-grid">
+              {dailies.map((g) => (
+                <div key={g.id} className={`game-card daily-card${dailyDone.has(g.id) ? ' daily-card-done' : ''}`}>
+                  <div className="game-card-icon">
+                    <g.Icon />
+                  </div>
+                  <div className="game-card-title">
+                    {g.dailyLabel ?? g.name}
+                    {dailyDone.has(g.id) && <span className="daily-done-badge">✓ Done</span>}
+                  </div>
+                  <div className="game-card-tagline">{g.tagline}</div>
+                  <button
+                    className={`btn game-card-btn${dailyDone.has(g.id) ? '' : ' btn-primary'}`}
+                    disabled={busy}
+                    onClick={() => create(g)}
+                  >
+                    {dailyDone.has(g.id) ? 'Play again' : 'Play today’s'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : sections.length === 0 ? (
+          <p className="home-empty hint">New games are on their way — check back soon!</p>
         ) : (
           sections.map(({ cat, games }) => (
             <section key={cat} className="category-section">
               <h2 className="category-heading">{CATEGORY_LABELS[cat]}</h2>
-              <div className="game-grid">
-                {games.map((g) => (
-                  <div key={g.id} className={`game-card${g.available ? '' : ' soon'}`}>
-                    <div className="game-card-icon">
-                      <g.Icon />
-                    </div>
-                    <div className="game-card-title">
-                      {g.name}
-                      {!g.available && <span className="soon-badge">Soon</span>}
-                    </div>
-                    <div className="game-card-tagline">{g.tagline}</div>
-                    <div className="game-card-players">{g.players}</div>
-                    <button
-                      className="btn btn-primary game-card-btn"
-                      disabled={busy || !g.available || (g.desktopOnly && !desktop)}
-                      onClick={() => create(g)}
-                    >
-                      {!g.available ? 'Coming soon' : g.desktopOnly && !desktop ? 'Desktop only' : 'Play'}
-                    </button>
-                  </div>
-                ))}
-              </div>
+              <div className="game-grid">{games.map(gameCard)}</div>
             </section>
           ))
         )}

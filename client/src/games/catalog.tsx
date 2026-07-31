@@ -21,6 +21,17 @@ import WordGuessGame from './wordguess/WordGuessGame';
 import MinesweeperGame from './minesweeper/MinesweeperGame';
 import Twenty48Game from './twenty48/Twenty48Game';
 import SandPlayGame from './sandplay/SandPlayGame';
+import FlappyGame from './flappy/FlappyGame';
+import DoodleJumpGame from './doodlejump/DoodleJumpGame';
+import BrickBreakerGame from './brickbreaker/BrickBreakerGame';
+import PeggleGame from './peggle/PeggleGame';
+import PogoCatGame from './pogocat/PogoCatGame';
+import MagicSortGame from './magicsort/MagicSortGame';
+import UntangleGame from './untangle/UntangleGame';
+import PaintByNumberGame from './paintbynumber/PaintByNumberGame';
+import SudokuGame from './sudoku/SudokuGame';
+import ParkingJamGame from './parkingjam/ParkingJamGame';
+import CrosswordGame from './crossword/CrosswordGame';
 import {
   IconTile,
   IconGrid,
@@ -35,53 +46,65 @@ import {
   IconDotsBoxes,
   IconSpinTop,
   IconDie,
-  IconPac,
   IconWordTiles,
   IconMine,
   IconMergeTiles,
   IconHourglass,
+  IconFlappy,
+  IconSpring,
+  IconPaddle,
+  IconPegs,
+  IconPogoCat,
+  IconFlasks,
+  IconKnot,
+  IconPaintGrid,
+  IconSudoku,
+  IconCar,
+  IconCrossword,
 } from '../components/icons';
 
 /**
  * Two wings of one catalog: `competitive` games are room-based real-time
- * multiplayer (today's entire shipped lineup); everything else is Brain
- * Arcade — solo, offline-capable, daily/endless puzzles. `category` picks
- * which section of its wing a card renders under on the home screen.
+ * multiplayer (Party Games), everything else is Zen Endless — solo,
+ * offline-capable puzzles with a shared leaderboard. The Daily wing is
+ * derived: every entry with `hasDaily` appears there with a per-profile
+ * done-today check. `category` picks which section of its wing a card
+ * renders under on the home screen.
  */
 export type GameCategory =
   | 'tabletop'
   | 'action'
   | 'party'
-  | 'word'
-  | 'logic'
+  | 'arcade'
+  | 'relaxing'
   | 'sorting'
   | 'matching'
-  | 'arcade'
-  | 'relaxing';
+  | 'logic'
+  | 'word';
 
 /** Render order for category sections within a wing; also the section label. */
 export const CATEGORY_LABELS: Record<GameCategory, string> = {
   tabletop: 'Tabletop & Strategy',
   action: 'Action & Arcade',
   party: 'Party & Social',
-  word: 'Word',
-  logic: 'Logic',
-  sorting: 'Sorting',
-  matching: 'Matching',
   arcade: 'Arcade',
   relaxing: 'Relaxing',
+  sorting: 'Sorting',
+  matching: 'Matching',
+  logic: 'Logic',
+  word: 'Word',
 };
 
 export const CATEGORY_ORDER: GameCategory[] = [
   'tabletop',
   'action',
   'party',
-  'word',
-  'logic',
-  'sorting',
-  'matching',
   'arcade',
   'relaxing',
+  'sorting',
+  'matching',
+  'logic',
+  'word',
 ];
 
 /**
@@ -105,15 +128,18 @@ export interface GameEntry {
   SettingsPanel?: ComponentType;
   /** Which section this card renders under within its wing. */
   category: GameCategory;
-  /** Room-based real-time multiplayer (Party Games wing) vs. solo (Brain Arcade wing). */
+  /** Room-based real-time multiplayer (Party Games wing) vs. solo (Zen Endless wing). */
   competitive: boolean;
-  /** Has a once-a-day challenge mode. */
+  /** Has a once-a-day challenge mode — the game also appears in the Daily wing. */
   hasDaily?: boolean;
+  /** What the Daily wing calls this game's daily challenge (e.g. "Peggle Map"). */
+  dailyLabel?: string;
   /** Contributes to a global leaderboard. */
   hasLeaderboard?: boolean;
 }
 
 export const GAMES: GameEntry[] = [
+  // ── Party Games: room-based real-time multiplayer ────────────────────────
   {
     id: 'mahjong',
     name: 'Mahjong',
@@ -138,7 +164,6 @@ export const GAMES: GameEntry[] = [
     category: 'tabletop',
     competitive: true,
   },
-
   {
     id: 'bomberman',
     name: 'Bomberman',
@@ -152,7 +177,6 @@ export const GAMES: GameEntry[] = [
     category: 'action',
     competitive: true,
   },
-
   {
     id: 'art',
     name: 'Art Games',
@@ -165,7 +189,6 @@ export const GAMES: GameEntry[] = [
     category: 'party',
     competitive: true,
   },
-
   {
     id: 'quoridor',
     name: 'Quoridor',
@@ -178,7 +201,6 @@ export const GAMES: GameEntry[] = [
     category: 'tabletop',
     competitive: true,
   },
-
   {
     id: 'tetris',
     name: 'Tetris',
@@ -191,7 +213,6 @@ export const GAMES: GameEntry[] = [
     category: 'action',
     competitive: true,
   },
-
   {
     id: 'dots',
     name: 'Dots & Boxes',
@@ -204,7 +225,6 @@ export const GAMES: GameEntry[] = [
     category: 'tabletop',
     competitive: true,
   },
-
   {
     id: 'sumo',
     name: 'Spin Sumo',
@@ -217,7 +237,6 @@ export const GAMES: GameEntry[] = [
     category: 'action',
     competitive: true,
   },
-
   {
     id: 'party',
     name: 'Party Board',
@@ -231,21 +250,145 @@ export const GAMES: GameEntry[] = [
     competitive: true,
   },
 
+  // ── Zen Endless: solo, offline-capable, shared leaderboards ──────────────
   {
-    id: 'wordguess',
-    name: 'Word Guess',
-    tagline: 'Five letters, six tries — solve today’s word.',
+    id: 'flappy',
+    name: 'Flappy Bird',
+    tagline: 'Tap to flap — thread the endless pipes.',
     players: '1 player',
-    Icon: IconWordTiles,
+    Icon: IconFlappy,
     available: true,
     local: true,
-    Game: WordGuessGame,
-    category: 'word',
+    Game: FlappyGame,
+    category: 'arcade',
     competitive: false,
-    hasDaily: true,
     hasLeaderboard: true,
   },
-
+  {
+    id: 'doodlejump',
+    name: 'Doodle Jump',
+    tagline: 'Bounce ever higher — never look down.',
+    players: '1 player',
+    Icon: IconSpring,
+    available: true,
+    local: true,
+    Game: DoodleJumpGame,
+    category: 'arcade',
+    competitive: false,
+    hasLeaderboard: true,
+  },
+  {
+    id: 'brickbreaker',
+    name: 'Brick Breaker',
+    tagline: 'Smash every brick, keep the ball alive.',
+    players: '1 player',
+    Icon: IconPaddle,
+    available: true,
+    local: true,
+    Game: BrickBreakerGame,
+    category: 'arcade',
+    competitive: false,
+    hasLeaderboard: true,
+  },
+  {
+    id: 'peggle',
+    name: 'Peggle',
+    tagline: 'Bank wild shots off pegs — clear the orange ones.',
+    players: '1 player',
+    Icon: IconPegs,
+    available: true,
+    local: true,
+    Game: PeggleGame,
+    category: 'arcade',
+    competitive: false,
+    hasDaily: true,
+    dailyLabel: 'Peggle Map',
+    hasLeaderboard: true,
+  },
+  {
+    id: 'pogocat',
+    name: 'Pogo Cat',
+    tagline: 'Charge the spring, time the bounce, stick the landing.',
+    players: '1 player',
+    Icon: IconPogoCat,
+    available: true,
+    local: true,
+    Game: PogoCatGame,
+    category: 'arcade',
+    competitive: false,
+    hasLeaderboard: true,
+  },
+  {
+    id: 'untangle',
+    name: 'Rope Untangle',
+    tagline: 'Drag the pins until no ropes cross.',
+    players: '1 player',
+    Icon: IconKnot,
+    available: true,
+    local: true,
+    Game: UntangleGame,
+    category: 'relaxing',
+    competitive: false,
+    hasLeaderboard: true,
+  },
+  {
+    id: 'paintbynumber',
+    name: 'Paint by Number',
+    tagline: 'Fill the numbered cells, reveal the picture.',
+    players: '1 player',
+    Icon: IconPaintGrid,
+    available: true,
+    local: true,
+    Game: PaintByNumberGame,
+    category: 'relaxing',
+    competitive: false,
+    hasDaily: true,
+    dailyLabel: 'Coloring Page',
+    hasLeaderboard: true,
+  },
+  {
+    id: 'sandplay',
+    name: 'Sand Play',
+    tagline: 'Sort falling sand into the right color buckets.',
+    players: '1 player',
+    Icon: IconHourglass,
+    available: true,
+    local: true,
+    Game: SandPlayGame,
+    category: 'sorting',
+    competitive: false,
+    hasDaily: true,
+    dailyLabel: 'Sand Level',
+    hasLeaderboard: true,
+  },
+  {
+    id: 'magicsort',
+    name: 'Magic Sort',
+    tagline: 'Pour the potions until every flask runs pure.',
+    players: '1 player',
+    Icon: IconFlasks,
+    available: true,
+    local: true,
+    Game: MagicSortGame,
+    category: 'sorting',
+    competitive: false,
+    hasLeaderboard: true,
+  },
+  {
+    id: 'twenty48',
+    name: '2048',
+    tagline: 'Slide, merge, chase a new high score.',
+    players: '1 player',
+    Icon: IconMergeTiles,
+    available: true,
+    local: true,
+    Game: Twenty48Game,
+    category: 'matching',
+    competitive: false,
+    hasDaily: true,
+    dailyLabel: '2048 Board',
+    hasLeaderboard: true,
+  },
   {
     id: 'minesweeper',
     name: 'Minesweeper',
@@ -258,35 +401,66 @@ export const GAMES: GameEntry[] = [
     category: 'logic',
     competitive: false,
     hasDaily: true,
+    dailyLabel: 'Minefield',
     hasLeaderboard: true,
   },
-
   {
-    id: 'twenty48',
-    name: '2048',
-    tagline: 'Slide, merge, chase a new high score.',
+    id: 'sudoku',
+    name: 'Sudoku',
+    tagline: 'Nine rows, nine columns, no repeats.',
     players: '1 player',
-    Icon: IconMergeTiles,
+    Icon: IconSudoku,
     available: true,
     local: true,
-    Game: Twenty48Game,
-    category: 'arcade',
+    Game: SudokuGame,
+    category: 'logic',
     competitive: false,
     hasDaily: true,
+    dailyLabel: 'Sudoku',
     hasLeaderboard: true,
   },
-
   {
-    id: 'sandplay',
-    name: 'Sand Play',
-    tagline: 'Sort falling sand into the right color buckets.',
+    id: 'parkingjam',
+    name: 'Parking Jam',
+    tagline: 'Slide the cars free of the gridlock.',
     players: '1 player',
-    Icon: IconHourglass,
+    Icon: IconCar,
     available: true,
     local: true,
-    Game: SandPlayGame,
-    category: 'relaxing',
+    Game: ParkingJamGame,
+    category: 'logic',
     competitive: false,
+    hasLeaderboard: true,
+  },
+  {
+    id: 'wordguess',
+    name: 'Word Guess',
+    tagline: 'Five letters, six tries — solve today’s word.',
+    players: '1 player',
+    Icon: IconWordTiles,
+    available: true,
+    local: true,
+    Game: WordGuessGame,
+    category: 'word',
+    competitive: false,
+    hasDaily: true,
+    dailyLabel: 'Word',
+    hasLeaderboard: true,
+  },
+  {
+    id: 'crossword',
+    name: 'Crossword Mini',
+    tagline: 'A bite-size crossword, five by five.',
+    players: '1 player',
+    Icon: IconCrossword,
+    available: true,
+    local: true,
+    Game: CrosswordGame,
+    category: 'word',
+    competitive: false,
+    hasDaily: true,
+    dailyLabel: 'Mini Crossword',
+    hasLeaderboard: true,
   },
 
   // Coming soon — placeholders for future games.
@@ -330,18 +504,13 @@ export const GAMES: GameEntry[] = [
     category: 'tabletop',
     competitive: true,
   },
-  {
-    id: 'pacman',
-    name: 'Pac-Man',
-    tagline: 'Chomp pellets, outrun the ghosts.',
-    players: '1 player',
-    Icon: IconPac,
-    available: false,
-    category: 'action',
-    competitive: true,
-  },
 ];
 
 export function gameById(id: string): GameEntry | undefined {
   return GAMES.find((g) => g.id === id);
+}
+
+/** Every launchable game with a once-a-day challenge — the Daily wing. */
+export function dailyGames(): GameEntry[] {
+  return GAMES.filter((g) => g.available && g.hasDaily);
 }

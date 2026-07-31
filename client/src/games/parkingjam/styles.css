@@ -1,0 +1,124 @@
+/* ── Parking Jam ────────────────────────────────────────────────────────── */
+
+.parkingjam-hud {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  margin: 2px 0 6px;
+}
+
+.parkingjam-optimal {
+  opacity: 0.75;
+}
+
+.parkingjam-hint {
+  margin: 0 0 14px;
+}
+
+.parkingjam-wrap {
+  position: relative;
+  width: min(340px, 100%);
+  margin: 0 auto 6px;
+}
+
+.parkingjam-board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  background: rgba(0, 0, 0, 0.28);
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  overflow: hidden; /* the winning red car slides off through the notch */
+}
+
+.parkingjam-cell {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Accent tick marking the exit lane on the right border. */
+.parkingjam-wrap::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  top: calc(2 * 100% / 6 + 6px);
+  height: calc(100% / 6 - 12px);
+  width: 4px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.parkingjam-exit {
+  position: absolute;
+  right: -26px;
+  transform: translateY(-50%);
+  color: var(--accent);
+  font-size: 20px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.parkingjam-vehicle {
+  position: absolute;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 10px;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.28), inset 0 2px 0 rgba(255, 255, 255, 0.22);
+  cursor: grab;
+  touch-action: none;
+  transition: left 0.16s ease, top 0.16s ease, box-shadow 0.16s ease;
+}
+
+.parkingjam-dragging {
+  transition: none;
+  cursor: grabbing;
+  z-index: 5;
+}
+
+.parkingjam-selected {
+  box-shadow:
+    inset 0 -3px 0 rgba(0, 0, 0, 0.28),
+    inset 0 2px 0 rgba(255, 255, 255, 0.22),
+    0 0 0 2px var(--accent);
+  z-index: 4;
+}
+
+/* Length-3 trucks read differently: cargo stripes over a darker body. */
+.parkingjam-truck {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.09) 0 6px,
+    rgba(0, 0, 0, 0.05) 6px 12px
+  );
+  border-radius: 8px;
+}
+
+.parkingjam-red {
+  box-shadow:
+    inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.28),
+    0 0 10px rgba(226, 85, 85, 0.45);
+}
+
+.parkingjam-red.parkingjam-selected {
+  box-shadow:
+    inset 0 -3px 0 rgba(0, 0, 0, 0.3),
+    inset 0 2px 0 rgba(255, 255, 255, 0.28),
+    0 0 0 2px var(--accent),
+    0 0 10px rgba(226, 85, 85, 0.45);
+}
+
+/* The victory lap: slide out through the exit and fade. */
+.parkingjam-exiting {
+  transform: translateX(180%);
+  opacity: 0;
+  transition: transform 0.6s ease-in 0.1s, opacity 0.5s ease-in 0.25s;
+}
+
+.parkingjam-result h2 {
+  margin: 14px 0 6px;
+}

@@ -1,0 +1,106 @@
+/* Peggle — component-scoped styles (shell classes come from app.css). */
+
+.peggle-canvas {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #0a1c15;
+  touch-action: none;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.peggle-hud {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 0 0 10px;
+}
+
+.peggle-hud-round {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.75;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.peggle-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 58px;
+}
+
+.peggle-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.peggle-stat-value {
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.peggle-stat-orange {
+  color: #f5a04d;
+}
+
+.peggle-result {
+  margin-top: 14px;
+}
+
+.peggle-result h2 {
+  margin: 0 0 6px;
+}
+
+.peggle-loss {
+  opacity: 0.9;
+}
+
+.peggle-final {
+  margin: 0 0 10px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.peggle-fever {
+  background: linear-gradient(90deg, #ffd06b, #ff8a3c, #ffd06b);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 0.06em;
+  animation:
+    peggle-fever-shimmer 1.2s linear infinite,
+    peggle-fever-pop 0.45s ease-out;
+}
+
+@keyframes peggle-fever-shimmer {
+  from {
+    background-position: 0% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes peggle-fever-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

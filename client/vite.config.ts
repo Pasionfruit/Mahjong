@@ -13,9 +13,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['apple-touch-icon.png', 'favicon.png'],
       manifest: {
-        name: 'GameNight',
-        short_name: 'GameNight',
-        description: 'Create a private table and play party games with friends.',
+        name: 'LocalRot',
+        short_name: 'LocalRot',
+        description: 'Party games with friends, zen solo arcade, and daily puzzles.',
         theme_color: '#16382d',
         background_color: '#16382d',
         display: 'standalone',
