@@ -1,6 +1,20 @@
+/* Self-hosted open fonts (SIL OFL, licenses alongside the files in
+   client/public/fonts/). Cause is the app-wide text face; Momo Trust
+   Display is the headline voice. */
+
+/* Cause (Variable) — Saurabh Sharma. Body text. */
 @font-face {
-  font-family: 'Henshin';
-  src: url('/fonts/Henshin.ttf') format('truetype');
+  font-family: 'Cause';
+  src: url('/fonts/Cause-Variable.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Momo Trust Display — TYPE Associates. Titles only. */
+@font-face {
+  font-family: 'Momo Trust Display';
+  src: url('/fonts/MomoTrustDisplay-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -26,9 +40,24 @@ html {
 }
 
 body {
-  font-family: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  /* Cause everywhere by default; titles override below. */
+  font-family: 'Cause', 'Inter Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+/* Titles run in Momo Trust Display. */
+h1,
+h2,
+h3,
+h4,
+.home-title,
+.category-heading,
+.section-title,
+.game-card-title,
+.profile-name,
+.profile-heading {
+  font-family: 'Momo Trust Display', 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
 }
 
 /* ── themes ─────────────────────────────────────────────────────────────── */
@@ -172,8 +201,7 @@ body {
 }
 
 .landing-title {
-  /* the one place we keep the decorative display font */
-  font-family: 'Henshin', 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Momo Trust Display', 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
   letter-spacing: 0.06em;
   margin: 0 0 4px;
   font-size: 28px;

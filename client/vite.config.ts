@@ -32,7 +32,7 @@ export default defineConfig({
         // App shell only — cache the built JS/CSS/HTML/icons/fonts so the game
         // opens instantly. The real-time layer is deliberately left to the
         // network: never serve socket.io or the health check from the cache.
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,ttf}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,ttf,otf}'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/socket\.io\//, /^\/healthz$/],
       },
