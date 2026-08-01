@@ -7,7 +7,8 @@ import { flushOutbox, getAllResults } from '../arcade/storage/outbox';
 import { isArcadeConfigured } from '../arcade/supabase';
 import type { StoredResult } from '../arcade/types';
 import { GAMES, dailyGames } from '../games/catalog';
-import { IconUser } from '../components/icons';
+import { IconMoon, IconSun, IconUser } from '../components/icons';
+import { setMode, useMode } from '../mode';
 
 interface GameLine {
   id: string;
@@ -67,6 +68,7 @@ function summarize(results: StoredResult[], unsynced: number): ProfileData {
 
 export default function Profile() {
   const configured = isArcadeConfigured();
+  const mode = useMode();
   const [name, setName] = useState<string | null>(null);
   const [anonymous, setAnonymous] = useState(true);
   const [signedIn, setSignedIn] = useState(false);
@@ -247,6 +249,33 @@ export default function Profile() {
           <p className="hint">No finished games yet — the Zen and Daily tabs are waiting.</p>
         </section>
       )}
+
+      <section className="profile-card">
+        <h3 className="profile-heading">Appearance</h3>
+        <div className="mode-toggle">
+          <button
+            className={`btn mode-choice${mode === 'light' ? ' active' : ''}`}
+            onClick={() => setMode('light')}
+          >
+            <span className="mode-choice-icon">
+              <IconSun />
+            </span>
+            Cozy Cabin
+          </button>
+          <button
+            className={`btn mode-choice${mode === 'dark' ? ' active' : ''}`}
+            onClick={() => setMode('dark')}
+          >
+            <span className="mode-choice-icon">
+              <IconMoon />
+            </span>
+            Harbor Haze
+          </button>
+        </div>
+        <p className="hint mode-hint">
+          {mode === 'light' ? 'Warm woods and cream.' : 'Soft harbor fog for late nights.'}
+        </p>
+      </section>
 
       {configured && (
         <section className="profile-card">

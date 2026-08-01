@@ -8,6 +8,7 @@ import { useDailyProgress } from '../arcade/useDailyProgress';
 import {
   IconCalendarCheck,
   IconController,
+  IconLink,
   IconPartyPopper,
   IconUser,
   IconZenLotus,
@@ -15,12 +16,13 @@ import {
 import { isDesktop } from '../device';
 import Profile from './Profile';
 
-type Wing = 'party' | 'zen' | 'daily' | 'profile';
+type Wing = 'connect' | 'party' | 'daily' | 'zen' | 'profile';
 
 const WING_TABS: { wing: Wing; label: string; Icon: ComponentType }[] = [
+  { wing: 'connect', label: 'Connect', Icon: IconLink },
   { wing: 'party', label: 'Party', Icon: IconPartyPopper },
-  { wing: 'zen', label: 'Zen', Icon: IconZenLotus },
   { wing: 'daily', label: 'Daily', Icon: IconCalendarCheck },
+  { wing: 'zen', label: 'Zen', Icon: IconZenLotus },
   { wing: 'profile', label: 'Profile', Icon: IconUser },
 ];
 
@@ -29,13 +31,23 @@ export default function Home() {
   const [code, setCode] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [wing, setWing] = useState<Wing>('party');
+  const [wing, setWing] = useState<Wing>('connect');
   const notice = useStore((s) => s.notice);
   const dailyDone = useDailyProgress();
   const nickRef = useRef<HTMLInputElement>(null);
   const toastTimer = useRef<number>(0);
+  const wantNickFocus = useRef(false);
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
+
+  // A nickname complaint from another wing lands after Connect mounts.
+  useEffect(() => {
+    if (wing === 'connect' && wantNickFocus.current) {
+      wantNickFocus.current = false;
+      nickRef.current?.focus();
+      nickRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, [wing]);
 
   const name = nickname.trim();
   const desktop = isDesktop();
@@ -61,7 +73,12 @@ export default function Home() {
       useStore.getState().setLocalGame(game.id);
       return;
     }
-    if (!name) return complain('Pick a nickname before you play!', true);
+    if (!name) {
+      // Nickname lives on the Connect page — send them there, field focused.
+      wantNickFocus.current = true;
+      setWing('connect');
+      return complain('Pick a nickname before you play!', true);
+    }
     setBusy(true);
     const r = await createParty(name, game.id as GameId);
     setBusy(false);
@@ -150,8 +167,8 @@ export default function Home() {
           ))}
         </div>
 
-        {wing === 'party' && (
-          <>
+        {wing === 'connect' ? (
+          <div className="connect-wing">
             <label className="field home-nick">
               <span>Nickname</span>
               <input
@@ -180,11 +197,18 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="home-divider">or start a table</div>
-          </>
-        )}
-
-        {wing === 'profile' ? (
+            <div className="home-divider">or</div>
+            <p className="hint connect-hint">
+              Hosting instead? Head to the Party tab, pick a game, and share the 4-letter code
+              with your friends.
+            </p>
+            <div className="connect-host-row">
+              <button className="btn btn-primary" onClick={() => setWing('party')}>
+                Browse party games
+              </button>
+            </div>
+          </div>
+        ) : wing === 'profile' ? (
           <Profile />
         ) : wing === 'daily' ? (
           <section className="category-section">

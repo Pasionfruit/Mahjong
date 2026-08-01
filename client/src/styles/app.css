@@ -31,8 +31,15 @@ body,
   height: 100%;
   /* The page canvas sits behind .app. On mobile, when the browser's URL bar
      collapses (or iOS rubber-band scrolls), a strip below .app is exposed —
-     paint it the felt-dark base so no white ever shows through. */
-  background: #16382d;
+     paint it the mode's base so no white ever shows through. mode.ts stamps
+     data-mode on <html>. */
+  background: #1c2b3a;
+}
+
+html[data-mode='light'],
+html[data-mode='light'] body,
+html[data-mode='light'] #root {
+  background: #e3c2a0;
 }
 
 html {
@@ -63,20 +70,63 @@ h4,
 /* ── themes ─────────────────────────────────────────────────────────────── */
 
 .app {
-  --felt: #1e5240;
-  --felt-dark: #16382d;
-  --accent: #e8c15a;
-  --tile-face: #f7f2e5;
-  --tile-back: #2f7157;
-  --tile-edge: #d8cfae;
-  --ink: #17211d;
-  --paper: #f4efe2;
+  /* Dark mode — "harbor haze at dusk": rich saturated harbor blues under
+     warm lantern-peach light. Deliberately never a harsh black, and warm
+     accents keep it relaxing rather than icy. Light mode overrides below
+     with "cozy cabin". */
+  --felt: #2e4257;
+  --felt-dark: #1c2b3a;
+  --accent: #f2b380;
+  --accent-2: #e58a68;
+  --on-accent: #2b1c10;
+  --tile-face: #f6efe2;
+  --tile-back: #40566b;
+  --tile-edge: #d9c9b2;
+  --ink: #22303e;
+  --paper: #f3ece1;
   --danger: #c0392b;
 
+  /* Semantic surfaces so light mode is a var swap, not a rewrite. */
+  --surface: rgba(10, 22, 36, 0.32);
+  --surface-strong: rgba(8, 18, 30, 0.48);
+  --line: rgba(242, 231, 213, 0.14);
+  --line-strong: rgba(242, 231, 213, 0.28);
+  --control: rgba(244, 226, 202, 0.09);
+  --control-hover: rgba(244, 226, 202, 0.17);
+  --panel: #2b3d50;
+
   height: 100%;
+  /* Dynamic viewport height: in an installed PWA, plain % can leave a dead
+     strip under the fixed bottom nav — dvh tracks the real visible height. */
+  height: 100dvh;
   overflow: auto;
   background: radial-gradient(ellipse at center, var(--felt) 0%, var(--felt-dark) 100%);
   color: var(--paper);
+}
+
+.app[data-mode='light'] {
+  /* Light mode — "cozy cabin, by the fire": the user's cabin hexes pushed
+     for contrast — deep-roast text, saturated terracotta, honey-amber
+     second accent, cream cards that lift off a warmer tan ground. */
+  --felt: #f9e8d2;
+  --felt-dark: #e3c2a0;
+  --accent: #b3543a;
+  --accent-2: #d98a2b;
+  --on-accent: #fdf2e2;
+  --tile-face: #fffaf0;
+  --tile-back: #b3543a;
+  --tile-edge: #d1b7a0;
+  --ink: #3c2314;
+  --paper: #46281a;
+  --danger: #a63a2b;
+
+  --surface: rgba(255, 251, 243, 0.62);
+  --surface-strong: rgba(91, 58, 41, 0.2);
+  --line: rgba(91, 58, 41, 0.33);
+  --line-strong: rgba(91, 58, 41, 0.52);
+  --control: rgba(91, 58, 41, 0.1);
+  --control-hover: rgba(91, 58, 41, 0.19);
+  --panel: #fbeeda;
 }
 
 .app[data-theme='crimson'] {
@@ -132,15 +182,15 @@ h4,
   font: inherit;
   padding: 10px 18px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line-strong);
+  background: var(--control);
   color: var(--paper);
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--control-hover);
 }
 
 .btn:disabled {
@@ -151,7 +201,7 @@ h4,
 .btn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--ink);
+  color: var(--on-accent);
   font-weight: 600;
 }
 
@@ -167,7 +217,7 @@ h4,
 }
 
 .notice {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--control);
   border-left: 3px solid var(--accent);
   padding: 8px 12px;
   margin-bottom: 14px;
@@ -193,8 +243,8 @@ h4,
 .landing-card,
 .lobby-card {
   width: min(440px, 100%);
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 16px;
   padding: 28px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
@@ -236,8 +286,8 @@ h4,
   font: inherit;
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   color: var(--paper);
 }
 
@@ -322,8 +372,8 @@ h4,
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 18px;
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
@@ -350,7 +400,7 @@ h4,
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--control-hover);
   border-radius: 4px;
   padding: 2px 6px;
 }
@@ -446,8 +496,8 @@ h4,
   gap: 7px;
   padding: 9px 18px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--line);
+  background: var(--surface);
   color: var(--paper);
   cursor: pointer;
   opacity: 0.65;
@@ -467,12 +517,29 @@ h4,
 .home-tab.active {
   opacity: 1;
   border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .home-empty {
   text-align: center;
   margin: 30px 0;
+}
+
+/* ── connect wing ──────────────────────────────────────────────────────── */
+
+.connect-wing {
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+.connect-hint {
+  text-align: center;
+  margin: 0 0 12px;
+}
+
+.connect-host-row {
+  text-align: center;
+  margin-bottom: 24px;
 }
 
 /* On phones the wing switcher becomes a fixed bottom nav bar — thumb reach
@@ -489,7 +556,7 @@ h4,
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
     background: var(--felt-dark);
     background: color-mix(in srgb, var(--felt-dark) 92%, black);
-    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    border-top: 1px solid var(--line);
     box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35);
   }
 
@@ -506,7 +573,7 @@ h4,
   }
 
   .home-tab.active {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--control);
   }
 
   .home-tab-icon {
@@ -541,8 +608,8 @@ h4,
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
 }
 
 .daily-tab-count.complete {
@@ -562,15 +629,15 @@ h4,
 .daily-progress {
   height: 8px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--line);
   overflow: hidden;
 }
 
 .daily-progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), #6bd68a);
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
   transition: width 0.4s ease;
 }
 
@@ -601,8 +668,8 @@ h4,
 }
 
 .profile-card {
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 18px;
 }
@@ -622,8 +689,8 @@ h4,
   justify-content: center;
   font-size: 30px;
   color: var(--accent);
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: var(--control);
+  border: 1px solid var(--line);
   border-radius: 50%;
 }
 
@@ -660,8 +727,8 @@ h4,
   font: inherit;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
   color: var(--paper);
 }
 
@@ -735,6 +802,36 @@ h4,
   margin: 10px 0;
 }
 
+.mode-toggle {
+  display: flex;
+  gap: 10px;
+}
+
+.mode-choice {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.mode-choice.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  font-weight: 600;
+}
+
+.mode-choice-icon {
+  display: inline-flex;
+  font-size: 17px;
+  color: var(--accent);
+}
+
+.mode-hint {
+  margin: 10px 0 0;
+  text-align: center;
+}
+
 .profile-status {
   text-align: center;
 }
@@ -752,7 +849,7 @@ h4,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  opacity: 0.7;
+  color: color-mix(in srgb, var(--accent) 72%, var(--paper));
   margin: 0 0 10px;
   padding-left: 2px;
 }
@@ -789,8 +886,8 @@ h4,
   top: 38px;
   right: 0;
   width: 240px;
-  background: rgba(20, 40, 32, 0.97);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--panel);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 14px;
   text-align: left;
@@ -832,8 +929,8 @@ h4,
 
 .arcade-card {
   width: min(460px, 100%);
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 16px;
   padding: 24px;
   text-align: center;
@@ -856,8 +953,8 @@ h4,
   font-weight: 600;
   padding: 6px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--line);
+  background: var(--surface);
   color: var(--paper);
   cursor: pointer;
   opacity: 0.65;
@@ -866,7 +963,7 @@ h4,
 .arcade-tab.active {
   opacity: 1;
   border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--control);
 }
 
 .arcade-actions {
@@ -888,8 +985,19 @@ h4,
 .arcade-badge-queued { color: #e8c15a; }
 .arcade-badge-saving { color: #7fb8e8; }
 
+/* Back lives in the top-left corner of every solo page (and the lobby),
+   floating above the card like the auth widget does on the right. */
 .arcade-leave {
-  margin-top: 10px;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 60;
+  margin: 0;
+  opacity: 0.92;
+}
+
+.arcade-leave::before {
+  content: '← ';
 }
 
 .arcade-streak {
@@ -921,7 +1029,7 @@ h4,
 }
 
 .leaderboard-row-me {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--control);
   font-weight: 700;
 }
 
@@ -1090,15 +1198,15 @@ h4,
   gap: 12px;
   padding: 9px 12px;
   font-size: 14px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--control);
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 10px;
   transition: border-color 0.15s, background 0.15s;
 }
 
 .setting-row:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.22);
+  background: var(--control);
+  border-color: var(--line-strong);
 }
 
 .setting-row select {
@@ -1106,8 +1214,8 @@ h4,
   font-size: 13.5px;
   padding: 7px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-strong);
   color: var(--paper);
   max-width: 230px;
   cursor: pointer;
@@ -1244,8 +1352,8 @@ h4,
 .seat-bottom { grid-area: bottom; }
 
 .opponent-panel {
-  background: rgba(0, 0, 0, 0.22);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface);
+  border: 2px solid var(--line);
   border-radius: 12px;
   padding: 10px 12px;
   min-width: 200px;
@@ -1254,7 +1362,7 @@ h4,
 
 .active-turn {
   border-color: var(--accent) !important;
-  box-shadow: 0 0 14px rgba(232, 193, 90, 0.35);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .panel-header {
@@ -1308,7 +1416,7 @@ h4,
   flex-wrap: wrap;
   gap: 2px;
   padding-top: 6px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  border-top: 1px dashed var(--line);
 }
 
 /* ── top-right HUD ─────────────────────────────────────────────────────── */
@@ -1322,8 +1430,8 @@ h4,
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px 14px;
   min-width: 168px;
@@ -1370,7 +1478,7 @@ h4,
   flex-direction: column;
   gap: 6px;
   background: var(--felt-dark);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 10px;
   min-width: 170px;
@@ -1383,7 +1491,7 @@ h4,
   gap: 6px;
   padding-bottom: 8px;
   margin-bottom: 2px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--line);
 }
 
 .menu-section-title {
@@ -1400,8 +1508,8 @@ h4,
   top: 12px;
   left: 14px;
   z-index: 40;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px 14px;
   min-width: 150px;
@@ -1575,7 +1683,7 @@ h4,
   width: 220px;
   height: 8px;
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-strong);
   overflow: hidden;
 }
 
@@ -1593,8 +1701,8 @@ h4,
 /* ── my area ───────────────────────────────────────────────────────────── */
 
 .seat-bottom {
-  background: rgba(0, 0, 0, 0.22);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface);
+  border: 2px solid var(--line);
   border-radius: 14px;
   padding: 12px 16px;
 }
@@ -1650,13 +1758,13 @@ h4,
   gap: 2px;
   padding: 6px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line-strong);
+  background: var(--control);
   cursor: pointer;
 }
 
 .chow-option:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--control-hover);
 }
 
 /* the timer sits just right of your name, above your hand */
@@ -1739,7 +1847,7 @@ h4,
 .drawn-slot .tile svg {
   box-shadow:
     0 0 0 2.5px var(--accent),
-    0 0 16px rgba(232, 193, 90, 0.55),
+    0 0 16px color-mix(in srgb, var(--accent) 55%, transparent),
     0 2px 0 rgba(0, 0, 0, 0.16),
     0 4px 0 rgba(0, 0, 0, 0.22),
     0 6px 8px rgba(0, 0, 0, 0.45);
@@ -1835,7 +1943,7 @@ h4,
 
 .overlay-card {
   background: var(--felt-dark);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--line);
   border-radius: 16px;
   padding: 28px;
   max-width: 560px;
@@ -1869,7 +1977,7 @@ h4,
 
 .scoreboard td {
   padding: 6px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--line);
   text-align: left;
 }
 
@@ -1920,8 +2028,8 @@ h4,
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 5px 10px;
   font-size: 14px;
@@ -1929,7 +2037,7 @@ h4,
 
 .uttt-chip.turn {
   border-color: var(--accent);
-  box-shadow: 0 0 10px rgba(232, 193, 90, 0.35);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .uttt-chip-mark {
@@ -1975,7 +2083,7 @@ h4,
   gap: 8px;
   padding: 8px;
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--surface);
 }
 
 .uttt-board {
@@ -1990,16 +2098,16 @@ h4,
 }
 
 .uttt-board.active {
-  border-color: rgba(255, 255, 255, 0.28);
+  border-color: var(--line-strong);
 }
 
 .uttt-board.yourmove {
   border-color: var(--accent);
-  box-shadow: 0 0 12px rgba(232, 193, 90, 0.35);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .uttt-board.won.mark-X {
-  background: rgba(232, 193, 90, 0.16);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
 .uttt-board.won.mark-O {
@@ -2032,7 +2140,7 @@ h4,
   padding: 0;
   border: none;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--control);
   color: var(--paper);
   font: inherit;
   font-size: min(6vmin, 30px);
@@ -2053,7 +2161,7 @@ h4,
 }
 
 .uttt-cell.playable:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--control-hover);
 }
 
 .uttt-cell.last {
@@ -2139,7 +2247,7 @@ h4,
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-strong);
   border: none;
   border-radius: 0;
   box-shadow:
@@ -2196,7 +2304,7 @@ h4,
   flex-direction: column;
   gap: 6px;
   padding: 10px;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-strong);
   box-shadow:
     inset 2px 2px 0 rgba(255, 255, 255, 0.12),
     inset -2px -2px 0 rgba(0, 0, 0, 0.45);
@@ -2222,7 +2330,7 @@ h4,
   justify-content: space-between;
   gap: 8px;
   padding: 3px 4px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--control);
 }
 
 .bomber-stat b {
@@ -2244,7 +2352,7 @@ h4,
   align-items: flex-start;
   gap: 8px;
   padding: 3px 4px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--control);
 }
 
 .bomber-legend-icon {
@@ -2290,7 +2398,7 @@ h4,
 }
 
 .bomber-cell.wall {
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--control-hover);
   /* chunky 8-bit bevel: light top-left, dark bottom-right */
   box-shadow:
     inset 3px 3px 0 rgba(255, 255, 255, 0.22),
@@ -2517,7 +2625,7 @@ h4,
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  border: 2px solid var(--line-strong);
   cursor: pointer;
   padding: 0;
 }
@@ -2548,8 +2656,8 @@ h4,
   font: inherit;
   font-size: 13px;
   color: var(--paper);
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: var(--control);
+  border: 2px solid var(--line);
   border-radius: 10px;
   cursor: pointer;
   transition: background 0.15s, box-shadow 0.15s;
@@ -2557,11 +2665,11 @@ h4,
 }
 
 .team-pick:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--control);
 }
 
 .team-pick.mine {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--control-hover);
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
 }
 
@@ -2776,14 +2884,14 @@ h4,
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--control);
+  border: 1px solid var(--line);
   font-size: 13px;
 }
 
 .art-chip.flagged {
   border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--control-hover);
 }
 
 .art-chip-score {
@@ -2812,8 +2920,8 @@ h4,
 .art-banner {
   width: 100%;
   text-align: center;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--control);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px 14px;
   display: flex;
@@ -2860,7 +2968,7 @@ h4,
   aspect-ratio: 1;
   max-height: 62vh;
   border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  border: 2px solid var(--line-strong);
   background: #fdfbf4;
   touch-action: none;
   display: block;
@@ -2893,7 +3001,7 @@ h4,
   width: 26px;
   height: 26px;
   border-radius: 6px;
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  border: 2px solid var(--line-strong);
   cursor: pointer;
   padding: 0;
 }
@@ -2914,8 +3022,8 @@ h4,
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line-strong);
+  background: var(--control);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2924,7 +3032,7 @@ h4,
 
 .art-size.active {
   border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--control-hover);
 }
 
 .art-size-dot {
@@ -2939,7 +3047,7 @@ h4,
 
 .art-tool-btn.active {
   border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--control-hover);
 }
 
 /* guess layout: canvas + chat side by side, stacking on small screens */
@@ -2965,8 +3073,8 @@ h4,
   justify-content: center;
   flex-wrap: wrap;
   gap: 10px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--control);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 9px 12px;
   min-height: 46px;
@@ -3013,8 +3121,8 @@ h4,
 .art-chat {
   display: flex;
   flex-direction: column;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
   height: min(62vh, 520px);
@@ -3049,7 +3157,7 @@ h4,
   display: flex;
   gap: 6px;
   padding: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid var(--line);
 }
 
 .art-chat-input input {
@@ -3059,8 +3167,8 @@ h4,
   font-size: 14px;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-strong);
   color: var(--paper);
 }
 
@@ -3116,8 +3224,8 @@ h4,
 }
 
 .art-gallery-card {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--control);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px;
   display: flex;
@@ -3186,8 +3294,8 @@ h4,
 
 .art-replay {
   width: min(96vw, 700px);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--control);
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 12px;
   display: flex;
@@ -3233,8 +3341,8 @@ h4,
 .art-mode-card {
   font: inherit;
   color: var(--paper);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--control);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px;
   display: flex;
@@ -3246,7 +3354,7 @@ h4,
 }
 
 .art-mode-card:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--control);
 }
 
 .art-mode-card.active {
@@ -3279,8 +3387,8 @@ h4,
   font-size: 13.5px;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-strong);
   color: var(--paper);
   resize: vertical;
   min-height: 58px;
@@ -3383,7 +3491,7 @@ h4,
   grid-template-rows: repeat(8, 7fr 2fr) 7fr;
   padding: calc(var(--quor-size) * 0.025);
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface);
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.3), 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
@@ -3394,18 +3502,18 @@ h4,
   padding: 0;
   font: inherit;
   border-radius: 16%;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--control);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), inset 0 -2px 3px rgba(0, 0, 0, 0.25);
   cursor: default;
 }
 
 .quor-cell.goal {
-  background: rgba(255, 255, 255, 0.09);
+  background: var(--control);
 }
 
 .quor-cell.legal {
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.13);
+  background: var(--control-hover);
   position: relative;
   z-index: 3; /* pawn moves always beat wall-slot hit halos */
 }
@@ -3511,7 +3619,7 @@ h4,
   }
   50% {
     scale: 1.18;
-    filter: drop-shadow(0 0 14px rgba(232, 193, 90, 0.9));
+    filter: drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 90%, transparent));
   }
 }
 
@@ -3540,7 +3648,7 @@ h4,
   animation: none;
   opacity: 0.8;
   background: var(--accent);
-  box-shadow: 0 0 10px rgba(232, 193, 90, 0.45);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
 .quor-wall.preview.illegal {
@@ -3594,9 +3702,9 @@ h4,
 .quor-help kbd {
   font: inherit;
   padding: 0 5px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: 1px solid var(--line-strong);
   border-radius: 4px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface);
 }
 
 /* side panel */
@@ -3607,14 +3715,14 @@ h4,
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 14px;
   padding: 12px;
 }
 
 .quor-player-card {
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--line);
   border-radius: 12px;
   padding: 9px 10px;
   display: flex;
@@ -3625,7 +3733,7 @@ h4,
 
 .quor-player-card.active {
   border-color: var(--accent);
-  box-shadow: 0 0 12px rgba(232, 193, 90, 0.3);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 
 .quor-player-row {
@@ -3748,8 +3856,8 @@ h4,
 }
 
 .quor-setup .lobby-card {
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 16px;
   padding: 24px;
   width: min(96vw, 560px);
@@ -3779,19 +3887,19 @@ h4,
   font: inherit;
   color: var(--paper);
   cursor: pointer;
-  background: rgba(0, 0, 0, 0.28);
-  border: 2px solid rgba(255, 255, 255, 0.12);
+  background: var(--surface);
+  border: 2px solid var(--line);
   border-radius: 12px;
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 
 .quor-mode-card:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--control);
 }
 
 .quor-mode-card.selected {
   border-color: var(--accent);
-  box-shadow: 0 0 12px rgba(232, 193, 90, 0.35);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .quor-mode-name {
@@ -3920,7 +4028,7 @@ h4,
 
 .tet-canvas {
   border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.22);
+  border: 2px solid var(--line-strong);
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
   touch-action: none;
   display: block;
@@ -3959,8 +4067,8 @@ h4,
 }
 
 .tet-box {
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 8px;
   display: flex;
@@ -4121,15 +4229,15 @@ h4,
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--control);
+  border: 1px solid var(--line);
   font-size: 13px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .dots-chip.turn {
   border-color: var(--accent);
-  box-shadow: 0 0 8px rgba(232, 193, 90, 0.35);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .dots-chip-color {
@@ -4164,7 +4272,7 @@ h4,
   display: grid;
   padding: calc(min(92vw, 66vh, 560px) * 0.03);
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface);
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.3), 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
@@ -4182,7 +4290,7 @@ h4,
   padding: 0;
   margin: 2px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--control);
   cursor: default;
   transition: background 0.15s;
   z-index: 1;
@@ -4299,8 +4407,8 @@ h4,
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--control);
+  border: 1px solid var(--line);
   font-size: 13px;
 }
 
@@ -4361,7 +4469,7 @@ h4,
   margin: -56px 0 0 -56px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--control);
   pointer-events: none;
   z-index: 40;
 }
@@ -4453,15 +4561,15 @@ h4,
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--control);
+  border: 1px solid var(--line);
   font-size: 13px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .party-chip.turn {
   border-color: var(--accent);
-  box-shadow: 0 0 8px rgba(232, 193, 90, 0.35);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .party-chip-color {
@@ -4502,7 +4610,7 @@ h4,
   width: 100%;
   aspect-ratio: 1;
   border-radius: 18px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface);
   box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.3), 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
@@ -4538,7 +4646,7 @@ h4,
 }
 
 .party-space.hasstar {
-  box-shadow: 0 0 14px rgba(232, 193, 90, 0.9);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 90%, transparent);
 }
 
 .party-star {
@@ -4637,8 +4745,8 @@ h4,
   font-size: 42px;
   padding: 14px 20px;
   border-radius: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid var(--line-strong);
+  background: var(--control);
   cursor: pointer;
   transition: transform 0.12s, border-color 0.12s;
 }
@@ -4691,8 +4799,8 @@ h4,
   font-size: 20px;
   font-weight: 700;
   border-radius: 6px;
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.2);
+  border: 2px solid var(--line);
+  background: var(--surface);
   text-transform: uppercase;
 }
 
@@ -4713,8 +4821,8 @@ h4,
 }
 
 .wordguess-cell-absent {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.1);
+  background: var(--control);
+  border-color: var(--line);
   opacity: 0.7;
 }
 
@@ -4739,7 +4847,7 @@ h4,
   padding: 0 6px;
   border-radius: 5px;
   border: none;
-  background: rgba(255, 255, 255, 0.16);
+  background: var(--control-hover);
   color: var(--paper);
   cursor: pointer;
 }
@@ -4761,7 +4869,7 @@ h4,
 }
 
 .wordguess-key-absent {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--control);
   opacity: 0.5;
 }
 
@@ -4795,7 +4903,7 @@ h4,
 
 .minesweeper-flag-toggle.active {
   border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--control-hover);
 }
 
 .minesweeper-grid {
@@ -4812,8 +4920,8 @@ h4,
   font-size: 13px;
   font-weight: 800;
   border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--line);
+  background: var(--control-hover);
   color: var(--paper);
   cursor: pointer;
 }
@@ -4823,7 +4931,7 @@ h4,
 }
 
 .minesweeper-cell.revealed {
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--surface);
   border-color: rgba(255, 255, 255, 0.08);
 }
 
@@ -4878,7 +4986,7 @@ h4,
   gap: var(--t48-gap);
   width: max-content;
   margin: 0 auto 16px;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--surface);
   padding: var(--t48-gap);
   border-radius: 10px;
   touch-action: none;
@@ -4893,7 +5001,7 @@ h4,
 }
 
 .twenty48-bg-cell {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--control);
   border-radius: 6px;
 }
 
@@ -4969,8 +5077,8 @@ h4,
   aspect-ratio: 64 / 96;
   margin: 0 auto 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: #0b1f17;
+  border: 1px solid var(--line);
+  background: var(--surface-strong);
 }
 
 .sandsort-timer {
@@ -4994,14 +5102,14 @@ h4,
   gap: 4px;
   padding: 6px 10px;
   border-radius: 10px;
-  border: 2px solid rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.22);
+  border: 2px solid var(--line);
+  background: var(--surface);
   cursor: pointer;
 }
 
 .sandsort-bucket.active {
   border-color: var(--bucket-color, var(--accent));
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--control);
 }
 
 .sandsort-bucket:disabled {
@@ -5027,3 +5135,21 @@ h4,
   opacity: 0.85;
 }
 
+
+/* ── light-mode status colors (defaults are tuned for dark surfaces) ───── */
+
+.app[data-mode='light'] .arcade-badge-synced { color: #2e7d4f; }
+.app[data-mode='light'] .arcade-badge-queued { color: #96690f; }
+.app[data-mode='light'] .arcade-badge-saving { color: #3a6ea8; }
+
+.app[data-mode='light'] .daily-done-badge {
+  color: #2e7d4f;
+  border-color: rgba(46, 125, 79, 0.5);
+  background: rgba(46, 125, 79, 0.12);
+}
+
+.app[data-mode='light'] .daily-tab-count.complete {
+  color: #2e7d4f;
+  border-color: #2e7d4f;
+  background: rgba(46, 125, 79, 0.15);
+}

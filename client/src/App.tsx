@@ -2,12 +2,14 @@ import { useStore, currentScreen } from './store';
 import Home from './screens/Home';
 import Lobby from './screens/Lobby';
 import { gameById } from './games/catalog';
+import { useMode } from './mode';
 
 export default function App() {
   const lobby = useStore((s) => s.lobby);
   const game = useStore((s) => s.game);
   const connected = useStore((s) => s.connected);
   const localGame = useStore((s) => s.localGame);
+  const mode = useMode();
   const screen = currentScreen(lobby, game);
   const theme = lobby && 'theme' in lobby.settings ? lobby.settings.theme : 'jade';
 
@@ -28,7 +30,7 @@ export default function App() {
   }
 
   return (
-    <div className="app" data-theme={theme}>
+    <div className="app" data-theme={theme} data-mode={mode}>
       {!connected && <div className="conn-banner">Reconnecting to server…</div>}
       {content}
     </div>

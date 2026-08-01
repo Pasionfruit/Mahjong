@@ -8,8 +8,8 @@
   aspect-ratio: 380 / 540;
   margin: 0 auto 10px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: #0b1f17;
+  border: 1px solid var(--line);
+  background: var(--surface-strong);
   touch-action: none;
   user-select: none;
   cursor: crosshair;

@@ -45,8 +45,8 @@
   font-size: 20px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 999px;
   padding: 6px 16px;
   white-space: nowrap;
@@ -67,8 +67,8 @@
 }
 
 .banana-opp {
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 6px 8px;
   display: flex;
@@ -113,7 +113,7 @@
 .banana-sil {
   width: 72px;
   height: 72px;
-  background: rgba(0, 0, 0, 0.35);
+  background: var(--surface-strong);
   border-radius: 6px;
 }
 
@@ -159,7 +159,7 @@
   width: min(96vw, 66vh, 620px);
   aspect-ratio: 1 / 1;
   overflow: auto;
-  border: 2px solid rgba(255, 255, 255, 0.22);
+  border: 2px solid var(--line-strong);
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.32);
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
@@ -221,7 +221,7 @@
 .banana-tile.sel {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
-  box-shadow: 0 0 0 4px rgba(232, 193, 90, 0.35);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 35%, transparent);
   z-index: 1;
 }
 
@@ -229,8 +229,8 @@
 
 .banana-tray-box {
   width: min(96vw, 620px);
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 12px;
   padding: 8px 10px 10px;
   display: flex;
@@ -351,7 +351,7 @@
 .banana-board-svg {
   display: block;
   width: 100%;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface);
   border-radius: 8px;
 }
 
@@ -392,4 +392,13 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* Cozy-cabin (light) readable status text — the defaults are tuned for dark. */
+.app[data-mode='light'] .banana-warn {
+  color: #8a5c10;
+}
+
+.app[data-mode='light'] .banana-warn.bad {
+  color: #8f2a1c;
 }

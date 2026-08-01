@@ -475,6 +475,35 @@ export function IconCalendarCheck() {
   );
 }
 
+/** A sun — light mode. */
+export function IconSun() {
+  return (
+    <I>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.5v2.5M12 19v2.5M2.5 12h2.5M19 12h2.5M5 5l1.8 1.8M17.2 17.2L19 19M19 5l-1.8 1.8M6.8 17.2L5 19" />
+    </I>
+  );
+}
+
+/** A crescent moon — dark mode. */
+export function IconMoon() {
+  return (
+    <I>
+      <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" />
+    </I>
+  );
+}
+
+/** Two joined chain links — the Connect wing. */
+export function IconLink() {
+  return (
+    <I>
+      <path d="M10.5 13.5a4 4 0 0 0 6 .4l2.6-2.6a4 4 0 1 0-5.7-5.7l-1.3 1.3" />
+      <path d="M13.5 10.5a4 4 0 0 0-6-.4l-2.6 2.6a4 4 0 1 0 5.7 5.7l1.3-1.3" />
+    </I>
+  );
+}
+
 /** A party popper mid-burst — the Party wing. */
 export function IconPartyPopper() {
   return (

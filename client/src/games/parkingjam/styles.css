@@ -30,8 +30,8 @@
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   grid-template-rows: repeat(6, 1fr);
-  background: rgba(0, 0, 0, 0.28);
-  border: 2px solid rgba(255, 255, 255, 0.16);
+  background: var(--surface);
+  border: 2px solid var(--line);
   border-radius: 12px;
   overflow: hidden; /* the winning red car slides off through the notch */
 }

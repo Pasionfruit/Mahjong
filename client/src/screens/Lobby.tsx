@@ -129,7 +129,7 @@ export default function Lobby() {
         {error && <div className="error">{error}</div>}
 
         <div className="lobby-actions">
-          <button className="btn" onClick={leaveParty}>
+          <button className="btn arcade-leave" onClick={leaveParty}>
             Leave
           </button>
           {isHost && (
