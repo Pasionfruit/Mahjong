@@ -16,7 +16,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  width: min(340px, 94vw);
+  width: min(340px, 100%);
   margin: 0 auto 10px;
   padding: 8px 12px;
   border-radius: 8px;
@@ -39,7 +39,7 @@
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 2px;
-  width: min(300px, 84vw);
+  width: min(300px, 100%);
   margin: 0 auto;
   padding: 3px;
   border-radius: 8px;
@@ -97,7 +97,7 @@
 
 .crossword-keyboard {
   margin: 12px auto 0;
-  width: min(420px, 96vw);
+  width: min(420px, 100%);
   user-select: none;
 }
 
@@ -138,7 +138,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   margin: 14px auto 0;
-  width: min(420px, 96vw);
+  width: min(420px, 100%);
   text-align: left;
 }
 
