@@ -8,6 +8,7 @@ import {
   CANNON_Y,
   FIXED_DT,
   HEIGHT,
+  HIT_PEG_LIFETIME_S,
   MAX_SPEED,
   ORANGE_COUNT,
   PEG_RADIUS,
@@ -30,7 +31,7 @@ import {
 } from './engine';
 
 function peg(x: number, y: number, color: Peg['color'] = 'blue'): Peg {
-  return { x, y, r: PEG_RADIUS, color, hit: false };
+  return { x, y, r: PEG_RADIUS, color, hit: false, hitAt: null };
 }
 
 /** Minimal hand-built state for physics tests — no generated board noise. */
@@ -43,6 +44,7 @@ function bareState(overrides: Partial<GameState> = {}): GameState {
     score: 0,
     orangeRemaining: 5,
     status: 'flying',
+    flightTime: 0,
     newHits: [],
     shotEnded: null,
     ...overrides,
@@ -387,5 +389,45 @@ describe('traceAim', () => {
     const last = pts[pts.length - 1]!;
     expect(Math.hypot(last.x - blocker.x, last.y - blocker.y)).toBeLessThan(60);
     expect(last.y).toBeLessThan(blocker.y);
+  });
+});
+
+describe('stuck-ball rescue (hit pegs dissolve)', () => {
+  it('a lit peg disappears HIT_PEG_LIFETIME_S after being hit, mid-flight', () => {
+    // Ball dropped straight onto a peg: it gets hit, then the ball rests.
+    const target = peg(WIDTH / 2, HEIGHT / 2);
+    const s = bareState({
+      pegs: [target],
+      ball: { x: WIDTH / 2, y: HEIGHT / 2 - PEG_RADIUS - 4, vx: 0, vy: 10, r: 6 },
+    });
+    step(s, FIXED_DT);
+    expect(target.hit).toBe(true);
+    expect(target.hitAt).not.toBeNull();
+
+    // Advance just under the lifetime: peg still present.
+    while (s.flightTime < HIT_PEG_LIFETIME_S - FIXED_DT * 2 && s.ball) step(s, FIXED_DT);
+    expect(s.pegs).toHaveLength(1);
+
+    // Cross the threshold: the peg dissolves while the shot is still live,
+    // and the freed ball eventually falls out of play, ending the shot.
+    let guard = 0;
+    while (s.pegs.length > 0 && guard++ < 10) step(s, FIXED_DT);
+    expect(s.pegs).toHaveLength(0);
+    guard = 0;
+    while (s.ball && guard++ < 2000) step(s, FIXED_DT);
+    expect(s.ball).toBeNull();
+  });
+
+  it('the dissolve never double-scores the peg', () => {
+    const target = peg(WIDTH / 2, HEIGHT / 2);
+    const s = bareState({
+      pegs: [target],
+      ball: { x: WIDTH / 2, y: HEIGHT / 2 - PEG_RADIUS - 4, vx: 0, vy: 10, r: 6 },
+    });
+    step(s, FIXED_DT);
+    const scored = s.score;
+    let guard = 0;
+    while (s.pegs.length > 0 && guard++ < 2000) step(s, FIXED_DT);
+    expect(s.score).toBe(scored);
   });
 });

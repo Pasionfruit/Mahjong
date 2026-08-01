@@ -66,6 +66,19 @@ export async function getDisplayName(): Promise<string | null> {
   return cachedDisplayName;
 }
 
+/** Rename this profile (leaderboard rows written after this pick it up). */
+export async function setDisplayName(name: string): Promise<LinkResult> {
+  const trimmed = name.trim().slice(0, 24);
+  if (!trimmed) return { ok: false, error: 'Pick a name first.' };
+  const supabase = getSupabase();
+  const user = await currentUser();
+  if (!supabase || !user) return { ok: false, error: 'Not signed in yet.' };
+  const { error } = await supabase.from('profiles').update({ display_name: trimmed }).eq('id', user.id);
+  if (error) return { ok: false, error: error.message };
+  cachedDisplayName = trimmed;
+  return { ok: true };
+}
+
 export type LinkResult = { ok: true } | { ok: false; error: string };
 
 /**

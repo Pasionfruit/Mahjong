@@ -4,7 +4,7 @@ import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
-import { CELLS, SIZE, boxOf, colOf, rowOf, sudokuModule } from './engine';
+import { CELLS, DAILY_REMOVE_TARGET, SIZE, boxOf, colOf, rowOf, sudokuModule } from './engine';
 import './styles.css';
 
 function formatTime(ms: number): string {
@@ -13,7 +13,8 @@ function formatTime(ms: number): string {
 
 export default function SudokuGame() {
   const { mode, state, status, result, signedIn, sync, streak, dailyDoneToday, move, start, forceSync } =
-    useSoloGame(sudokuModule, () => undefined);
+    // The shared daily is always easy; endless keeps the medium carve.
+    useSoloGame(sudokuModule, (m) => (m === 'daily' ? { removeTarget: DAILY_REMOVE_TARGET } : undefined));
   const [view, setView] = useState<'play' | 'leaderboard'>('play');
   const [selected, setSelected] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());

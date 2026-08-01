@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CELLS, REMOVE_TARGET, boxOf, colOf, countSolutions, rowOf, sudokuModule, type SudokuMove, type SudokuState } from './engine';
+import { CELLS, DAILY_REMOVE_TARGET, REMOVE_TARGET, boxOf, colOf, countSolutions, rowOf, sudokuModule, type SudokuMove, type SudokuState } from './engine';
 
 /** Every empty cell filled with the known solution — the fastest scripted win. */
 function winningMoves(state: SudokuState, startAt = 1000): SudokuMove[] {
@@ -166,5 +166,24 @@ describe('sudoku win + timing + replay', () => {
     for (const m of log) live = sudokuModule.applyMove(live, m) ?? live;
     expect(sudokuModule.replay(seed, undefined, log)).toEqual(live);
     expect(live.mistakes).toBe(1);
+  });
+});
+
+describe('difficulty settings', () => {
+  it('the daily removeTarget yields an easier board (more givens) than endless, still unique', () => {
+    const blanks = (s: SudokuState) => s.givens.filter((g) => g === 0).length;
+    for (const seed of [4242, 987, 31337]) {
+      const easy = sudokuModule.generate(seed, { removeTarget: DAILY_REMOVE_TARGET });
+      const medium = sudokuModule.generate(seed, undefined);
+      expect(blanks(easy)).toBeLessThanOrEqual(DAILY_REMOVE_TARGET);
+      expect(blanks(easy)).toBeLessThan(blanks(medium));
+      expect(blanks(medium)).toBeLessThanOrEqual(REMOVE_TARGET);
+      expect(countSolutions(easy.givens, 2)).toBe(1);
+    }
+  });
+
+  it('replay honors the settings it was saved with', () => {
+    const state = sudokuModule.generate(555, { removeTarget: DAILY_REMOVE_TARGET });
+    expect(sudokuModule.replay(555, { removeTarget: DAILY_REMOVE_TARGET }, [])).toEqual(state);
   });
 });

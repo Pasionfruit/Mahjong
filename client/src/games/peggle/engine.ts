@@ -49,6 +49,10 @@ const MIN_PEG_DIST = PEG_RADIUS * 2 + 4;
 
 export type PegColor = 'blue' | 'orange' | 'purple';
 
+/** A lit peg dissolves this many seconds after being hit, so a ball resting
+ *  on lit pegs always gets freed instead of sitting stuck forever. */
+export const HIT_PEG_LIFETIME_S = 5;
+
 export interface Peg {
   x: number;
   y: number;
@@ -56,6 +60,8 @@ export interface Peg {
   color: PegColor;
   /** Lit by the current shot; scored once; removed when the ball leaves play. */
   hit: boolean;
+  /** Flight-clock time this peg was lit, for the dissolve timer. */
+  hitAt: number | null;
 }
 
 export interface Ball {
@@ -89,6 +95,8 @@ export interface GameState {
   score: number;
   orangeRemaining: number;
   status: Status;
+  /** Seconds the current shot has been in flight (drives the peg dissolve). */
+  flightTime: number;
   /** Pegs newly lit during the most recent step() call. */
   newHits: HitInfo[];
   /** Set when the ball left play during the most recent step() call. */
@@ -216,7 +224,7 @@ export function generateBoard(seed: number): Peg[] {
   for (const i of order.slice(0, ORANGE_COUNT)) colors[i] = 'orange';
   for (const i of order.slice(ORANGE_COUNT, ORANGE_COUNT + PURPLE_COUNT)) colors[i] = 'purple';
 
-  return placed.map((p, i) => ({ x: p.x, y: p.y, r: PEG_RADIUS, color: colors[i]!, hit: false }));
+  return placed.map((p, i) => ({ x: p.x, y: p.y, r: PEG_RADIUS, color: colors[i]!, hit: false, hitAt: null }));
 }
 
 export function createGame(seed: number): GameState {
@@ -228,6 +236,7 @@ export function createGame(seed: number): GameState {
     score: 0,
     orangeRemaining: ORANGE_COUNT,
     status: 'aiming',
+    flightTime: 0,
     newHits: [],
     shotEnded: null,
   };
@@ -259,6 +268,7 @@ export function fireBall(state: GameState, angle: number): boolean {
     r: BALL_RADIUS,
   };
   state.status = 'flying';
+  state.flightTime = 0;
   return true;
 }
 
@@ -377,6 +387,13 @@ export function step(state: GameState, dt: number): void {
 
   if (state.status !== 'flying' || !state.ball) return;
   const ball = state.ball;
+  state.flightTime += dt;
+
+  // Lit pegs dissolve after HIT_PEG_LIFETIME_S so a ball resting on them
+  // can never be stuck for good (already scored — removal changes nothing).
+  if (state.pegs.some((p) => p.hit && state.flightTime - (p.hitAt ?? 0) >= HIT_PEG_LIFETIME_S)) {
+    state.pegs = state.pegs.filter((p) => !(p.hit && state.flightTime - (p.hitAt ?? 0) >= HIT_PEG_LIFETIME_S));
+  }
 
   ball.vy += GRAVITY * dt;
   clampSpeed(ball);
@@ -400,6 +417,7 @@ export function step(state: GameState, dt: number): void {
     if (collideBallPeg(ball, peg)) {
       if (!peg.hit) {
         peg.hit = true;
+        peg.hitAt = state.flightTime;
         state.score += PEG_SCORE[peg.color];
         if (peg.color === 'orange') state.orangeRemaining -= 1;
         state.newHits.push({ x: peg.x, y: peg.y, color: peg.color });

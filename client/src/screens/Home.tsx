@@ -1,14 +1,28 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import type { GameId } from '@shared/games';
 import { createParty, joinParty } from '../socket';
 import { loadNickname } from '../session';
 import { useStore } from '../store';
 import { CATEGORY_LABELS, CATEGORY_ORDER, GAMES, dailyGames, type GameEntry } from '../games/catalog';
 import { useDailyProgress } from '../arcade/useDailyProgress';
-import { IconController } from '../components/icons';
+import {
+  IconCalendarCheck,
+  IconController,
+  IconPartyPopper,
+  IconUser,
+  IconZenLotus,
+} from '../components/icons';
 import { isDesktop } from '../device';
+import Profile from './Profile';
 
-type Wing = 'party' | 'zen' | 'daily';
+type Wing = 'party' | 'zen' | 'daily' | 'profile';
+
+const WING_TABS: { wing: Wing; label: string; Icon: ComponentType }[] = [
+  { wing: 'party', label: 'Party', Icon: IconPartyPopper },
+  { wing: 'zen', label: 'Zen', Icon: IconZenLotus },
+  { wing: 'daily', label: 'Daily', Icon: IconCalendarCheck },
+  { wing: 'profile', label: 'Profile', Icon: IconUser },
+];
 
 export default function Home() {
   const [nickname, setNickname] = useState(loadNickname());
@@ -117,27 +131,23 @@ export default function Home() {
         )}
 
         <div className="home-tabs">
-          <button
-            className={`home-tab${wing === 'party' ? ' active' : ''}`}
-            onClick={() => setWing('party')}
-          >
-            🎉 Party Games
-          </button>
-          <button
-            className={`home-tab${wing === 'zen' ? ' active' : ''}`}
-            onClick={() => setWing('zen')}
-          >
-            🧘 Zen Endless
-          </button>
-          <button
-            className={`home-tab${wing === 'daily' ? ' active' : ''}`}
-            onClick={() => setWing('daily')}
-          >
-            📅 Daily
-            <span className={`daily-tab-count${doneCount === dailies.length ? ' complete' : ''}`}>
-              {doneCount}/{dailies.length}
-            </span>
-          </button>
+          {WING_TABS.map(({ wing: w, label, Icon }) => (
+            <button
+              key={w}
+              className={`home-tab${wing === w ? ' active' : ''}`}
+              onClick={() => setWing(w)}
+            >
+              <span className="home-tab-icon">
+                <Icon />
+              </span>
+              <span className="home-tab-label">{label}</span>
+              {w === 'daily' && (
+                <span className={`daily-tab-count${doneCount === dailies.length ? ' complete' : ''}`}>
+                  {doneCount}/{dailies.length}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         {wing === 'party' && (
@@ -174,7 +184,9 @@ export default function Home() {
           </>
         )}
 
-        {wing === 'daily' ? (
+        {wing === 'profile' ? (
+          <Profile />
+        ) : wing === 'daily' ? (
           <section className="category-section">
             <div className="daily-summary">
               <h2 className="category-heading">Today’s Challenges</h2>

@@ -474,3 +474,39 @@ export function IconCalendarCheck() {
     </I>
   );
 }
+
+/** A party popper mid-burst — the Party wing. */
+export function IconPartyPopper() {
+  return (
+    <I>
+      <path d="M5.2 12.6L3 21l8.4-2.2z" />
+      <path d="M8 12l4 4" />
+      <path d="M13 9.5c1.5-1.5 3-1.8 4.5-.8" />
+      <path d="M14.5 6c.3-1.6 1.3-2.5 3-2.7" />
+      <circle cx="15" cy="13.5" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="10.5" cy="8.5" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="19.5" cy="9" r="0.9" fill="currentColor" stroke="none" />
+    </I>
+  );
+}
+
+/** A lotus bloom — the Zen wing. */
+export function IconZenLotus() {
+  return (
+    <I>
+      <path d="M12 6.5c1.6 1.7 2.4 3.6 2.4 5.6 0 2.5-1 4.4-2.4 5.9-1.4-1.5-2.4-3.4-2.4-5.9 0-2 .8-3.9 2.4-5.6z" />
+      <path d="M6 9.5c2 .4 3.4 1.4 4.3 2.8M18 9.5c-2 .4-3.4 1.4-4.3 2.8" />
+      <path d="M3.5 13.5C5 17 8 18.9 12 18.9s7-1.9 8.5-5.4" />
+    </I>
+  );
+}
+
+/** A person bust — the Profile wing. */
+export function IconUser() {
+  return (
+    <I>
+      <circle cx="12" cy="8" r="3.6" />
+      <path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" />
+    </I>
+  );
+}

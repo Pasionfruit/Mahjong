@@ -16,6 +16,14 @@ export const CELLS = SIZE * SIZE;
 /** Carve until this many cells are blank (~medium difficulty), or until no
  *  further cell can be removed without losing uniqueness. */
 export const REMOVE_TARGET = 48;
+/** The daily is deliberately always EASY (more givens) — it's the shared
+ *  everyone-plays-it ritual, not the challenge mode; endless stays medium. */
+export const DAILY_REMOVE_TARGET = 38;
+
+/** Optional per-round knobs; omitted (old saves, endless) = medium. */
+export interface SudokuSettings {
+  removeTarget?: number;
+}
 
 export interface SudokuState {
   /** 81 cells, row-major; 0 = not a given. */
@@ -160,16 +168,17 @@ export function countSolutions(grid: number[], cap = 2): number {
   return count;
 }
 
-function generate(seed: number, _settings: void): SudokuState {
+function generate(seed: number, settings?: SudokuSettings): SudokuState {
   const rng = mulberry32(seed);
   const solution = new Array<number>(CELLS).fill(0);
   fillGrid(solution, 0, rng);
 
+  const removeTarget = settings?.removeTarget ?? REMOVE_TARGET;
   const givens = solution.slice();
   const order = shuffled(Array.from({ length: CELLS }, (_, i) => i), rng);
   let removed = 0;
   for (const cell of order) {
-    if (removed >= REMOVE_TARGET) break;
+    if (removed >= removeTarget) break;
     const saved = givens[cell]!;
     givens[cell] = 0;
     if (countSolutions(givens, 2) === 1) removed++;
@@ -234,7 +243,7 @@ function result(state: SudokuState): SoloResult | null {
   };
 }
 
-function replay(seed: number, settings: void, moveLog: SudokuMove[]): SudokuState {
+function replay(seed: number, settings: SudokuSettings | undefined, moveLog: SudokuMove[]): SudokuState {
   let state = generate(seed, settings);
   for (const move of moveLog) state = applyMove(state, move) ?? state;
   return state;
@@ -246,7 +255,7 @@ function shareText(state: SudokuState): string {
   return `Sudoku ✅ — solved in ${r.stats?.time}s with ${state.mistakes} mistake${state.mistakes === 1 ? '' : 's'}`;
 }
 
-export const sudokuModule: SoloGameModule<SudokuState, SudokuMove, void> = {
+export const sudokuModule: SoloGameModule<SudokuState, SudokuMove, SudokuSettings | undefined> = {
   id: 'sudoku',
   scoreDirection: 'asc',
   generate,
