@@ -59,6 +59,14 @@ export function IconPause() {
   );
 }
 
+export function IconPlay() {
+  return (
+    <I>
+      <path d="M8 5.5 18.5 12 8 18.5Z" fill="currentColor" />
+    </I>
+  );
+}
+
 export function IconVolume() {
   return (
     <I>

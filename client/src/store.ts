@@ -4,6 +4,11 @@ import type { ArtStroke } from '@shared/art';
 
 export type Screen = 'home' | 'lobby' | 'game';
 
+/** Home-screen wing selected in the bottom navigation. Lives here (not in
+ *  Home) because the nav is rendered app-wide — tapping a tab mid-game must
+ *  land on the right wing after the screen unwinds back to Home. */
+export type Wing = 'connect' | 'party' | 'daily' | 'zen' | 'profile';
+
 /** Upsert one stroke delta into a canvas's stroke list (immutably). */
 function mergeStroke(
   list: ArtStroke[],
@@ -28,6 +33,7 @@ interface AppState {
   notice: string | null;
   /** Catalog id of a device-local game being played (no room/server). */
   localGame: string | null;
+  wing: Wing;
   /**
    * Art games: vector strokes per canvas key. Fed by stroke events, local
    * echo while drawing, and authoritative view merges; keyed to `artRound`
@@ -39,6 +45,7 @@ interface AppState {
   setLobby(lobby: LobbyState | null): void;
   setGame(game: ClientGameView | null): void;
   setLocalGame(id: string | null): void;
+  setWing(wing: Wing): void;
   pushEvent(e: GameEvent): void;
   setNotice(notice: string | null): void;
   artStrokeDelta(cv: string, stroke: ArtStroke, mode: 'append' | 'replace'): void;
@@ -56,10 +63,12 @@ export const useStore = create<AppState>((set) => ({
   log: [],
   notice: null,
   localGame: null,
+  wing: 'connect',
   artStrokes: {},
   artRound: 0,
   setConnected: (connected) => set({ connected }),
   setLocalGame: (localGame) => set({ localGame }),
+  setWing: (wing) => set({ wing }),
   setLobby: (lobby) =>
     set((s) => ({
       lobby,

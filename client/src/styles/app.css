@@ -71,13 +71,13 @@ h4,
 
 .app {
   /* Dark mode — "harbor haze at dusk": rich saturated harbor blues under
-     warm lantern-peach light. Deliberately never a harsh black, and warm
-     accents keep it relaxing rather than icy. Light mode overrides below
-     with "cozy cabin". */
+     weathered sand-beige light (driftwood and rope, not peach). Deliberately
+     never a harsh black, and warm accents keep it relaxing rather than icy.
+     Light mode overrides below with "cozy cabin". */
   --felt: #2e4257;
   --felt-dark: #1c2b3a;
-  --accent: #f2b380;
-  --accent-2: #e58a68;
+  --accent: #d9c7a4;
+  --accent-2: #bfa77e;
   --on-accent: #2b1c10;
   --tile-face: #f6efe2;
   --tile-back: #40566b;
@@ -85,6 +85,8 @@ h4,
   --ink: #22303e;
   --paper: #f3ece1;
   --danger: #c0392b;
+  /* go-green for play affordances; matches the "done" success green */
+  --play: #6bd68a;
 
   /* Semantic surfaces so light mode is a var swap, not a rewrite. */
   --surface: rgba(10, 22, 36, 0.32);
@@ -96,29 +98,40 @@ h4,
   --panel: #2b3d50;
 
   height: 100%;
-  /* Dynamic viewport height: in an installed PWA, plain % can leave a dead
-     strip under the fixed bottom nav — dvh tracks the real visible height. */
+  /* Dynamic viewport height: in a browser tab the URL bar grows and shrinks —
+     dvh tracks the real visible height. */
   height: 100dvh;
   overflow: auto;
   background: radial-gradient(ellipse at center, var(--felt) 0%, var(--felt-dark) 100%);
   color: var(--paper);
 }
 
+/* Installed to the home screen (standalone): iOS mis-measures dvh there,
+   leaving the app — and its fixed bottom nav — floating above the real
+   screen edge. The html→#root chain is all 100%, so plain % is exact. */
+@media (display-mode: standalone) {
+  .app {
+    height: 100%;
+  }
+}
+
 .app[data-mode='light'] {
-  /* Light mode — "cozy cabin, by the fire": the user's cabin hexes pushed
-     for contrast — deep-roast text, saturated terracotta, honey-amber
-     second accent, cream cards that lift off a warmer tan ground. */
+  /* Light mode — "cozy cabin, by the fire": deep-roast text and dark-oak
+     accents (aged furniture wood, not terracotta), cream cards that lift
+     off a warmer tan ground. */
   --felt: #f9e8d2;
   --felt-dark: #e3c2a0;
-  --accent: #b3543a;
-  --accent-2: #d98a2b;
+  --accent: #5f3d26;
+  --accent-2: #86603a;
   --on-accent: #fdf2e2;
   --tile-face: #fffaf0;
-  --tile-back: #b3543a;
+  --tile-back: #5f3d26;
   --tile-edge: #d1b7a0;
   --ink: #3c2314;
   --paper: #46281a;
   --danger: #a63a2b;
+  /* deeper green so it still pops on cream cards */
+  --play: #2e8f4e;
 
   --surface: rgba(255, 251, 243, 0.62);
   --surface-strong: rgba(91, 58, 41, 0.2);
@@ -323,7 +336,9 @@ h4,
   min-height: 100%;
   display: flex;
   justify-content: center;
-  padding: 32px 20px;
+  /* Generous top gap — clear of the notch/status bar when installed, and
+     comfortably below the browser chrome on the web. */
+  padding: calc(env(safe-area-inset-top, 0px) + 44px) 20px 32px;
 }
 
 .home-inner {
@@ -340,6 +355,18 @@ h4,
 .home-title {
   font-size: 30px;
   margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* The real app icon (cat asleep on a controller) fronts the title. */
+.home-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .home-sub {
@@ -353,47 +380,101 @@ h4,
   margin: 0 auto 22px;
 }
 
+/* Each category is a horizontal carousel of uniform cards. */
 .game-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px;
+  display: flex;
+  gap: 12px;
   margin-bottom: 24px;
-}
-
-/* Wide screens: fixed-width cards ranked from the left — a near-empty
-   category must not balloon its two cards across the whole row. */
-@media (min-width: 980px) {
-  .game-grid {
-    grid-template-columns: repeat(auto-fill, 272px);
-  }
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  /* breathing room so card shadows aren't sheared off by the scroll clip */
+  padding: 4px 4px 16px;
+  scrollbar-width: thin;
 }
 
 .game-card {
+  flex: 0 0 252px;
+  width: 252px;
+  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  justify-content: center;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 18px;
+  padding: 12px 14px;
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.game-card:hover {
+  border-color: var(--line-strong);
 }
 
 .game-card.soon {
   opacity: 0.6;
 }
 
+.game-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* keeps one- and two-line titles the same card height */
+  min-height: 46px;
+}
+
+/* Minimal line glyph in the accent ink. */
 .game-card-icon {
-  font-size: 30px;
+  flex-shrink: 0;
+  display: flex;
+  font-size: 28px;
   color: var(--accent);
-  margin-bottom: 4px;
 }
 
 .game-card-title {
-  font-size: 18px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  /* grow so the play button hugs the card's right edge */
+  flex: 1;
+  min-width: 0;
+}
+
+.game-card-name {
+  /* a real flex item (anonymous ones floor at the longest word and clip
+     under the play button) that hyphenates long names on narrow cards */
+  min-width: 0;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Chromeless: just a green play triangle. */
+.game-card-play {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: var(--play);
+  font-size: 27px;
+  line-height: 0;
+  cursor: pointer;
+  transition: transform 0.12s, filter 0.12s;
+}
+
+.game-card-play:hover:not(:disabled) {
+  transform: scale(1.12);
+  filter: brightness(1.1);
+}
+
+.game-card-play:disabled {
+  color: var(--line-strong);
+  cursor: default;
 }
 
 .soon-badge {
@@ -405,21 +486,63 @@ h4,
   padding: 2px 6px;
 }
 
-.game-card-tagline {
-  font-size: 14px;
-  opacity: 0.8;
-}
-
 .game-card-players {
   font-size: 12px;
   opacity: 0.6;
-  margin-bottom: 6px;
+  margin: 2px 0;
 }
 
-.game-card-btn {
-  /* pin to the bottom so every card's button sits on the same line */
-  margin-top: auto;
-  width: 100%;
+/* ── game summary popup ─────────────────────────────────────────────────── */
+
+.game-info-card {
+  position: relative;
+  max-width: 380px;
+  padding: 30px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game-info-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 14px;
+}
+
+.game-info-icon {
+  font-size: 40px;
+  margin-bottom: 10px;
+}
+
+.game-info-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.game-info-tagline {
+  margin: 0 0 6px;
+  font-size: 15px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.game-info-play {
+  margin-top: 16px;
+  min-width: 170px;
+  font-size: 16px;
 }
 
 /* ── toast ─────────────────────────────────────────────────────────────── */
@@ -486,6 +609,12 @@ h4,
   margin-bottom: 20px;
 }
 
+/* The app-wide dock only exists on phones; wide viewports use the inline
+   pill row on the Home screen instead. */
+.home-tabs.wing-dock {
+  display: none;
+}
+
 .home-tab {
   font: inherit;
   font-size: 14px;
@@ -543,9 +672,14 @@ h4,
 }
 
 /* On phones the wing switcher becomes a fixed bottom nav bar — thumb reach
-   beats top-of-page tabs once the catalog is long enough to scroll. */
+   beats top-of-page tabs, and it stays put on every screen (games too). */
 @media (max-width: 700px) {
-  .home-tabs {
+  .home-tabs.wing-inline {
+    display: none;
+  }
+
+  .home-tabs.wing-dock {
+    display: flex;
     position: fixed;
     left: 0;
     right: 0;
@@ -560,7 +694,8 @@ h4,
     box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35);
   }
 
-  .home-tab {
+  .wing-dock .home-tab {
+    position: relative;
     flex: 1;
     flex-direction: column;
     gap: 3px;
@@ -572,15 +707,15 @@ h4,
     background: none;
   }
 
-  .home-tab.active {
+  .wing-dock .home-tab.active {
     background: var(--control);
   }
 
-  .home-tab-icon {
+  .wing-dock .home-tab-icon {
     font-size: 21px;
   }
 
-  .daily-tab-count {
+  .wing-dock .daily-tab-count {
     position: absolute;
     top: -2px;
     right: 4px;
@@ -590,13 +725,14 @@ h4,
     background: var(--felt-dark);
   }
 
-  .home-tab {
-    position: relative;
+  /* Every screen reserves the dock's height so no content hides under it —
+     the app is border-box, so this shrinks the content area, not the box. */
+  .app {
+    padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Keep the last cards and the leave button clear of the fixed bar. */
   .home-inner {
-    padding-bottom: 96px;
+    padding-bottom: 12px;
   }
 }
 
@@ -989,7 +1125,7 @@ h4,
    floating above the card like the auth widget does on the right. */
 .arcade-leave {
   position: fixed;
-  top: 12px;
+  top: max(12px, env(safe-area-inset-top, 0px));
   left: 12px;
   z-index: 60;
   margin: 0;
@@ -2783,7 +2919,7 @@ h4,
   .drawn-gap { width: 10px; }
 
   /* Home / lobby / overlays breathe less on small screens. */
-  .home,
+  .home { padding: calc(env(safe-area-inset-top, 0px) + 32px) 14px 20px; }
   .lobby { padding: 20px 14px; }
   .home-title { font-size: 24px; }
   .lobby-card,
@@ -2791,38 +2927,40 @@ h4,
   .room-code { font-size: 26px; letter-spacing: 0.2em; }
   .overlay-actions,
   .lobby-actions { flex-wrap: wrap; }
-  .home-tab { flex: 1; padding: 9px 10px; font-size: 13px; text-align: center; }
   .category-heading { font-size: 13px; }
 
-  /* Compact game cards: two per row, tighter spacing. */
+  /* Compact carousel cards. */
   .game-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
+    padding-bottom: 12px;
   }
   .game-card {
-    min-width: 0;
-    padding: 12px;
-    gap: 3px;
+    flex-basis: 196px;
+    width: 196px;
+    padding: 10px 12px;
+  }
+  .game-card-head {
+    gap: 8px;
+    min-height: 38px;
   }
   .game-card-icon {
     font-size: 22px;
-    margin-bottom: 0;
   }
   .game-card-title {
-    font-size: 14px;
+    font-size: 13.5px;
     gap: 5px;
-    overflow-wrap: anywhere;
-  }
-  .game-card-tagline {
-    font-size: 12px;
   }
   .game-card-players {
     font-size: 11px;
   }
-  .game-card-btn {
-    margin-top: auto;
-    padding: 8px 10px;
-    font-size: 14px;
+  .game-card-play {
+    font-size: 22px;
+    padding: 3px;
+  }
+  .home-logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
   }
   .soon-badge {
     font-size: 9px;

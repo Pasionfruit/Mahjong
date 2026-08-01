@@ -1,37 +1,23 @@
-import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GameId } from '@shared/games';
 import { createParty, joinParty } from '../socket';
 import { loadNickname } from '../session';
 import { useStore } from '../store';
 import { CATEGORY_LABELS, CATEGORY_ORDER, GAMES, dailyGames, type GameEntry } from '../games/catalog';
 import { useDailyProgress } from '../arcade/useDailyProgress';
-import {
-  IconCalendarCheck,
-  IconController,
-  IconLink,
-  IconPartyPopper,
-  IconUser,
-  IconZenLotus,
-} from '../components/icons';
+import { IconClose, IconPlay } from '../components/icons';
+import WingNav from '../components/WingNav';
 import { isDesktop } from '../device';
 import Profile from './Profile';
-
-type Wing = 'connect' | 'party' | 'daily' | 'zen' | 'profile';
-
-const WING_TABS: { wing: Wing; label: string; Icon: ComponentType }[] = [
-  { wing: 'connect', label: 'Connect', Icon: IconLink },
-  { wing: 'party', label: 'Party', Icon: IconPartyPopper },
-  { wing: 'daily', label: 'Daily', Icon: IconCalendarCheck },
-  { wing: 'zen', label: 'Zen', Icon: IconZenLotus },
-  { wing: 'profile', label: 'Profile', Icon: IconUser },
-];
 
 export default function Home() {
   const [nickname, setNickname] = useState(loadNickname());
   const [code, setCode] = useState('');
   const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [wing, setWing] = useState<Wing>('connect');
+  const [info, setInfo] = useState<{ g: GameEntry; daily: boolean } | null>(null);
+  const wing = useStore((s) => s.wing);
+  const setWing = useStore((s) => s.setWing);
   const notice = useStore((s) => s.notice);
   const dailyDone = useDailyProgress();
   const nickRef = useRef<HTMLInputElement>(null);
@@ -47,6 +33,7 @@ export default function Home() {
       nickRef.current?.focus();
       nickRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
+    setInfo(null);
   }, [wing]);
 
   const name = nickname.trim();
@@ -94,25 +81,89 @@ export default function Home() {
     if (!r.ok) complain(r.error);
   }
 
-  function gameCard(g: GameEntry) {
+  /** Uniform carousel card: rounded app-icon tile + title, with a round play
+   *  button on the right that launches straight in. Tapping the card itself
+   *  opens the summary popup. */
+  function gameCard(g: GameEntry, daily = false) {
+    const done = daily && dailyDone.has(g.id);
     return (
-      <div key={g.id} className={`game-card${g.available ? '' : ' soon'}`}>
-        <div className="game-card-icon">
-          <g.Icon />
+      <div
+        key={g.id}
+        className={`game-card${g.available ? '' : ' soon'}${done ? ' daily-card-done' : ''}`}
+        role="button"
+        tabIndex={0}
+        aria-haspopup="dialog"
+        onClick={() => setInfo({ g, daily })}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setInfo({ g, daily });
+          }
+        }}
+      >
+        <div className="game-card-head">
+          <div className="game-card-icon">
+            <g.Icon />
+          </div>
+          <div className="game-card-title">
+            <span className="game-card-name">{daily ? g.dailyLabel ?? g.name : g.name}</span>
+            {!g.available && <span className="soon-badge">Soon</span>}
+            {done && <span className="daily-done-badge">✓ Done</span>}
+          </div>
+          <button
+            className="game-card-play"
+            aria-label={`Play ${g.name}`}
+            disabled={busy || !g.available || (g.desktopOnly && !desktop)}
+            onClick={(e) => {
+              e.stopPropagation();
+              create(g);
+            }}
+          >
+            <IconPlay />
+          </button>
         </div>
-        <div className="game-card-title">
-          {g.name}
-          {!g.available && <span className="soon-badge">Soon</span>}
-        </div>
-        <div className="game-card-tagline">{g.tagline}</div>
-        <div className="game-card-players">{g.players}</div>
-        <button
-          className="btn btn-primary game-card-btn"
-          disabled={busy || !g.available || (g.desktopOnly && !desktop)}
-          onClick={() => create(g)}
+      </div>
+    );
+  }
+
+  /** Summary popup for a tapped card: X to close, Play front and center. */
+  function infoOverlay({ g, daily }: { g: GameEntry; daily: boolean }) {
+    const done = daily && dailyDone.has(g.id);
+    return (
+      <div className="overlay" onClick={() => setInfo(null)}>
+        <div
+          className="overlay-card game-info-card"
+          role="dialog"
+          aria-label={g.name}
+          onClick={(e) => e.stopPropagation()}
         >
-          {!g.available ? 'Coming soon' : g.desktopOnly && !desktop ? 'Desktop only' : 'Play'}
-        </button>
+          <button className="btn game-info-close" aria-label="Close" onClick={() => setInfo(null)}>
+            <IconClose />
+          </button>
+          <div className="game-card-icon game-info-icon">
+            <g.Icon />
+          </div>
+          <h2 className="game-info-title">
+            {daily ? g.dailyLabel ?? g.name : g.name}
+            {!g.available && <span className="soon-badge">Soon</span>}
+            {done && <span className="daily-done-badge">✓ Done</span>}
+          </h2>
+          <p className="game-info-tagline">{g.tagline}</p>
+          {!daily && <p className="game-card-players">{g.players}</p>}
+          {g.desktopOnly && !desktop && (
+            <p className="game-card-players">Needs a keyboard — play from a desktop.</p>
+          )}
+          <button
+            className="btn btn-primary game-info-play"
+            disabled={busy || !g.available || (g.desktopOnly && !desktop)}
+            onClick={() => {
+              setInfo(null);
+              create(g);
+            }}
+          >
+            Play
+          </button>
+        </div>
       </div>
     );
   }
@@ -131,9 +182,7 @@ export default function Home() {
       <div className="home-inner">
         <header className="home-head">
           <h1 className="home-title">
-            <span className="landing-glyph">
-              <IconController />
-            </span>{' '}
+            <img className="home-logo" src="/pwa-192.png" alt="" />
             LocalRot
           </h1>
           <p className="home-sub">Party with friends, zen out solo, or clear today’s dailies.</p>
@@ -147,25 +196,9 @@ export default function Home() {
           </div>
         )}
 
-        <div className="home-tabs">
-          {WING_TABS.map(({ wing: w, label, Icon }) => (
-            <button
-              key={w}
-              className={`home-tab${wing === w ? ' active' : ''}`}
-              onClick={() => setWing(w)}
-            >
-              <span className="home-tab-icon">
-                <Icon />
-              </span>
-              <span className="home-tab-label">{label}</span>
-              {w === 'daily' && (
-                <span className={`daily-tab-count${doneCount === dailies.length ? ' complete' : ''}`}>
-                  {doneCount}/{dailies.length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        {info && infoOverlay(info)}
+
+        <WingNav />
 
         {wing === 'connect' ? (
           <div className="connect-wing">
@@ -226,27 +259,7 @@ export default function Home() {
                 />
               </div>
             </div>
-            <div className="game-grid">
-              {dailies.map((g) => (
-                <div key={g.id} className={`game-card daily-card${dailyDone.has(g.id) ? ' daily-card-done' : ''}`}>
-                  <div className="game-card-icon">
-                    <g.Icon />
-                  </div>
-                  <div className="game-card-title">
-                    {g.dailyLabel ?? g.name}
-                    {dailyDone.has(g.id) && <span className="daily-done-badge">✓ Done</span>}
-                  </div>
-                  <div className="game-card-tagline">{g.tagline}</div>
-                  <button
-                    className={`btn game-card-btn${dailyDone.has(g.id) ? '' : ' btn-primary'}`}
-                    disabled={busy}
-                    onClick={() => create(g)}
-                  >
-                    {dailyDone.has(g.id) ? 'Play again' : 'Play today’s'}
-                  </button>
-                </div>
-              ))}
-            </div>
+            <div className="game-grid">{dailies.map((g) => gameCard(g, true))}</div>
           </section>
         ) : sections.length === 0 ? (
           <p className="home-empty hint">New games are on their way — check back soon!</p>
@@ -254,7 +267,7 @@ export default function Home() {
           sections.map(({ cat, games }) => (
             <section key={cat} className="category-section">
               <h2 className="category-heading">{CATEGORY_LABELS[cat]}</h2>
-              <div className="game-grid">{games.map(gameCard)}</div>
+              <div className="game-grid">{games.map((g) => gameCard(g))}</div>
             </section>
           ))
         )}

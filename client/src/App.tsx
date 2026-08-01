@@ -3,6 +3,7 @@ import Home from './screens/Home';
 import Lobby from './screens/Lobby';
 import { gameById } from './games/catalog';
 import { useMode } from './mode';
+import WingNav from './components/WingNav';
 
 export default function App() {
   const lobby = useStore((s) => s.lobby);
@@ -33,6 +34,9 @@ export default function App() {
     <div className="app" data-theme={theme} data-mode={mode}>
       {!connected && <div className="conn-banner">Reconnecting to server…</div>}
       {content}
+      {/* Phone bottom nav lives outside the screens so it survives every
+          route — games included. Hidden on wide viewports via CSS. */}
+      <WingNav dock />
     </div>
   );
 }
