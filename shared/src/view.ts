@@ -9,6 +9,7 @@ import type { DotsSettings, DotsView } from './dots';
 import type { SumoSettings, SumoView } from './sumo';
 import type { QuoridorOnlineView, QuoridorSettings } from './quoridor/meta';
 import type { PartySettings, PartyView } from './party';
+import type { BananagramsSettings, BananagramsView } from './bananagrams';
 
 export type MeldType = 'pong' | 'chow' | 'kongExposed' | 'kongConcealed' | 'kongAdded';
 
@@ -148,7 +149,8 @@ export type ClientGameView =
   | DotsView
   | SumoView
   | QuoridorOnlineView
-  | PartyView;
+  | PartyView
+  | BananagramsView;
 
 export interface LobbyPlayer {
   seat: number;
@@ -178,7 +180,8 @@ export interface LobbyState {
     | DotsSettings
     | SumoSettings
     | QuoridorSettings
-    | PartySettings;
+    | PartySettings
+    | BananagramsSettings;
   /** Player-count bounds for this game, so the lobby can render them. */
   minPlayers: number;
   maxPlayers: number;
@@ -202,7 +205,7 @@ export type GameEvent =
   | { t: 'concealedKong'; seat: number }
   | { t: 'addedKong'; seat: number; tile: Tile }
   | { t: 'flower'; seat: number; tile: Tile }
-  | { t: 'win'; seat: number; by: 'discard' | 'selfDraw' | 'lastStanding' }
+  | { t: 'win'; seat: number; by: 'discard' | 'selfDraw' | 'lastStanding' | 'bananas' }
   | { t: 'timeout'; seat: number }
   | { t: 'wallExhausted' }
   // Ultimate Tic-Tac-Toe
@@ -245,4 +248,7 @@ export type GameEvent =
   // Party Board
   | { t: 'die'; seat: number; value: number }
   | { t: 'coins'; seat: number; delta: number }
-  | { t: 'star'; seat: number };
+  | { t: 'star'; seat: number }
+  // Bananagrams
+  | { t: 'peel'; seat: number; bunchLeft: number }
+  | { t: 'dump'; seat: number };

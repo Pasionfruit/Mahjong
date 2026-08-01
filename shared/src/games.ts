@@ -12,6 +12,7 @@ export const GAME_IDS = [
   'sumo',
   'quoridor',
   'party',
+  'bananagrams',
 ] as const;
 export type GameId = (typeof GAME_IDS)[number];
 

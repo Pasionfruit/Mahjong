@@ -32,6 +32,8 @@ import PaintByNumberGame from './paintbynumber/PaintByNumberGame';
 import SudokuGame from './sudoku/SudokuGame';
 import ParkingJamGame from './parkingjam/ParkingJamGame';
 import CrosswordGame from './crossword/CrosswordGame';
+import BananagramsGame from './bananagrams/BananagramsGame';
+import BananagramsSettingsPanel from './bananagrams/Settings';
 import {
   IconTile,
   IconGrid,
@@ -247,6 +249,18 @@ export const GAMES: GameEntry[] = [
     Game: PartyGame,
     SettingsPanel: PartySettingsPanel,
     category: 'party',
+    competitive: true,
+  },
+  {
+    id: 'bananagrams',
+    name: 'Bananagrams',
+    tagline: 'Race to build your word grid — peel, dump, bananas!',
+    players: '2–8 players',
+    Icon: IconTiles,
+    available: true,
+    Game: BananagramsGame,
+    SettingsPanel: BananagramsSettingsPanel,
+    category: 'tabletop',
     competitive: true,
   },
 
@@ -492,16 +506,6 @@ export const GAMES: GameEntry[] = [
     Icon: IconBus,
     available: false,
     category: 'party',
-    competitive: true,
-  },
-  {
-    id: 'bananagrams',
-    name: 'Bananagrams',
-    tagline: 'Race to build your word grid.',
-    players: '2–8 players',
-    Icon: IconTiles,
-    available: false,
-    category: 'tabletop',
     competitive: true,
   },
 ];
