@@ -380,22 +380,22 @@ h4,
   margin: 0 auto 22px;
 }
 
-/* Each category is a horizontal carousel of uniform cards. */
 .game-grid {
-  display: flex;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
   margin-bottom: 24px;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  /* breathing room so card shadows aren't sheared off by the scroll clip */
-  padding: 4px 4px 16px;
-  scrollbar-width: thin;
+}
+
+/* Wide screens: fixed-width cards ranked from the left — a near-empty
+   category must not balloon its two cards across the whole row. */
+@media (min-width: 980px) {
+  .game-grid {
+    grid-template-columns: repeat(auto-fill, 272px);
+  }
 }
 
 .game-card {
-  flex: 0 0 252px;
-  width: 252px;
-  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -687,7 +687,9 @@ h4,
     z-index: 40;
     margin: 0;
     gap: 6px;
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    /* max(), not 8px + inset: the home-indicator inset alone (34px on Face ID
+       phones) already clears the indicator — stacking both reads as a hole. */
+    padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px));
     background: var(--felt-dark);
     background: color-mix(in srgb, var(--felt-dark) 92%, black);
     border-top: 1px solid var(--line);
@@ -728,7 +730,7 @@ h4,
   /* Every screen reserves the dock's height so no content hides under it —
      the app is border-box, so this shrinks the content area, not the box. */
   .app {
-    padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(60px + max(8px, env(safe-area-inset-bottom, 0px)));
   }
 
   .home-inner {
@@ -2929,14 +2931,13 @@ h4,
   .lobby-actions { flex-wrap: wrap; }
   .category-heading { font-size: 13px; }
 
-  /* Compact carousel cards. */
+  /* Compact game cards: two per row, tighter spacing. */
   .game-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
-    padding-bottom: 12px;
   }
   .game-card {
-    flex-basis: 196px;
-    width: 196px;
+    min-width: 0;
     padding: 10px 12px;
   }
   .game-card-head {
