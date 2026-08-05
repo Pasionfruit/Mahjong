@@ -1,24 +1,48 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { dateKeyUTC } from '../../arcade/dailySeed';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
+import type { SoloMode } from '../../arcade/useSoloGame';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
 import { PUZZLES } from './data';
-import { SIZE, computeEntries, crosswordModule, isBlack, letterAt, puzzleAt, type CrosswordEntry } from './engine';
+import {
+  DIFFICULTIES,
+  SIZE,
+  computeEntries,
+  crosswordModule,
+  difficultyOf,
+  isBlack,
+  letterAt,
+  puzzleAt,
+  type CrosswordDifficulty,
+  type CrosswordEntry,
+  type CrosswordSettings,
+} from './engine';
 import './styles.css';
 
 type Dir = 'across' | 'down';
 
 const KEY_ROWS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
 
+const DIFFICULTY_LABEL: Record<CrosswordDifficulty, string> = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+
 function formatTime(ms: number): string {
   return (ms / 1000).toFixed(1) + 's';
 }
 
 export default function CrosswordGame() {
+  const [difficulty, setDifficulty] = useState<CrosswordDifficulty>('easy');
+  // Endless difficulty picks read this ref, not the `difficulty` state, so a
+  // tap that both sets the difficulty and restarts the round never races
+  // React's async state batching — the ref is updated synchronously first.
+  const difficultyRef = useRef(difficulty);
+  const resolveSettings = useCallback(
+    (m: SoloMode): CrosswordSettings => ({ difficulty: m === 'endless' ? difficultyRef.current : null }),
+    [],
+  );
   const { mode, state, status, result, signedIn, sync, streak, dailyDoneToday, move, start, forceSync } =
-    useSoloGame(crosswordModule, () => undefined);
+    useSoloGame(crosswordModule, resolveSettings);
   const [view, setView] = useState<'play' | 'leaderboard'>('play');
   const [sel, setSel] = useState(0);
   const [dir, setDir] = useState<Dir>('across');
@@ -161,6 +185,13 @@ export default function CrosswordGame() {
     setDir(entry.dir);
   }
 
+  function selectDifficulty(d: CrosswordDifficulty) {
+    if (d === difficulty) return;
+    difficultyRef.current = d; // synchronous, so the very next start() sees it
+    setDifficulty(d);
+    void start('endless', { fresh: true });
+  }
+
   function clueList(entries: CrosswordEntry[], clues: { num: number; clue: string }[], label: string) {
     return (
       <div className="crossword-clue-group">
@@ -217,6 +248,20 @@ export default function CrosswordGame() {
           </button>
         </div>
 
+        {view === 'play' && mode === 'endless' && (
+          <div className="arcade-tabs crossword-diff-tabs">
+            {DIFFICULTIES.map((d) => (
+              <button
+                key={d}
+                className={`arcade-tab crossword-diff-tab${difficulty === d ? ' active' : ''}`}
+                onClick={() => selectDifficulty(d)}
+              >
+                {DIFFICULTY_LABEL[d]}
+              </button>
+            ))}
+          </div>
+        )}
+
         {view === 'leaderboard' ? (
           <div className="arcade-leaderboard-view">
             <h3>All-Time Fastest (Endless)</h3>
@@ -237,6 +282,7 @@ export default function CrosswordGame() {
           <>
             <div className="crossword-status">
               <span>Mini #{state.puzzle + 1} of {PUZZLES.length}</span>
+              {mode === 'endless' && <span>{DIFFICULTY_LABEL[difficultyOf(state.puzzle)]}</span>}
               <span>⏱ {formatTime(elapsedMs)}</span>
             </div>
 

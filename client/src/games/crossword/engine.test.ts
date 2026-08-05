@@ -2,14 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { PUZZLES } from './data';
 import {
   CELLS,
+  DIFFICULTIES,
   SIZE,
   computeEntries,
   crosswordModule,
+  difficultyOf,
   isBlack,
   letterAt,
   type CrosswordMove,
+  type CrosswordSettings,
   type CrosswordState,
 } from './engine';
+
+const ANY: CrosswordSettings = { difficulty: null };
 
 /** Moves that fill every white cell with its solution letter. */
 function winningMoves(state: CrosswordState, startAt = 1000): CrosswordMove[] {
@@ -100,15 +105,15 @@ describe('crossword puzzle bank validation (entire bank)', () => {
 
 describe('crossword module', () => {
   it('generate is deterministic and picks bank[seed % bank.length]', () => {
-    expect(crosswordModule.generate(3, undefined)).toEqual(crosswordModule.generate(3, undefined));
+    expect(crosswordModule.generate(3, ANY)).toEqual(crosswordModule.generate(3, ANY));
     const n = PUZZLES.length;
-    expect(crosswordModule.generate(0, undefined).puzzle).toBe(0);
-    expect(crosswordModule.generate(n + 2, undefined).puzzle).toBe(2);
-    expect(crosswordModule.generate(0xffffffff, undefined).puzzle).toBe(0xffffffff % n);
+    expect(crosswordModule.generate(0, ANY).puzzle).toBe(0);
+    expect(crosswordModule.generate(n + 2, ANY).puzzle).toBe(2);
+    expect(crosswordModule.generate(0xffffffff, ANY).puzzle).toBe(0xffffffff % n);
   });
 
   it('rejects moves on black cells, bad letters, and out-of-range cells', () => {
-    const state = crosswordModule.generate(0, undefined);
+    const state = crosswordModule.generate(0, ANY);
     const black = firstBlackCell(state);
     const white = firstWhiteCell(state);
     expect(crosswordModule.applyMove(state, { cell: black, letter: 'A', at: 1 })).toBeNull();
@@ -120,7 +125,7 @@ describe('crossword module', () => {
   });
 
   it('sets and erases letters; wrong letters are allowed on the board', () => {
-    const state = crosswordModule.generate(0, undefined);
+    const state = crosswordModule.generate(0, ANY);
     const cell = firstWhiteCell(state);
     const set = crosswordModule.applyMove(state, { cell, letter: 'Q', at: 10 })!;
     expect(set.letters[cell]).toBe('Q');
@@ -130,7 +135,7 @@ describe('crossword module', () => {
   });
 
   it('detects the win when every white cell matches the solution', () => {
-    const state = crosswordModule.generate(1, undefined);
+    const state = crosswordModule.generate(1, ANY);
     expect(crosswordModule.status(state)).toBe('playing');
     expect(crosswordModule.result(state)).toBeNull();
     let s = state;
@@ -142,7 +147,7 @@ describe('crossword module', () => {
   });
 
   it('scores elapsed time between first and last move, ascending-friendly', () => {
-    const state = crosswordModule.generate(2, undefined);
+    const state = crosswordModule.generate(2, ANY);
     const moves = winningMoves(state, 7000);
     let s = state;
     for (const m of moves) s = crosswordModule.applyMove(s, m) ?? s;
@@ -153,7 +158,7 @@ describe('crossword module', () => {
   });
 
   it('rejects moves after the win', () => {
-    const state = crosswordModule.generate(1, undefined);
+    const state = crosswordModule.generate(1, ANY);
     let s = state;
     for (const m of winningMoves(state)) s = crosswordModule.applyMove(s, m) ?? s;
     expect(crosswordModule.applyMove(s, { cell: firstWhiteCell(state), letter: '', at: 99999 })).toBeNull();
@@ -161,7 +166,7 @@ describe('crossword module', () => {
 
   it('replay reproduces the live state exactly, skipping illegal moves', () => {
     const seed = 20260731;
-    const state = crosswordModule.generate(seed, undefined);
+    const state = crosswordModule.generate(seed, ANY);
     const white = firstWhiteCell(state);
     const black = firstBlackCell(state);
     const log: CrosswordMove[] = [
@@ -172,6 +177,43 @@ describe('crossword module', () => {
     ];
     let live = state;
     for (const m of log) live = crosswordModule.applyMove(live, m) ?? live;
-    expect(crosswordModule.replay(seed, undefined, log)).toEqual(live);
+    expect(crosswordModule.replay(seed, ANY, log)).toEqual(live);
+  });
+});
+
+describe('crossword difficulty', () => {
+  it('splits the whole bank into three tiers of at least 20 puzzles each', () => {
+    const counts: Record<string, number> = { easy: 0, medium: 0, hard: 0 };
+    for (let i = 0; i < PUZZLES.length; i++) counts[difficultyOf(i)]!++;
+    for (const d of DIFFICULTIES) expect(counts[d], `${d} tier`).toBeGreaterThanOrEqual(20);
+    expect(counts.easy! + counts.medium! + counts.hard!).toBe(PUZZLES.length);
+  });
+
+  it('generate(seed, {difficulty}) only ever picks a puzzle from that tier', () => {
+    for (const difficulty of DIFFICULTIES) {
+      for (const seed of [0, 1, 2, 3, 100, 0xffffffff]) {
+        const state = crosswordModule.generate(seed, { difficulty });
+        expect(difficultyOf(state.puzzle), `seed ${seed}`).toBe(difficulty);
+      }
+    }
+  });
+
+  it('null difficulty draws from the unrestricted whole bank', () => {
+    const seen = new Set<number>();
+    for (let seed = 0; seed < PUZZLES.length; seed++) {
+      seen.add(crosswordModule.generate(seed, ANY).puzzle);
+    }
+    expect(seen.size).toBe(PUZZLES.length);
+  });
+
+  it('replay honors the tier a save was made with', () => {
+    const seed = 42;
+    for (const difficulty of DIFFICULTIES) {
+      const settings: CrosswordSettings = { difficulty };
+      const state = crosswordModule.generate(seed, settings);
+      const replayed = crosswordModule.replay(seed, settings, []);
+      expect(replayed).toEqual(state);
+      expect(difficultyOf(replayed.puzzle)).toBe(difficulty);
+    }
   });
 });

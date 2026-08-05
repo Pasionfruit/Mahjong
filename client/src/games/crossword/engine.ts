@@ -94,8 +94,64 @@ export function puzzleAt(index: number): CrosswordPuzzle {
   return p;
 }
 
-function generate(seed: number, _settings: void): CrosswordState {
-  const index = (seed >>> 0) % PUZZLES.length;
+export type CrosswordDifficulty = 'easy' | 'medium' | 'hard';
+export const DIFFICULTIES: CrosswordDifficulty[] = ['easy', 'medium', 'hard'];
+
+export interface CrosswordSettings {
+  /** Endless mode only — null (daily, or "any") draws from the whole bank. */
+  difficulty: CrosswordDifficulty | null;
+}
+
+// Standard Scrabble letter values as a difficulty proxy: puzzles built from
+// rarer letters (Q/X/Z/J/K, or a lot of F/H/V/W/Y) are genuinely harder to
+// intersect your way through than ones built from common vowels/consonants.
+// Deterministic and grid-derived, so no per-puzzle authoring is needed.
+const LETTER_SCORE: Record<string, number> = {
+  A: 1, E: 1, I: 1, O: 1, U: 1, L: 1, N: 1, S: 1, T: 1, R: 1,
+  D: 2, G: 2,
+  B: 3, C: 3, M: 3, P: 3,
+  F: 4, H: 4, V: 4, W: 4, Y: 4,
+  K: 5,
+  J: 8, X: 8,
+  Q: 10, Z: 10,
+};
+
+function difficultyScore(grid: string[]): number {
+  let score = 0;
+  for (const row of grid) for (const ch of row) if (ch !== '#') score += LETTER_SCORE[ch] ?? 0;
+  return score;
+}
+
+/** Puzzle index -> difficulty, computed once by ranking the whole bank on
+ *  difficultyScore and splitting it into equal thirds (ties broken by index
+ *  for a stable, reproducible split). */
+const PUZZLE_DIFFICULTY: CrosswordDifficulty[] = (() => {
+  const ranked = PUZZLES.map((p, i) => ({ i, score: difficultyScore(p.grid) }));
+  ranked.sort((a, b) => a.score - b.score || a.i - b.i);
+  const result: CrosswordDifficulty[] = new Array(PUZZLES.length);
+  const third = Math.ceil(PUZZLES.length / 3);
+  ranked.forEach(({ i }, rank) => {
+    result[i] = rank < third ? 'easy' : rank < third * 2 ? 'medium' : 'hard';
+  });
+  return result;
+})();
+
+export function difficultyOf(puzzleIndex: number): CrosswordDifficulty {
+  return PUZZLE_DIFFICULTY[puzzleIndex]!;
+}
+
+function poolFor(settings: CrosswordSettings): number[] {
+  if (!settings.difficulty) return PUZZLES.map((_, i) => i);
+  const diff = settings.difficulty;
+  return PUZZLE_DIFFICULTY.reduce<number[]>((acc, d, i) => {
+    if (d === diff) acc.push(i);
+    return acc;
+  }, []);
+}
+
+function generate(seed: number, settings: CrosswordSettings): CrosswordState {
+  const pool = poolFor(settings);
+  const index = pool[(seed >>> 0) % pool.length]!;
   return {
     puzzle: index,
     solution: puzzleAt(index).grid,
@@ -137,11 +193,11 @@ function result(state: CrosswordState): SoloResult | null {
   return {
     status: 'won',
     score: elapsedMs,
-    stats: { time: Math.round(elapsedMs / 100) / 10, puzzle: state.puzzle },
+    stats: { time: Math.round(elapsedMs / 100) / 10, puzzle: state.puzzle, difficulty: difficultyOf(state.puzzle) },
   };
 }
 
-function replay(seed: number, settings: void, moveLog: CrosswordMove[]): CrosswordState {
+function replay(seed: number, settings: CrosswordSettings, moveLog: CrosswordMove[]): CrosswordState {
   let state = generate(seed, settings);
   for (const move of moveLog) state = applyMove(state, move) ?? state;
   return state;
@@ -153,7 +209,7 @@ function shareText(state: CrosswordState): string {
   return `Crossword Mini ✅ — solved in ${r.stats?.time}s`;
 }
 
-export const crosswordModule: SoloGameModule<CrosswordState, CrosswordMove, void> = {
+export const crosswordModule: SoloGameModule<CrosswordState, CrosswordMove, CrosswordSettings> = {
   id: 'crossword',
   scoreDirection: 'asc',
   generate,

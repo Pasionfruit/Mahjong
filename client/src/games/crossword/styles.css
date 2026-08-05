@@ -1,5 +1,14 @@
 /* Crossword Mini — paper-white cells on the dark-jade felt, NYT-mini style. */
 
+.crossword-diff-tabs {
+  margin: -6px 0 14px;
+}
+
+.crossword-diff-tab {
+  font-size: 12px;
+  padding: 4px 12px;
+}
+
 .crossword-status {
   display: flex;
   gap: 18px;
