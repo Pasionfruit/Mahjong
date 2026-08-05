@@ -12,7 +12,13 @@ import {
 import { DISCONNECT_TURN_GRACE_MS } from '@shared/settings';
 import type { ClientGameView } from '@shared/view';
 import type { GameModule, SeatMeta } from '../GameModule';
-import { applyMinefieldAction, newMinefieldGame, type MfCell, type MinefieldState } from './engine';
+import {
+  applyMinefieldAction,
+  newMinefieldGame,
+  type MfCellLayout,
+  type MfPlayerBoard,
+  type MinefieldState,
+} from './engine';
 
 function validateAction(a: unknown): boolean {
   if (typeof a !== 'object' || a === null) return false;
@@ -42,29 +48,28 @@ function sanitizeSettings(
 
 // ── redaction ───────────────────────────────────────────────────────────────
 
-function cellView(c: MfCell, over: boolean): MinefieldCellView {
-  if (c.revealed || over) {
-    if (c.mine) return { revealed: true, mine: true, owner: c.owner ?? -1 };
-    return { revealed: true, mine: false, adjacent: c.adjacent, owner: c.owner };
-  }
-  return { revealed: false };
+function layoutCellView(c: MfCellLayout, revealed: boolean): MinefieldCellView {
+  if (!revealed) return { revealed: false };
+  return c.mine ? { revealed: true, mine: true } : { revealed: true, mine: false, adjacent: c.adjacent };
 }
 
 function view(s: MinefieldState, viewerSeat: number, seats: SeatMeta[], paused: boolean): MinefieldView {
-  const players = s.eliminated.map((eliminated, seat) => {
-    const meta = seats[seat]!;
+  const players = s.boards.map((b: MfPlayerBoard) => {
+    const meta = seats[b.seat]!;
     return {
-      seat,
+      seat: b.seat,
       nickname: meta.nickname,
       connected: meta.connected,
       isHost: meta.isHost,
       isBot: meta.isBot,
       wins: meta.wins,
-      revealedCount: s.revealedCount[seat]!,
-      minesHit: s.minesHit[seat]!,
-      eliminated,
+      revealedCount: b.revealedCount,
+      minesHit: b.minesHit,
+      eliminated: b.eliminated,
     };
   });
+  const you = s.boards[viewerSeat];
+  const totalSafeCells = s.layout.filter((c) => !c.mine).length;
   return {
     g: 'minefield',
     yourSeat: viewerSeat,
@@ -72,7 +77,9 @@ function view(s: MinefieldState, viewerSeat: number, seats: SeatMeta[], paused: 
     rows: s.rows,
     cols: s.cols,
     mineCount: s.mineCount,
-    cells: s.cells.map((c) => cellView(c, s.over)),
+    totalSafeCells,
+    yourCells: you ? s.layout.map((c, i) => layoutCellView(c, you.revealed[i]!)) : null,
+    finalLayout: s.over ? s.layout.map((c) => layoutCellView(c, true)) : null,
     paused,
     settings: { ...s.settings },
     round: s.round,
@@ -80,10 +87,11 @@ function view(s: MinefieldState, viewerSeat: number, seats: SeatMeta[], paused: 
   };
 }
 
-/** Minefield: real-time shared-board Minesweeper battle (2–8 players). Every
- *  reveal is broadcast to the whole table; by default hitting a mine
- *  eliminates you from the round (settings.eliminateOnMine can turn that
- *  off, letting mines cost you the reveal without knocking you out). */
+/** Minesweeper (internal id "minefield"): a real-time party race — every
+ *  player gets their own identically-laid-out board (same seed, fair
+ *  speedrun). By default hitting a mine eliminates you from the round
+ *  (settings.eliminateOnMine can turn that off, letting mines cost you the
+ *  reveal without knocking you out). */
 export const minefieldModule: GameModule = {
   id: 'minefield',
   minPlayers: MINEFIELD_MIN_PLAYERS,
@@ -108,7 +116,7 @@ export const minefieldModule: GameModule = {
   deadlineHintMs: () => null,
   awaitingSeat: () => null,
   pendingSeats: () => [],
-  settleDisconnected: () => [], // a vanished player just stops clicking; the board goes on
+  settleDisconnected: () => [], // a vanished player just stops clicking their own board
 
   botDelayMs: () => 0,
   // No bots and no deadlines — never called; keep them well-formed.

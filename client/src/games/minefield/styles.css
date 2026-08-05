@@ -1,4 +1,4 @@
-/* ── Minefield — shared-board Minesweeper battle ────────────────────────── */
+/* ── Minesweeper (internal id "minefield") — independent-boards party race ── */
 
 .minefield {
   min-height: 100%;
@@ -243,4 +243,24 @@
 .minefield-result-card {
   max-height: 88vh;
   overflow-y: auto;
+}
+
+.minefield-reveal {
+  margin: 4px 0 16px;
+}
+
+/* The result card is much narrower than the full-page board — same grid,
+   smaller sizing budget so an Expert-sized layout still fits. */
+.minefield-board-wrap-small {
+  width: min(100%, 420px);
+  max-height: 50vh;
+  margin: 0 auto;
+}
+
+.minefield-board-wrap-small .minefield-board {
+  --mf-cell: max(10px, calc((min(100%, 420px) - 6px) / var(--mf-cols)));
+}
+
+.minefield-board-wrap-small .minefield-cell {
+  cursor: default;
 }

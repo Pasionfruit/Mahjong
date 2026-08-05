@@ -21,57 +21,94 @@ function metas(n: number): SeatMeta[] {
   }));
 }
 
-/** First hidden (unrevealed, non-mine) cell — a safe move for tests. */
-function firstHiddenSafeCell(s: MinefieldState): number {
-  const i = s.cells.findIndex((c) => !c.revealed && !c.mine);
+/** First hidden (unrevealed, non-mine) cell on `seat`'s own board — a safe move for tests. */
+function firstHiddenSafeCell(s: MinefieldState, seat = 0): number {
+  const board = s.boards[seat]!;
+  const i = s.layout.findIndex((c, idx) => !board.revealed[idx] && !c.mine);
   if (i < 0) throw new Error('no hidden safe cell');
   return i;
 }
 
-function firstHiddenMineCell(s: MinefieldState): number {
-  const i = s.cells.findIndex((c) => !c.revealed && c.mine);
+function firstHiddenMineCell(s: MinefieldState, seat = 0): number {
+  const board = s.boards[seat]!;
+  const i = s.layout.findIndex((c, idx) => !board.revealed[idx] && c.mine);
   if (i < 0) throw new Error('no hidden mine cell');
   return i;
 }
 
+function mineIndices(s: MinefieldState): number[] {
+  return s.layout.reduce<number[]>((acc, c, i) => {
+    if (c.mine) acc.push(i);
+    return acc;
+  }, []);
+}
+
+function safeIndices(s: MinefieldState): number[] {
+  return s.layout.reduce<number[]>((acc, c, i) => {
+    if (!c.mine) acc.push(i);
+    return acc;
+  }, []);
+}
+
+/** Reveal every safe cell on `seat`'s board except the last, returning it. */
+function primeForClear(s: MinefieldState, seat: number): number {
+  const board = s.boards[seat]!;
+  let last: number | null = null;
+  for (const i of safeIndices(s)) {
+    if (board.revealed[i]) continue;
+    if (last !== null) applyMinefieldAction(s, seat, { t: 'mf', op: 'reveal', index: last });
+    last = i;
+  }
+  if (last === null) throw new Error('board already clear');
+  return last;
+}
+
 describe('board generation', () => {
-  it('places the configured mine count and auto-reveals a safe starting patch', () => {
-    const s = newGame(2, { preset: 'beginner' });
+  it('places the configured mine count and gives every player an identical, independent, auto-revealed start', () => {
+    const s = newGame(3, { preset: 'beginner' });
     const spec = MINEFIELD_PRESETS.beginner;
     expect(s.rows).toBe(spec.rows);
     expect(s.cols).toBe(spec.cols);
     expect(s.mineCount).toBe(spec.mines);
-    expect(s.cells).toHaveLength(spec.rows * spec.cols);
-    expect(s.cells.filter((c) => c.mine)).toHaveLength(spec.mines);
-    expect(s.cells.some((c) => c.revealed)).toBe(true);
-    // The auto-revealed patch is nobody's credit.
-    for (const c of s.cells) if (c.revealed) expect(c.owner).toBeNull();
+    expect(s.layout).toHaveLength(spec.rows * spec.cols);
+    expect(s.layout.filter((c) => c.mine)).toHaveLength(spec.mines);
+    expect(s.boards).toHaveLength(3);
+    // Every board starts with the same safe patch revealed, independently.
+    const [a, b, c] = s.boards;
+    expect(a!.revealed).toEqual(b!.revealed);
+    expect(b!.revealed).toEqual(c!.revealed);
+    expect(a!.revealed.some(Boolean)).toBe(true);
+    for (const board of s.boards) {
+      expect(board.revealedCount).toBe(0); // the free starting patch isn't credited
+      expect(board.minesHit).toBe(0);
+      expect(board.eliminated).toBe(false);
+    }
   });
 
   it('is deterministic for the same seed', () => {
     const a = newGame(3, {}, 42);
     const b = newGame(3, {}, 42);
-    expect(a.cells.map((c) => c.mine)).toEqual(b.cells.map((c) => c.mine));
-    expect(a.cells.map((c) => c.revealed)).toEqual(b.cells.map((c) => c.revealed));
+    expect(a.layout).toEqual(b.layout);
+    expect(a.boards.map((x) => x.revealed)).toEqual(b.boards.map((x) => x.revealed));
   });
 
   it('the safe-start cell and its neighbors are never mines', () => {
     for (let seed = 0; seed < 20; seed++) {
       const s = newGame(2, {}, seed);
       const start = Math.floor(s.rows / 2) * s.cols + Math.floor(s.cols / 2);
-      expect(s.cells[start]!.mine).toBe(false);
-      for (const n of neighborsOf(start, s.rows, s.cols)) expect(s.cells[n]!.mine).toBe(false);
+      expect(s.layout[start]!.mine).toBe(false);
+      for (const n of neighborsOf(start, s.rows, s.cols)) expect(s.layout[n]!.mine).toBe(false);
     }
   });
 
   it('noGuess boards are always fully solvable by pure deduction', () => {
     for (let seed = 0; seed < 5; seed++) {
       const s = newGame(2, { preset: 'beginner', noGuess: true }, seed * 1000);
-      const startRevealed = s.cells.reduce<number[]>((acc, c, i) => {
-        if (c.revealed) acc.push(i);
+      const startRevealed = s.boards[0]!.revealed.reduce<number[]>((acc, r, i) => {
+        if (r) acc.push(i);
         return acc;
       }, []);
-      expect(isNoGuessSolvable(s.cells, s.rows, s.cols, s.mineCount, startRevealed)).toBe(true);
+      expect(isNoGuessSolvable(s.layout, s.rows, s.cols, s.mineCount, startRevealed)).toBe(true);
     }
   });
 });
@@ -79,72 +116,85 @@ describe('board generation', () => {
 describe('isNoGuessSolvable — unit behavior on constructed boards', () => {
   it('a fully-revealed board (no mines left hidden) is trivially solvable', () => {
     const rows = 3, cols = 3;
-    const cells = Array.from({ length: 9 }, () => ({ mine: false, revealed: false, adjacent: 0, owner: null }));
-    expect(isNoGuessSolvable(cells, rows, cols, 0, [0, 1, 2, 3, 4, 5, 6, 7, 8])).toBe(true);
+    const layout = Array.from({ length: 9 }, () => ({ mine: false, adjacent: 0 }));
+    expect(isNoGuessSolvable(layout, rows, cols, 0, [0, 1, 2, 3, 4, 5, 6, 7, 8])).toBe(true);
   });
 
   it('a genuine 50/50 (two symmetric candidates, no distinguishing clue) is rejected', () => {
     // 1x4 row: revealed '1' at index 1 pointing at indices {0,2}; nothing else
     // constrains which of the two is the mine — classic unresolved 50/50.
     const rows = 1, cols = 4;
-    const cells = [
-      { mine: false, revealed: false, adjacent: 0, owner: null }, // 0: hidden safe
-      { mine: false, revealed: true, adjacent: 1, owner: null }, // 1: revealed '1'
-      { mine: false, revealed: false, adjacent: 0, owner: null }, // 2: hidden, one of these two is the mine
-      { mine: false, revealed: false, adjacent: 0, owner: null }, // 3: fully unconstrained
+    const layout = [
+      { mine: false, adjacent: 0 }, // 0: hidden safe
+      { mine: false, adjacent: 1 }, // 1: revealed '1'
+      { mine: false, adjacent: 0 }, // 2: hidden, one of these two is the mine
+      { mine: false, adjacent: 0 }, // 3: fully unconstrained
     ];
     // Exactly one of {0,2} is secretly a mine, but the solver only sees clue
     // values, not ground truth — with 1 total mine among {0,2} and no other
     // information, no rule can single one out.
-    expect(isNoGuessSolvable(cells, rows, cols, 1, [1])).toBe(false);
+    expect(isNoGuessSolvable(layout, rows, cols, 1, [1])).toBe(false);
   });
 });
 
-describe('applyMinefieldAction — reveal mechanics', () => {
+describe('applyMinefieldAction — independent boards', () => {
   it('rejects out-of-range and already-revealed cells', () => {
     const s = newGame(2);
     expect(applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: -1 }).ok).toBe(false);
-    expect(applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: s.cells.length }).ok).toBe(false);
-    const already = s.cells.findIndex((c) => c.revealed);
+    expect(applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: s.layout.length }).ok).toBe(false);
+    const already = s.boards[0]!.revealed.findIndex(Boolean);
     expect(applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: already }).ok).toBe(false);
   });
 
   it('rejects a seat outside the game and an eliminated seat', () => {
     const s = newGame(2);
-    expect(applyMinefieldAction(s, 5, { t: 'mf', op: 'reveal', index: firstHiddenSafeCell(s) }).ok).toBe(false);
-    const mine = firstHiddenMineCell(s);
+    expect(applyMinefieldAction(s, 5, { t: 'mf', op: 'reveal', index: firstHiddenSafeCell(s, 0) }).ok).toBe(false);
+    const mine = firstHiddenMineCell(s, 0);
     applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: mine });
-    expect(s.eliminated[0]).toBe(true);
-    const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: firstHiddenSafeCell(s) });
+    expect(s.boards[0]!.eliminated).toBe(true);
+    const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: firstHiddenSafeCell(s, 0) });
     expect(res.ok).toBe(false);
   });
 
-  it('a safe reveal flood-fills and attributes every newly revealed cell to the acting seat', () => {
+  it('a safe reveal flood-fills only the acting seat\'s own board — others are untouched', () => {
     const s = newGame(2);
-    const target = firstHiddenSafeCell(s);
-    const before = s.cells.filter((c) => c.revealed).length;
+    const target = firstHiddenSafeCell(s, 1);
+    const before0 = s.boards[0]!.revealed.filter(Boolean).length;
+    const before1 = s.boards[1]!.revealed.filter(Boolean).length;
     const res = applyMinefieldAction(s, 1, { t: 'mf', op: 'reveal', index: target });
     expect(res.ok).toBe(true);
-    const after = s.cells.filter((c) => c.revealed).length;
-    expect(after).toBeGreaterThan(before);
-    for (const c of s.cells) if (c.revealed && c.owner === 1) expect(c.mine).toBe(false);
-    expect(s.revealedCount[1]).toBe(after - before);
+    const after1 = s.boards[1]!.revealed.filter(Boolean).length;
+    expect(after1).toBeGreaterThan(before1);
+    expect(s.boards[0]!.revealed.filter(Boolean).length).toBe(before0); // seat 0 untouched
+    expect(s.boards[1]!.revealedCount).toBe(after1 - before1);
   });
 
-  it('a mine reveal eliminates the seat and emits an explode event', () => {
+  it('two players can independently reveal the exact same cell on their own boards', () => {
+    const s = newGame(2);
+    const target = firstHiddenSafeCell(s, 0);
+    expect(applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: target }).ok).toBe(true);
+    // Same index, seat 1's own board — must still be legal there even though
+    // seat 0 already revealed "the same cell" on their own copy.
+    expect(s.boards[1]!.revealed[target]).toBe(false);
+    expect(applyMinefieldAction(s, 1, { t: 'mf', op: 'reveal', index: target }).ok).toBe(true);
+  });
+
+  it('a mine reveal eliminates only that seat and emits an explode event', () => {
     const s = newGame(3);
-    const mine = firstHiddenMineCell(s);
+    const mine = firstHiddenMineCell(s, 0);
     const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: mine });
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.events).toContainEqual({ t: 'explode', seat: 0, index: mine });
-    expect(s.eliminated[0]).toBe(true);
-    expect(s.cells[mine]!.revealed).toBe(true);
+    expect(s.boards[0]!.eliminated).toBe(true);
+    expect(s.boards[0]!.revealed[mine]).toBe(true);
+    expect(s.boards[1]!.eliminated).toBe(false);
+    expect(s.boards[2]!.eliminated).toBe(false);
     expect(s.over).toBe(false); // two other seats still active
   });
 
   it('last player standing wins immediately once everyone else is eliminated', () => {
     const s = newGame(2, { preset: 'beginner' });
-    const mineForSeat0 = s.cells.findIndex((c) => !c.revealed && c.mine);
+    const mineForSeat0 = firstHiddenMineCell(s, 0);
     const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: mineForSeat0 });
     expect(res.ok).toBe(true);
     expect(s.over).toBe(true);
@@ -152,36 +202,23 @@ describe('applyMinefieldAction — reveal mechanics', () => {
     if (res.ok) expect(res.events).toContainEqual({ t: 'win', seat: 1, by: 'lastStanding' });
   });
 
-  it('clearing every non-mine cell wins outright for whoever completed it', () => {
+  it('clearing your own board wins outright, even if others are mid-board', () => {
     const s = newGame(2, { preset: 'beginner' });
-    // Reveal every non-mine cell manually except the very last one.
-    const safeCells = s.cells.reduce<number[]>((acc, c, i) => {
-      if (!c.mine) acc.push(i);
-      return acc;
-    }, []);
-    let last: number | null = null;
-    for (const i of safeCells) {
-      if (s.cells[i]!.revealed) continue;
-      if (last !== null) applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: last });
-      last = i;
-    }
-    expect(last).not.toBeNull();
-    const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: last! });
+    const last = primeForClear(s, 0);
+    const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: last });
     expect(res.ok).toBe(true);
     expect(s.over).toBe(true);
     expect(s.winnerSeats).toEqual([0]);
     if (res.ok) expect(res.events.some((e) => e.t === 'win' && e.by === 'cleared')).toBe(true);
+    // Seat 1's own board is untouched by seat 0 finishing theirs.
+    expect(s.boards[1]!.eliminated).toBe(false);
   });
 
   it('with 3+ players, eliminating down to one seat still ends the round for that seat', () => {
     const s = newGame(3, { preset: 'beginner' });
-    const mines = s.cells.reduce<number[]>((acc, c, i) => {
-      if (c.mine) acc.push(i);
-      return acc;
-    }, []);
-    applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: mines[0]! });
+    applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: firstHiddenMineCell(s, 0) });
     expect(s.over).toBe(false); // two seats still active
-    const res = applyMinefieldAction(s, 1, { t: 'mf', op: 'reveal', index: mines[1]! });
+    const res = applyMinefieldAction(s, 1, { t: 'mf', op: 'reveal', index: firstHiddenMineCell(s, 1) });
     expect(res.ok).toBe(true);
     expect(s.over).toBe(true);
     expect(s.winnerSeats).toEqual([2]);
@@ -190,69 +227,51 @@ describe('applyMinefieldAction — reveal mechanics', () => {
 
   it('rejects any action once the round is over', () => {
     const s = newGame(2, { preset: 'beginner' });
-    const mines = s.cells.reduce<number[]>((acc, c, i) => {
-      if (c.mine) acc.push(i);
-      return acc;
-    }, []);
-    applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: mines[0]! });
-    applyMinefieldAction(s, 1, { t: 'mf', op: 'reveal', index: mines[1]! });
+    applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: firstHiddenMineCell(s, 0) });
+    applyMinefieldAction(s, 1, { t: 'mf', op: 'reveal', index: firstHiddenMineCell(s, 1) });
     expect(s.over).toBe(true);
     const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: 0 });
     expect(res.ok).toBe(false);
   });
 });
 
-describe('eliminateOnMine: false — keep playing after a mine', () => {
+describe('eliminateOnMine: false — keep playing after a mine, on your own board', () => {
   it('a mine reveal counts as a hit but does not eliminate the seat', () => {
     const s = newGame(2, { eliminateOnMine: false });
-    const mine = firstHiddenMineCell(s);
+    const mine = firstHiddenMineCell(s, 0);
     const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: mine });
     expect(res.ok).toBe(true);
     if (res.ok) expect(res.events).toContainEqual({ t: 'explode', seat: 0, index: mine });
-    expect(s.eliminated[0]).toBe(false);
-    expect(s.minesHit[0]).toBe(1);
-    expect(s.cells[mine]!.revealed).toBe(true);
+    expect(s.boards[0]!.eliminated).toBe(false);
+    expect(s.boards[0]!.minesHit).toBe(1);
+    expect(s.boards[0]!.revealed[mine]).toBe(true);
     expect(s.over).toBe(false);
   });
 
-  it('the same seat can keep revealing safe cells after hitting a mine', () => {
+  it('the same seat can keep revealing safe cells on their own board after hitting a mine', () => {
     const s = newGame(2, { eliminateOnMine: false });
-    const mine = firstHiddenMineCell(s);
-    applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: mine });
-    const safe = firstHiddenSafeCell(s);
+    applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: firstHiddenMineCell(s, 0) });
+    const safe = firstHiddenSafeCell(s, 0);
     const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: safe });
     expect(res.ok).toBe(true);
-    expect(s.eliminated[0]).toBe(false);
-    expect(s.revealedCount[0]).toBeGreaterThan(0);
+    expect(s.boards[0]!.eliminated).toBe(false);
+    expect(s.boards[0]!.revealedCount).toBeGreaterThan(0);
   });
 
   it('even every seat hitting a mine never ends the round early — only a full clear does', () => {
     const s = newGame(3, { preset: 'beginner', eliminateOnMine: false });
-    const mines = s.cells.reduce<number[]>((acc, c, i) => {
-      if (c.mine) acc.push(i);
-      return acc;
-    }, []);
     for (let seat = 0; seat < 3; seat++) {
-      applyMinefieldAction(s, seat, { t: 'mf', op: 'reveal', index: mines[seat]! });
+      applyMinefieldAction(s, seat, { t: 'mf', op: 'reveal', index: firstHiddenMineCell(s, seat) });
     }
     expect(s.over).toBe(false);
-    expect(s.eliminated).toEqual([false, false, false]);
-    expect(s.minesHit).toEqual([1, 1, 1]);
+    expect(s.boards.map((b) => b.eliminated)).toEqual([false, false, false]);
+    expect(s.boards.map((b) => b.minesHit)).toEqual([1, 1, 1]);
   });
 
-  it('clearing the board still wins outright, exactly as with elimination on', () => {
+  it('clearing your own board still wins outright, exactly as with elimination on', () => {
     const s = newGame(2, { preset: 'beginner', eliminateOnMine: false });
-    const safeCells = s.cells.reduce<number[]>((acc, c, i) => {
-      if (!c.mine) acc.push(i);
-      return acc;
-    }, []);
-    let last: number | null = null;
-    for (const i of safeCells) {
-      if (s.cells[i]!.revealed) continue;
-      if (last !== null) applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: last });
-      last = i;
-    }
-    const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: last! });
+    const last = primeForClear(s, 0);
+    const res = applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: last });
     expect(res.ok).toBe(true);
     expect(s.over).toBe(true);
     expect(s.winnerSeats).toEqual([0]);
@@ -279,24 +298,49 @@ describe('minefieldModule — GameModule wiring', () => {
     expect(m.validateAction({ t: 'other' })).toBe(false);
   });
 
-  it('redactFor hides unrevealed mines and reveals everything once the round is over', () => {
+  it("redactFor only shows the viewer's own board, hiding unrevealed mines", () => {
     const { state } = m.startRound(m.defaultSettings(), 2, 0, 1, 123);
     const s = state as MinefieldState;
-    const mine = s.cells.findIndex((c) => !c.revealed && c.mine);
+    const mine = mineIndices(s).find((i) => !s.boards[0]!.revealed[i])!;
     const seats = metas(2);
 
     const before = m.redactFor(s, 0, seats, null, false);
     if (before.g === 'minefield') {
-      expect(before.cells[mine]).toEqual({ revealed: false });
+      expect(before.yourCells![mine]).toEqual({ revealed: false });
+      expect(before.finalLayout).toBeNull();
     }
 
     applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: mine });
-    // beginner board has 2 mines by default settings (intermediate=40 actually);
-    // force game over directly for this assertion regardless of preset.
-    s.over = true;
     const after = m.redactFor(s, 0, seats, null, false);
     if (after.g === 'minefield') {
-      expect(after.cells[mine]).toMatchObject({ revealed: true, mine: true });
+      expect(after.yourCells![mine]).toEqual({ revealed: true, mine: true });
+    }
+  });
+
+  it('reveals the shared final layout to everyone once the round is over', () => {
+    const s = newGame(2, { preset: 'beginner' });
+    applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: firstHiddenMineCell(s, 0) });
+    expect(s.over).toBe(true);
+    const seats = metas(2);
+    const viewFromLoser = m.redactFor(s, 0, seats, null, false);
+    const viewFromWinner = m.redactFor(s, 1, seats, null, false);
+    if (viewFromLoser.g === 'minefield' && viewFromWinner.g === 'minefield') {
+      expect(viewFromLoser.finalLayout).not.toBeNull();
+      expect(viewFromLoser.finalLayout).toEqual(viewFromWinner.finalLayout); // identical shared layout
+      expect(viewFromLoser.finalLayout!.every((c) => c.revealed)).toBe(true);
+    }
+  });
+
+  it('reports totalSafeCells and per-player progress independently', () => {
+    const s = newGame(2, { preset: 'beginner' });
+    applyMinefieldAction(s, 0, { t: 'mf', op: 'reveal', index: firstHiddenSafeCell(s, 0) });
+    const view = m.redactFor(s, 0, metas(2), null, false);
+    if (view.g === 'minefield') {
+      expect(view.totalSafeCells).toBe(s.layout.filter((c) => !c.mine).length);
+      const p0 = view.players.find((p) => p.seat === 0)!;
+      const p1 = view.players.find((p) => p.seat === 1)!;
+      expect(p0.revealedCount).toBe(s.boards[0]!.revealedCount);
+      expect(p1.revealedCount).toBe(0);
     }
   });
 
@@ -307,5 +351,6 @@ describe('minefieldModule — GameModule wiring', () => {
     expect(s.cols).toBe(9);
     expect(s.mineCount).toBe(10);
     expect(s.playerCount).toBe(3);
+    expect(s.boards).toHaveLength(3);
   });
 });

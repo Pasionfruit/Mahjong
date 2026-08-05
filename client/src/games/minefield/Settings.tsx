@@ -14,7 +14,8 @@ const PRESET_LABEL: Record<MinefieldPreset, string> = {
   expert: 'Expert',
 };
 
-/** The Minefield rules panel shown inside the shared lobby shell. */
+/** The Minesweeper (internal id "minefield") rules panel shown inside the
+ *  shared lobby shell. */
 export default function MinefieldSettingsPanel() {
   const lobby = useStore((s) => s.lobby);
   const [error, setError] = useState<string | null>(null);
@@ -74,28 +75,28 @@ export default function MinefieldSettingsPanel() {
           />
         </label>
         <p className="hint">
-          Checked: a mine just costs you that reveal — the cell stays marked for everyone, but you're
-          free to keep clicking. Unchecked (classic rules): hitting a mine eliminates you for the round.
+          Checked: a mine just costs you that reveal on your own board, and you're free to keep
+          clicking. Unchecked (classic rules): hitting a mine eliminates you for the round.
         </p>
       </div>
 
       <h2 className="section-title">How to play</h2>
       <div className="howto-body">
         <p>
-          Everyone battles on one shared minefield in real time. Tap a hidden cell to reveal it for the
-          whole table — clear a connected patch and every safe cell you uncover (including the ones your
-          reveal cascades into) counts toward your score.
+          Everyone races their own board — laid out identically for every player, so it's a fair
+          speedrun, not a luck contest. Tap a hidden cell to reveal it (and whatever safe patch it
+          cascades into) on <b>your</b> board only; nobody else can see your progress cell-by-cell.
         </p>
         <p>
           By default, hitting a mine gets you <b>eliminated</b> — out for the rest of the round, but you
           keep watching, and the round ends the instant only one player is still standing. Turn off "keep
-          playing after a mine" above and mines instead just cost you that reveal — you stay in the game.
-          Either way, the round also ends the moment the whole board is safely cleared — whoever lands
-          that final reveal wins outright.
+          playing after a mine" above and mines instead just cost you that reveal — you stay in the race.
+          Either way, the round also ends the moment someone fully clears their own board — first one
+          there wins outright, and everyone gets to see the layout they were all racing.
         </p>
         <p className="hint">
           Right-click (or long-press) a hidden cell to flag it for yourself as a reminder — flags are
-          personal and never visible to anyone else, so they can't help or hinder an opponent.
+          personal and never sent anywhere, so they're just for you.
         </p>
       </div>
 

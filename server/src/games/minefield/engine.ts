@@ -7,21 +7,30 @@ import type { GameEvent } from '@shared/view';
 import { mulberry32 } from '../../engine/rng';
 
 /**
- * Minefield's shared-board reducer. Board generation reuses the solo
- * Minesweeper approach (seeded RNG, safe-start exclusion, BFS flood fill)
- * but mines are placed once at round start rather than deferred to a first
- * click — with several players sharing one board there's no single "first
- * click" moment to defer to, so the server instead auto-reveals a safe
- * starting patch for everyone before anyone has acted.
+ * Minesweeper's independent-boards reducer. One mine layout is generated
+ * per round (seeded, reused from the solo Minesweeper approach: safe-start
+ * exclusion + BFS flood fill), and every player races their OWN reveal
+ * progress against that SAME layout — a fair speedrun, not a shared board.
+ * Mines are placed once at round start rather than deferred to a first
+ * click — with several independent boards there's no single "first click"
+ * moment to defer to, so the server instead auto-reveals a safe starting
+ * patch identically for every player before anyone has acted.
  */
 
-export interface MfCell {
+/** The mine layout — identical for every player's board this round. */
+export interface MfCellLayout {
   mine: boolean;
-  revealed: boolean;
-  /** Meaningless until minesPlaced/revealed — neighboring mine count. */
+  /** Meaningless when mine is true — neighboring mine count. */
   adjacent: number;
-  /** Seat that revealed this cell, or null for the free starting patch. */
-  owner: number | null;
+}
+
+/** One player's independent progress against the shared layout. */
+export interface MfPlayerBoard {
+  seat: number;
+  revealed: boolean[];
+  revealedCount: number;
+  minesHit: number;
+  eliminated: boolean;
 }
 
 export interface MinefieldState {
@@ -31,10 +40,8 @@ export interface MinefieldState {
   rows: number;
   cols: number;
   mineCount: number;
-  cells: MfCell[];
-  eliminated: boolean[];
-  revealedCount: number[];
-  minesHit: number[];
+  layout: MfCellLayout[];
+  boards: MfPlayerBoard[];
   over: boolean;
   winnerSeats: number[] | null;
 }
@@ -77,21 +84,23 @@ function placeMines(
   return mines;
 }
 
-function buildCells(mines: Set<number>, rows: number, cols: number): MfCell[] {
-  const cells: MfCell[] = Array.from({ length: rows * cols }, (_, i) => ({
+function buildLayout(mines: Set<number>, rows: number, cols: number): MfCellLayout[] {
+  const layout: MfCellLayout[] = Array.from({ length: rows * cols }, (_, i) => ({
     mine: mines.has(i),
-    revealed: false,
     adjacent: 0,
-    owner: null,
   }));
-  for (let i = 0; i < cells.length; i++) {
-    if (cells[i]!.mine) continue;
-    cells[i]!.adjacent = neighborsOf(i, rows, cols).filter((n) => cells[n]!.mine).length;
+  for (let i = 0; i < layout.length; i++) {
+    if (layout[i]!.mine) continue;
+    layout[i]!.adjacent = neighborsOf(i, rows, cols).filter((n) => layout[n]!.mine).length;
   }
-  return cells;
+  return layout;
 }
 
-function floodFrom(start: number, cells: MfCell[], rows: number, cols: number): number[] {
+/** BFS flood fill against the shared layout, bounded by one board's own
+ *  `revealed` progress — reused both for the initial identical safe-start
+ *  patch (an all-false revealed array) and every subsequent per-player
+ *  reveal. */
+function floodFrom(start: number, layout: MfCellLayout[], revealed: boolean[], rows: number, cols: number): number[] {
   const seen = new Set<number>();
   const queue = [start];
   const toReveal: number[] = [];
@@ -99,13 +108,11 @@ function floodFrom(start: number, cells: MfCell[], rows: number, cols: number): 
     const i = queue.shift()!;
     if (seen.has(i)) continue;
     seen.add(i);
-    const cell = cells[i]!;
-    if (cell.revealed || cell.mine) continue;
+    if (revealed[i] || layout[i]!.mine) continue;
     toReveal.push(i);
-    if (cell.adjacent === 0) {
+    if (layout[i]!.adjacent === 0) {
       for (const n of neighborsOf(i, rows, cols)) {
-        const nc = cells[n]!;
-        if (!seen.has(n) && !nc.revealed && !nc.mine) queue.push(n);
+        if (!seen.has(n) && !revealed[n] && !layout[n]!.mine) queue.push(n);
       }
     }
   }
@@ -129,13 +136,13 @@ function floodFrom(start: number, cells: MfCell[], rows: number, cols: number): 
  * real "no-guess" Minesweeper generator actually ships.
  */
 function isNoGuessSolvable(
-  cells: MfCell[],
+  layout: MfCellLayout[],
   rows: number,
   cols: number,
   mineCount: number,
   startRevealed: readonly number[],
 ): boolean {
-  const n = cells.length;
+  const n = layout.length;
   const revealed = new Set(startRevealed);
   const deducedMine = new Set<number>();
 
@@ -152,7 +159,7 @@ function isNoGuessSolvable(
       const hidden = hiddenNeighborsOf(i);
       if (hidden.length === 0) continue;
       const knownMines = nbrs.filter((x) => deducedMine.has(x)).length;
-      const remaining = cells[i]!.adjacent - knownMines;
+      const remaining = layout[i]!.adjacent - knownMines;
       if (remaining === 0) {
         for (const h of hidden) revealed.add(h);
         progress = true;
@@ -167,7 +174,7 @@ function isNoGuessSolvable(
     for (const a of frontier) {
       const hiddenA = new Set(hiddenNeighborsOf(a));
       if (hiddenA.size === 0) continue;
-      const remainA = cells[a]!.adjacent - neighborsOf(a, rows, cols).filter((x) => deducedMine.has(x)).length;
+      const remainA = layout[a]!.adjacent - neighborsOf(a, rows, cols).filter((x) => deducedMine.has(x)).length;
       for (const b of frontier) {
         if (a === b) continue;
         const hiddenB = new Set(hiddenNeighborsOf(b));
@@ -175,7 +182,7 @@ function isNoGuessSolvable(
         let subset = true;
         for (const h of hiddenA) if (!hiddenB.has(h)) { subset = false; break; }
         if (!subset) continue;
-        const remainB = cells[b]!.adjacent - neighborsOf(b, rows, cols).filter((x) => deducedMine.has(x)).length;
+        const remainB = layout[b]!.adjacent - neighborsOf(b, rows, cols).filter((x) => deducedMine.has(x)).length;
         const diff = [...hiddenB].filter((h) => !hiddenA.has(h));
         const diffMines = remainB - remainA;
         if (diffMines === 0) {
@@ -203,7 +210,7 @@ function isNoGuessSolvable(
     }
   }
 
-  for (let i = 0; i < n; i++) if (!cells[i]!.mine && !revealed.has(i)) return false;
+  for (let i = 0; i < n; i++) if (!layout[i]!.mine && !revealed.has(i)) return false;
   return true;
 }
 
@@ -221,27 +228,31 @@ export function newMinefieldGame(
   const { rows, cols, mines: mineCount } = spec;
   const start = Math.floor(rows / 2) * cols + Math.floor(cols / 2);
 
-  let cells: MfCell[] | null = null;
+  let layout: MfCellLayout[] | null = null;
   let startReveal: number[] = [];
   const attempts = settings.noGuess ? MAX_NOGUESS_ATTEMPTS : 1;
   for (let attempt = 0; attempt < attempts; attempt++) {
     const rng = mulberry32((seed + attempt * 0x9e3779b9) >>> 0);
     const mines = placeMines(rng, start, rows, cols, mineCount);
-    const candidate = buildCells(mines, rows, cols);
-    const reveal = floodFrom(start, candidate, rows, cols);
+    const candidate = buildLayout(mines, rows, cols);
+    const reveal = floodFrom(start, candidate, Array.from({ length: rows * cols }, () => false), rows, cols);
     if (!settings.noGuess || isNoGuessSolvable(candidate, rows, cols, mineCount, reveal)) {
-      cells = candidate;
+      layout = candidate;
       startReveal = reveal;
       break;
     }
     // Last attempt still wins as a best-effort fallback if none solved cleanly.
     if (attempt === attempts - 1) {
-      cells = candidate;
+      layout = candidate;
       startReveal = reveal;
     }
   }
 
-  for (const i of startReveal) cells![i]!.revealed = true;
+  const boards: MfPlayerBoard[] = Array.from({ length: playerCount }, (_, seat) => {
+    const revealed = Array.from({ length: rows * cols }, () => false);
+    for (const i of startReveal) revealed[i] = true;
+    return { seat, revealed, revealedCount: 0, minesHit: 0, eliminated: false };
+  });
 
   return {
     settings: { ...settings },
@@ -250,10 +261,8 @@ export function newMinefieldGame(
     rows,
     cols,
     mineCount,
-    cells: cells!,
-    eliminated: Array.from({ length: playerCount }, () => false),
-    revealedCount: Array.from({ length: playerCount }, () => 0),
-    minesHit: Array.from({ length: playerCount }, () => 0),
+    layout: layout!,
+    boards,
     over: false,
     winnerSeats: null,
   };
@@ -263,35 +272,35 @@ export function newMinefieldGame(
 
 function activeSeats(s: MinefieldState): number[] {
   const active: number[] = [];
-  for (let seat = 0; seat < s.playerCount; seat++) if (!s.eliminated[seat]) active.push(seat);
+  for (const b of s.boards) if (!b.eliminated) active.push(b.seat);
   return active;
 }
 
-function boardCleared(s: MinefieldState): boolean {
-  return s.cells.every((c) => c.mine || c.revealed);
+function boardCleared(s: MinefieldState, board: MfPlayerBoard): boolean {
+  return s.layout.every((c, i) => c.mine || board.revealed[i]);
 }
 
 export function applyMinefieldAction(s: MinefieldState, seat: number, a: MinefieldAction): MfApplyResult {
   if (s.over) return { ok: false, error: 'The round is already over.' };
-  if (seat < 0 || seat >= s.playerCount) return { ok: false, error: 'You are not playing this round.' };
-  if (s.eliminated[seat]) return { ok: false, error: "You're out this round — a mine got you." };
+  const board = s.boards[seat];
+  if (!board) return { ok: false, error: 'You are not playing this round.' };
+  if (board.eliminated) return { ok: false, error: "You're out this round — a mine got you." };
   const { index } = a;
-  if (!Number.isInteger(index) || index < 0 || index >= s.cells.length) {
+  if (!Number.isInteger(index) || index < 0 || index >= s.layout.length) {
     return { ok: false, error: 'That cell is outside the board.' };
   }
-  const cell = s.cells[index]!;
-  if (cell.revealed) return { ok: false, error: 'That cell is already revealed.' };
+  if (board.revealed[index]) return { ok: false, error: 'That cell is already revealed.' };
 
   const events: GameEvent[] = [];
+  const cell = s.layout[index]!;
 
   if (cell.mine) {
-    cell.revealed = true;
-    cell.owner = seat;
-    s.minesHit[seat]! += 1;
+    board.revealed[index] = true;
+    board.minesHit += 1;
     events.push({ t: 'explode', seat, index });
 
     if (s.settings.eliminateOnMine) {
-      s.eliminated[seat] = true;
+      board.eliminated = true;
       // The round can never reach zero active seats through this path: it
       // already ends the instant exactly one remains, so a later
       // elimination attempt is rejected above (s.over guard) before it
@@ -306,15 +315,12 @@ export function applyMinefieldAction(s: MinefieldState, seat: number, a: Minefie
     return { ok: true, events };
   }
 
-  const toReveal = floodFrom(index, s.cells, s.rows, s.cols);
-  for (const i of toReveal) {
-    s.cells[i]!.revealed = true;
-    s.cells[i]!.owner = seat;
-  }
-  s.revealedCount[seat]! += toReveal.length;
+  const toReveal = floodFrom(index, s.layout, board.revealed, s.rows, s.cols);
+  for (const i of toReveal) board.revealed[i] = true;
+  board.revealedCount += toReveal.length;
   events.push({ t: 'reveal', seat, count: toReveal.length });
 
-  if (boardCleared(s)) {
+  if (boardCleared(s, board)) {
     s.over = true;
     s.winnerSeats = [seat];
     events.push({ t: 'win', seat, by: 'cleared' });

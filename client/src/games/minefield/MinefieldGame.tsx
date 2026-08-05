@@ -6,8 +6,57 @@ import VolumeControl from '../../components/VolumeControl';
 import { IconFlag, IconMenu, IconMine, IconPause } from '../../components/icons';
 import './styles.css';
 
-/** Per-seat cell-owner tint, cycling if there are more players than colors. */
-const OWNER_COLORS = ['#7fb8e8', '#e08a8a', '#6bd68a', '#d9c7a4', '#b389e0', '#f0a868', '#4fd0d0', '#e0e070'];
+/** Per-player color, purely for telling scoreboard rows apart at a glance —
+ *  boards are private now, so this no longer means "who revealed this cell". */
+const PLAYER_COLORS = ['#7fb8e8', '#e08a8a', '#6bd68a', '#d9c7a4', '#b389e0', '#f0a868', '#4fd0d0', '#e0e070'];
+
+function renderBoard(
+  cells: MinefieldCellView[],
+  cols: number,
+  rows: number,
+  opts: {
+    interactive: boolean;
+    flags?: Set<number>;
+    onCell?: (index: number, cell: MinefieldCellView) => void;
+    onCellContextMenu?: (e: React.MouseEvent, index: number, cell: MinefieldCellView) => void;
+  },
+) {
+  const style = { '--mf-cols': cols, '--mf-rows': rows } as React.CSSProperties;
+  return (
+    <div className="minefield-board" style={style}>
+      {cells.map((cell, i) => {
+        const flagged = opts.flags?.has(i) ?? false;
+        let content: React.ReactNode = null;
+        let cls = 'minefield-cell';
+        if (cell.revealed) {
+          cls += ' revealed';
+          if (cell.mine) {
+            cls += ' mine';
+            content = <IconMine />;
+          } else if (cell.adjacent > 0) {
+            cls += ` n${cell.adjacent}`;
+            content = cell.adjacent;
+          }
+        } else if (flagged) {
+          cls += ' flagged';
+          content = <IconFlag />;
+        }
+        return (
+          <button
+            key={i}
+            className={cls}
+            disabled={!opts.interactive || cell.revealed}
+            onClick={() => opts.onCell?.(i, cell)}
+            onContextMenu={(e) => opts.onCellContextMenu?.(e, i, cell)}
+            aria-label={cell.revealed ? (cell.mine ? 'Mine' : `${cell.adjacent} adjacent mines`) : 'Hidden cell'}
+          >
+            {content}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function MinefieldGame() {
   const game = useStore((s) => s.game);
@@ -36,7 +85,7 @@ export default function MinefieldGame() {
       msg = `🏆 ${name} is the last one standing!`;
     } else if (lastEvent.t === 'win' && lastEvent.by === 'cleared') {
       const name = view.players.find((p) => p.seat === lastEvent.seat)?.nickname ?? 'Someone';
-      msg = `🎉 ${name} cleared the field!`;
+      msg = `🎉 ${name} cleared their board first!`;
     }
     if (msg === null) return;
     setEventBanner(msg);
@@ -58,10 +107,7 @@ export default function MinefieldGame() {
     if (view) setFlags(new Set());
   }, [view?.round]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ownerColor = useMemo(
-    () => (owner: number | null) => (owner === null ? null : OWNER_COLORS[owner % OWNER_COLORS.length]!),
-    [],
-  );
+  const playerColor = useMemo(() => (seat: number) => PLAYER_COLORS[seat % PLAYER_COLORS.length]!, []);
 
   if (!view || !lobby) return null;
 
@@ -99,16 +145,11 @@ export default function MinefieldGame() {
     });
   }
 
-  const boardStyle = {
-    '--mf-cols': view.cols,
-    '--mf-rows': view.rows,
-  } as React.CSSProperties;
-
   return (
     <div className="minefield">
       <div className="minefield-hud">
         <div className="minefield-hud-left">
-          <span className="minefield-hud-title">💣 Minefield</span>
+          <span className="minefield-hud-title">💣 Minesweeper</span>
           <span className="minefield-hud-status">
             Round {view.round} · {view.mineCount} mines · {view.settings.noGuess ? 'no 50/50s' : 'classic odds'}
             {!view.settings.eliminateOnMine && ' · mines don’t eliminate'}
@@ -162,10 +203,12 @@ export default function MinefieldGame() {
               key={p.seat}
               className={`minefield-score${p.eliminated ? ' out' : ''}${p.seat === view.yourSeat ? ' me' : ''}`}
             >
-              <span className="minefield-score-dot" style={{ background: ownerColor(p.seat) ?? undefined }} />
+              <span className="minefield-score-dot" style={{ background: playerColor(p.seat) }} />
               <span className={`conn-dot ${p.connected ? 'on' : 'off'}`} />
               <span className="minefield-score-name">{p.nickname}</span>
-              <span className="minefield-score-count">{p.revealedCount}</span>
+              <span className="minefield-score-count" title="Cells revealed on their own board">
+                {p.revealedCount}/{view.totalSafeCells}
+              </span>
               {p.minesHit > 0 && (
                 <span className="minefield-score-mines" title={`${p.minesHit} mine${p.minesHit === 1 ? '' : 's'} hit`}>
                   💥{p.minesHit}
@@ -177,52 +220,17 @@ export default function MinefieldGame() {
       </div>
 
       {me?.eliminated && !view.result && (
-        <p className="hint minefield-spectate">💥 You're out this round — watching the rest play.</p>
+        <p className="hint minefield-spectate">💥 You're out this round — watching the race play out.</p>
       )}
 
       <div className="minefield-board-wrap">
-        <div className="minefield-board" style={boardStyle}>
-          {view.cells.map((cell, i) => {
-            const flagged = flags.has(i);
-            let content: React.ReactNode = null;
-            let cls = 'minefield-cell';
-            let style: React.CSSProperties | undefined;
-            if (cell.revealed) {
-              cls += ' revealed';
-              if (cell.mine) {
-                cls += ' mine';
-                content = <IconMine />;
-              } else {
-                if (cell.adjacent > 0) {
-                  cls += ` n${cell.adjacent}`;
-                  content = cell.adjacent;
-                }
-                const c = ownerColor(cell.owner);
-                if (c) style = { boxShadow: `inset 0 0 0 2px ${c}` };
-              }
-            } else if (flagged) {
-              cls += ' flagged';
-              content = <IconFlag />;
-            }
-            return (
-              <button
-                key={i}
-                className={cls}
-                style={style}
-                disabled={!playing || cell.revealed}
-                onClick={() => onCell(i, cell)}
-                onContextMenu={(e) => onCellContextMenu(e, i, cell)}
-                aria-label={cell.revealed ? (cell.mine ? 'Mine' : `${cell.adjacent} adjacent mines`) : 'Hidden cell'}
-              >
-                {content}
-              </button>
-            );
-          })}
-        </div>
+        {view.yourCells &&
+          renderBoard(view.yourCells, view.cols, view.rows, { interactive: playing, flags, onCell, onCellContextMenu })}
       </div>
 
       <p className="minefield-help hint">
-        Tap to reveal. Right-click (or long-press) to flag a cell for yourself — nobody else sees your flags.
+        Everyone's racing an identical board, laid out just for them — reveals on your board are yours
+        alone. Tap to reveal. Right-click (or long-press) to flag a cell for yourself.
       </p>
 
       {eventBanner && <div className="minefield-event">{eventBanner}</div>}
@@ -253,6 +261,14 @@ export default function MinefieldGame() {
                 ? `🏆 ${view.players.find((p) => p.seat === winners[0])?.nickname ?? 'Someone'} wins!`
                 : '🤝 Draw!'}
             </h2>
+            {view.finalLayout && (
+              <div className="minefield-reveal">
+                <p className="hint">Everyone raced this exact layout:</p>
+                <div className="minefield-board-wrap minefield-board-wrap-small">
+                  {renderBoard(view.finalLayout, view.cols, view.rows, { interactive: false })}
+                </div>
+              </div>
+            )}
             <table className="scoreboard">
               <tbody>
                 {[...view.players]
@@ -264,7 +280,9 @@ export default function MinefieldGame() {
                         {p.nickname}
                         {p.seat === view.yourSeat ? ' (you)' : ''}
                       </td>
-                      <td className="score-wins">{p.revealedCount} cleared</td>
+                      <td className="score-wins">
+                        {p.revealedCount}/{view.totalSafeCells} cleared
+                      </td>
                     </tr>
                   ))}
               </tbody>

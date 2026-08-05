@@ -270,8 +270,8 @@ export const GAMES: GameEntry[] = [
   },
   {
     id: 'minefield',
-    name: 'Minefield',
-    tagline: 'One shared minefield, everyone clicking — last one standing wins.',
+    name: 'Minesweeper',
+    tagline: 'Everyone races an identical board — first clean clear wins.',
     players: '2–8 players',
     Icon: IconMinefield,
     available: true,
