@@ -31,12 +31,20 @@ export default function App() {
   }
 
   return (
-    <div className="app" data-theme={theme} data-mode={mode}>
-      {!connected && <div className="conn-banner">Reconnecting to server…</div>}
-      {content}
-      {/* Phone bottom nav lives outside the screens so it survives every
-          route — games included. Hidden on wide viewports via CSS. */}
+    <>
+      <div className="app" data-theme={theme} data-mode={mode}>
+        {!connected && <div className="conn-banner">Reconnecting to server…</div>}
+        {content}
+      </div>
+      {/* A sibling of .app, not a child: .app is the scrolling container
+          (overflow: auto), and nesting a position:fixed element inside a
+          scrolling ancestor is a known iOS Safari bug — the fixed element
+          can fail to stay truly pinned to the viewport, which is exactly
+          the "gap below the bottom nav in standalone/home-screen mode" bug.
+          Living outside .app's scroll box sidesteps it entirely. Still
+          survives every route (games included); hidden on wide viewports
+          via CSS. */}
       <WingNav dock />
-    </div>
+    </>
   );
 }

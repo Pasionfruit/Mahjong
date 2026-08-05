@@ -1254,6 +1254,28 @@ h4,
   margin: 10px 0 0;
 }
 
+.leaderboard-auth {
+  margin: 0 0 10px;
+}
+
+.leaderboard-auth-btn {
+  width: 100%;
+  font-size: 13px;
+}
+
+.leaderboard-auth-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  text-align: left;
+}
+
+.leaderboard-auth-panel .hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+
 /* ── lobby ──────────────────────────────────────────────────────────────── */
 
 .lobby {
