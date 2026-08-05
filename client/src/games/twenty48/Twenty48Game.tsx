@@ -25,8 +25,14 @@ function tileClass(value: number): string {
 }
 
 export default function Twenty48Game() {
-  const { mode, state, status, result, signedIn, sync, streak, dailyDoneToday, move, start, forceSync } =
-    useSoloGame(twenty48Module, () => undefined);
+  // 2048 is endless-only — no daily mode (see the Daily section scope: only
+  // easy/medium, quick-to-learn games belong there, and 2048's runs are
+  // open-ended by design, a poor fit for a "finish today's" ritual).
+  const { seed, state, status, result, signedIn, sync, move, start, forceSync } = useSoloGame(
+    twenty48Module,
+    () => undefined,
+    'endless',
+  );
   const [view, setView] = useState<'play' | 'leaderboard'>('play');
   const [poppedIds, setPoppedIds] = useState<Set<number>>(new Set());
   const [spawnedIds, setSpawnedIds] = useState<Set<number>>(new Set());
@@ -37,10 +43,12 @@ export default function Twenty48Game() {
 
   // A fresh round (new seed) must not diff against the previous round's
   // tile ids — same id space (1, 2, 3…) restarting could otherwise look
-  // like a spurious merge.
+  // like a spurious merge. Keyed on `seed` specifically (not e.g. mode)
+  // since it changes on every start(), including repeated same-mode
+  // "Play again" clicks.
   useEffect(() => {
     prevGridRef.current = null;
-  }, [mode, state === null]);
+  }, [seed]);
 
   useEffect(() => {
     if (!state) return;
@@ -105,23 +113,14 @@ export default function Twenty48Game() {
       <AuthWidget />
       <div className="arcade-card arcade-card-wide">
         <h1>🔢 2048</h1>
-        <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'}
-          {mode === 'daily' && streak.streak > 0 ? ` · 🔥 ${streak.streak} day streak` : ''}
-        </p>
+        <p className="hint arcade-head">{signedIn ? '✓ signed in' : 'signing in…'}</p>
 
         <div className="arcade-tabs">
           <button
-            className={`arcade-tab${view === 'play' && mode === 'daily' ? ' active' : ''}`}
-            onClick={() => { setView('play'); void start('daily'); }}
-          >
-            Today's Board
-          </button>
-          <button
-            className={`arcade-tab${view === 'play' && mode === 'endless' ? ' active' : ''}`}
+            className={`arcade-tab${view === 'play' ? ' active' : ''}`}
             onClick={() => { setView('play'); void start('endless', { fresh: true }); }}
           >
-            Endless
+            Play
           </button>
           <button
             className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
@@ -189,22 +188,18 @@ export default function Twenty48Game() {
                     Force sync
                   </button>
                 </p>
-                <h3>{mode === 'daily' ? "Today's High Scores" : 'All-Time Best'}</h3>
+                <h3>All-Time Best</h3>
                 <LeaderboardPanel
                   gameId="twenty48"
-                  mode={mode}
+                  mode="endless"
                   dateKey={dateKeyUTC()}
                   ascending={false}
                   refreshKey={sync === 'synced' ? 1 : 0}
                 />
                 <div className="arcade-actions">
-                  {mode === 'daily' ? (
-                    <p className="hint">{dailyDoneToday ? "Come back tomorrow for a new board!" : ''}</p>
-                  ) : (
-                    <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
-                      Play again
-                    </button>
-                  )}
+                  <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
+                    Play again
+                  </button>
                 </div>
               </div>
             )}

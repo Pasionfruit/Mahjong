@@ -30,6 +30,12 @@ export const FIXED_DT = 1 / 240;
 
 export const BALLS_PER_GAME = 10;
 export const ORANGE_COUNT = 20;
+/** The shared daily board is deliberately easier than endless — same
+ *  reasoning as Sudoku's DAILY_REMOVE_TARGET: the daily is the low-friction
+ *  everyone-plays-it ritual, not the challenge mode. Half the orange pegs
+ *  with the same ball count gives real margin for a missed shot or two,
+ *  instead of endless's ~2-pegs-per-ball, zero-margin requirement. */
+export const DAILY_ORANGE_COUNT = 10;
 export const PURPLE_COUNT = 2;
 export const PEG_SCORE: Record<PegColor, number> = { blue: 10, orange: 100, purple: 500 };
 export const WIN_BONUS_PER_BALL = 1000;
@@ -185,7 +191,7 @@ function diamondPattern(rand: () => number): Pt[] {
  * bonus pegs; the rest blue. Same seed → identical board (the shared daily
  * "Peggle Map").
  */
-export function generateBoard(seed: number): Peg[] {
+export function generateBoard(seed: number, orangeCount: number = ORANGE_COUNT): Peg[] {
   const rand = mulberry32(seed);
   const target = 45 + Math.floor(rand() * 11); // 45–55
   const patterns = shuffle(
@@ -221,20 +227,24 @@ export function generateBoard(seed: number): Peg[] {
 
   const order = shuffle(placed.map((_, i) => i), rand);
   const colors: PegColor[] = placed.map(() => 'blue');
-  for (const i of order.slice(0, ORANGE_COUNT)) colors[i] = 'orange';
-  for (const i of order.slice(ORANGE_COUNT, ORANGE_COUNT + PURPLE_COUNT)) colors[i] = 'purple';
+  for (const i of order.slice(0, orangeCount)) colors[i] = 'orange';
+  for (const i of order.slice(orangeCount, orangeCount + PURPLE_COUNT)) colors[i] = 'purple';
 
   return placed.map((p, i) => ({ x: p.x, y: p.y, r: PEG_RADIUS, color: colors[i]!, hit: false, hitAt: null }));
 }
 
-export function createGame(seed: number): GameState {
+export function createGame(
+  seed: number,
+  orangeCount: number = ORANGE_COUNT,
+  ballsPerGame: number = BALLS_PER_GAME,
+): GameState {
   return {
-    pegs: generateBoard(seed),
+    pegs: generateBoard(seed, orangeCount),
     ball: null,
     bucket: { x: (WIDTH - BUCKET_WIDTH) / 2, dir: 1 },
-    ballsLeft: BALLS_PER_GAME,
+    ballsLeft: ballsPerGame,
     score: 0,
-    orangeRemaining: ORANGE_COUNT,
+    orangeRemaining: orangeCount,
     status: 'aiming',
     flightTime: 0,
     newHits: [],

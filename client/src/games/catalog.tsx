@@ -32,6 +32,7 @@ import PaintByNumberGame from './paintbynumber/PaintByNumberGame';
 import SudokuGame from './sudoku/SudokuGame';
 import ParkingJamGame from './parkingjam/ParkingJamGame';
 import CrosswordGame from './crossword/CrosswordGame';
+import WordSearchGame from './wordsearch/WordSearchGame';
 import BananagramsGame from './bananagrams/BananagramsGame';
 import BananagramsSettingsPanel from './bananagrams/Settings';
 import {
@@ -63,6 +64,7 @@ import {
   IconSudoku,
   IconCar,
   IconCrossword,
+  IconWordSearch,
 } from '../components/icons';
 
 /**
@@ -343,6 +345,8 @@ export const GAMES: GameEntry[] = [
     Game: UntangleGame,
     category: 'relaxing',
     competitive: false,
+    hasDaily: true,
+    dailyLabel: 'Rope Untangle',
     hasLeaderboard: true,
   },
   {
@@ -399,8 +403,6 @@ export const GAMES: GameEntry[] = [
     Game: Twenty48Game,
     category: 'matching',
     competitive: false,
-    hasDaily: true,
-    dailyLabel: '2048 Board',
     hasLeaderboard: true,
   },
   {
@@ -429,8 +431,6 @@ export const GAMES: GameEntry[] = [
     Game: SudokuGame,
     category: 'logic',
     competitive: false,
-    hasDaily: true,
-    dailyLabel: 'Sudoku',
     hasLeaderboard: true,
   },
   {
@@ -474,6 +474,21 @@ export const GAMES: GameEntry[] = [
     competitive: false,
     hasDaily: true,
     dailyLabel: 'Mini Crossword',
+    hasLeaderboard: true,
+  },
+  {
+    id: 'wordsearch',
+    name: 'Word Search',
+    tagline: 'Find every word hiding in the grid.',
+    players: '1 player',
+    Icon: IconWordSearch,
+    available: true,
+    local: true,
+    Game: WordSearchGame,
+    category: 'word',
+    competitive: false,
+    hasDaily: true,
+    dailyLabel: 'Word Search',
     hasLeaderboard: true,
   },
 

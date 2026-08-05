@@ -547,3 +547,15 @@ export function IconUser() {
     </I>
   );
 }
+
+/** A magnifying glass over a letter grid — Word Search. */
+export function IconWordSearch() {
+  return (
+    <I>
+      <path d="M4 4h9v9H4z" />
+      <path d="M7 4v9M4 7.3h9" />
+      <circle cx="16.5" cy="16.5" r="4" />
+      <path d="M19.4 19.4 22 22" />
+    </I>
+  );
+}

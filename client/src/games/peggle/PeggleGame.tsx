@@ -12,6 +12,7 @@ import {
   BUCKET_WIDTH,
   CANNON_X,
   CANNON_Y,
+  DAILY_ORANGE_COUNT,
   FIXED_DT,
   HEIGHT,
   ORANGE_COUNT,
@@ -33,6 +34,11 @@ const GAME_ID = 'peggle';
 type Mode = 'daily' | 'endless';
 type View = 'play' | 'leaderboard';
 type SyncBadge = 'idle' | 'saving' | 'synced' | 'queued';
+
+/** Daily gets the easier target (see DAILY_ORANGE_COUNT); endless keeps the full challenge. */
+function orangeTargetFor(m: Mode): number {
+  return m === 'daily' ? DAILY_ORANGE_COUNT : ORANGE_COUNT;
+}
 
 const PEG_FILL: Record<PegColor, string> = { blue: '#3f8fd4', orange: '#f08a2d', purple: '#a866e0' };
 const PEG_LIT: Record<PegColor, string> = { blue: '#b8dcff', orange: '#ffcf80', purple: '#e6c4ff' };
@@ -149,13 +155,13 @@ export default function PeggleGame() {
   const [round, setRound] = useState(1);
   const [resetKey, setResetKey] = useState(0);
 
-  const gameRef = useRef<GameState>(createGame(dailySeed(GAME_ID, dateKeyUTC())));
+  const gameRef = useRef<GameState>(createGame(dailySeed(GAME_ID, dateKeyUTC()), DAILY_ORANGE_COUNT));
   const modeRef = useRef<Mode>('daily');
   const aimRef = useRef<number>(Math.PI / 2);
   const ringsRef = useRef<Ring[]>([]);
   const finishedRef = useRef(false);
 
-  const [hud, setHud] = useState({ ballsLeft: BALLS_PER_GAME, orangeLeft: ORANGE_COUNT, score: 0 });
+  const [hud, setHud] = useState({ ballsLeft: BALLS_PER_GAME, orangeLeft: DAILY_ORANGE_COUNT, score: 0 });
   const [status, setStatus] = useState<Status>('aiming');
   const [signedIn, setSignedIn] = useState(false);
   const [sync, setSync] = useState<SyncBadge>('idle');
@@ -172,7 +178,7 @@ export default function PeggleGame() {
       mode: modeRef.current,
       dateKey: modeRef.current === 'daily' ? dateKeyUTC() : null,
       score: g.score,
-      stats: { orangeCleared: ORANGE_COUNT - g.orangeRemaining, ballsLeft: g.ballsLeft },
+      stats: { orangeCleared: orangeTargetFor(modeRef.current) - g.orangeRemaining, ballsLeft: g.ballsLeft },
       moveLog: [],
       completedAt: new Date().toISOString(),
     });
@@ -239,11 +245,12 @@ export default function PeggleGame() {
     setSync('idle');
     setRound(nextMode === 'endless' && opts.chain ? (r) => r + 1 : () => 1);
     const seed = nextMode === 'daily' ? dailySeed(GAME_ID, dateKeyUTC()) : randomSeed();
-    gameRef.current = createGame(seed);
+    const target = orangeTargetFor(nextMode);
+    gameRef.current = createGame(seed, target);
     ringsRef.current = [];
     finishedRef.current = false;
     aimRef.current = Math.PI / 2;
-    setHud({ ballsLeft: BALLS_PER_GAME, orangeLeft: ORANGE_COUNT, score: 0 });
+    setHud({ ballsLeft: BALLS_PER_GAME, orangeLeft: target, score: 0 });
     setStatus('aiming');
     setResetKey((k) => k + 1);
   }
@@ -257,7 +264,7 @@ export default function PeggleGame() {
         <h1>🟠 Peggle</h1>
         <p className="hint arcade-head">
           {signedIn ? '✓ signed in' : 'signing in…'} · Aim with your mouse or finger, release to fire. Clear all{' '}
-          {ORANGE_COUNT} orange pegs!
+          {orangeTargetFor(mode)} orange pegs!
         </p>
 
         <div className="arcade-tabs">
@@ -333,7 +340,7 @@ export default function PeggleGame() {
                   Score: <strong>{hud.score.toLocaleString()}</strong>
                   {status === 'won'
                     ? ` · ${hud.ballsLeft} ball${hud.ballsLeft === 1 ? '' : 's'} unused (+${(hud.ballsLeft * 1000).toLocaleString()})`
-                    : ` · ${ORANGE_COUNT - hud.orangeLeft}/${ORANGE_COUNT} orange cleared`}
+                    : ` · ${orangeTargetFor(mode) - hud.orangeLeft}/${orangeTargetFor(mode)} orange cleared`}
                 </p>
                 <p>
                   Sync:{' '}

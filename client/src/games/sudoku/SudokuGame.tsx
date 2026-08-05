@@ -4,7 +4,7 @@ import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
-import { CELLS, DAILY_REMOVE_TARGET, SIZE, boxOf, colOf, rowOf, sudokuModule } from './engine';
+import { CELLS, SIZE, boxOf, colOf, rowOf, sudokuModule } from './engine';
 import './styles.css';
 
 function formatTime(ms: number): string {
@@ -12,9 +12,13 @@ function formatTime(ms: number): string {
 }
 
 export default function SudokuGame() {
-  const { mode, state, status, result, signedIn, sync, streak, dailyDoneToday, move, start, forceSync } =
-    // The shared daily is always easy; endless keeps the medium carve.
-    useSoloGame(sudokuModule, (m) => (m === 'daily' ? { removeTarget: DAILY_REMOVE_TARGET } : undefined));
+  // Sudoku is endless-only — no daily mode (dropped from the Daily wing in
+  // favor of Word Search / Rope Untangle; see the catalog comment).
+  const { state, status, result, signedIn, sync, move, start, forceSync } = useSoloGame(
+    sudokuModule,
+    () => undefined,
+    'endless',
+  );
   const [view, setView] = useState<'play' | 'leaderboard'>('play');
   const [selected, setSelected] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -97,23 +101,14 @@ export default function SudokuGame() {
       <AuthWidget />
       <div className="arcade-card arcade-card-wide">
         <h1>🔢 Sudoku</h1>
-        <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'}
-          {mode === 'daily' && streak.streak > 0 ? ` · 🔥 ${streak.streak} day streak` : ''}
-        </p>
+        <p className="hint arcade-head">{signedIn ? '✓ signed in' : 'signing in…'}</p>
 
         <div className="arcade-tabs">
           <button
-            className={`arcade-tab${view === 'play' && mode === 'daily' ? ' active' : ''}`}
-            onClick={() => { setView('play'); void start('daily'); }}
-          >
-            Today's Puzzle
-          </button>
-          <button
-            className={`arcade-tab${view === 'play' && mode === 'endless' ? ' active' : ''}`}
+            className={`arcade-tab${view === 'play' ? ' active' : ''}`}
             onClick={() => { setView('play'); void start('endless', { fresh: true }); }}
           >
-            Endless
+            Play
           </button>
           <button
             className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
@@ -188,23 +183,19 @@ export default function SudokuGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>{mode === 'daily' ? "Today's Fastest" : 'All-Time Fastest'}</h3>
+                <h3>All-Time Fastest</h3>
                 <LeaderboardPanel
                   gameId="sudoku"
-                  mode={mode}
+                  mode="endless"
                   dateKey={dateKeyUTC()}
                   ascending
                   formatScore={formatTime}
                   refreshKey={sync === 'synced' ? 1 : 0}
                 />
                 <div className="arcade-actions">
-                  {mode === 'daily' ? (
-                    <p className="hint">{dailyDoneToday ? 'Come back tomorrow for a new puzzle!' : ''}</p>
-                  ) : (
-                    <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
-                      Play again
-                    </button>
-                  )}
+                  <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
+                    Play again
+                  </button>
                 </div>
               </div>
             )}

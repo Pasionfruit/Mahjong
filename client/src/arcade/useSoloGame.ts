@@ -40,8 +40,9 @@ async function computeStreak(gameId: string): Promise<{ streak: StreakState; dai
 export function useSoloGame<TState, TMove, TSettings>(
   module: SoloGameModule<TState, TMove, TSettings>,
   resolveSettings: (mode: SoloMode, seed: number) => TSettings | Promise<TSettings>,
+  initialMode: SoloMode = 'daily',
 ) {
-  const [mode, setMode] = useState<SoloMode>('daily');
+  const [mode, setMode] = useState<SoloMode>(initialMode);
   const [seed, setSeed] = useState(0);
   const [settings, setSettings] = useState<TSettings | null>(null);
   const [state, setState] = useState<TState | null>(null);
@@ -92,7 +93,7 @@ export function useSoloGame<TState, TMove, TSettings>(
   useEffect(() => {
     void ensureSignedIn().then((u) => setSignedIn(!!u));
     void refreshStreak();
-    void start('daily');
+    void start(initialMode);
     return startAutoSync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

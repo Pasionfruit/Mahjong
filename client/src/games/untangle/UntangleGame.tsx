@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { ensureSignedIn } from '../../arcade/auth';
-import { dateKeyUTC } from '../../arcade/dailySeed';
+import { dailySeed, dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
@@ -10,7 +10,11 @@ import { countCrossings, edgesCross, generateLevel, type Point, type UntangleLev
 import './styles.css';
 
 const GAME_ID = 'untangle';
+/** The daily puzzle is always the easiest tier (same node count as endless
+ *  level 1) — a shared, low-friction ritual, not the escalating challenge. */
+const DAILY_NODE_COUNT = 8;
 
+type Mode = 'daily' | 'endless';
 type View = 'play' | 'leaderboard';
 type SyncBadge = 'idle' | 'saving' | 'synced' | 'queued';
 
@@ -22,21 +26,26 @@ function formatTime(ms: number): string {
   return (ms / 1000).toFixed(1) + 's';
 }
 
-/** Level N: 8 pins, growing by 2 per level up to 24. */
+/** Level N (endless only): 8 pins, growing by 2 per level up to 24. */
 function nodeCountFor(level: number): number {
   return 8 + 2 * Math.min(level - 1, 8);
 }
 
 /**
- * Endless-only, direct-record game (same pattern as Sand Play): no discrete
- * move log — dragging pins is continuous — so on solve it records the
- * elapsed time straight through recordResult()/flushOutbox().
+ * Direct-record game (same pattern as Sand Play/Peggle): no discrete move
+ * log — dragging pins is continuous — so on solve it records the elapsed
+ * time straight through recordResult()/flushOutbox(). Daily mode is a
+ * single fixed-difficulty puzzle shared by seed; endless keeps its own
+ * escalating level chain, untouched.
  */
 export default function UntangleGame() {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [mode, setMode] = useState<Mode>('daily');
   const [view, setView] = useState<View>('play');
   const [levelNum, setLevelNum] = useState(1);
-  const [level, setLevel] = useState<UntangleLevel>(() => generateLevel(randomSeed(), nodeCountFor(1)));
+  const [level, setLevel] = useState<UntangleLevel>(() =>
+    generateLevel(dailySeed(GAME_ID, dateKeyUTC()), DAILY_NODE_COUNT),
+  );
   const [positions, setPositions] = useState<Point[]>(level.nodes);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [solved, setSolved] = useState(false);
@@ -75,11 +84,7 @@ export default function UntangleGame() {
     return { crossed, count };
   }, [positions, level]);
 
-  /** Level chain à la Sand Play: "Next level" keeps counting; the Play tab
-   *  starts the run over at level 1. */
-  function startLevel(n: number) {
-    const next = generateLevel(randomSeed(), nodeCountFor(n));
-    setLevelNum(n);
+  function applyLevel(next: UntangleLevel) {
     setLevel(next);
     setPositions(next.nodes);
     positionsRef.current = next.nodes;
@@ -93,12 +98,26 @@ export default function UntangleGame() {
     setView('play');
   }
 
+  function startDaily() {
+    setMode('daily');
+    setLevelNum(1);
+    applyLevel(generateLevel(dailySeed(GAME_ID, dateKeyUTC()), DAILY_NODE_COUNT));
+  }
+
+  /** Endless level chain: "Next level" keeps counting; restarting from the
+   *  Endless tab starts the run over at level 1. */
+  function startLevel(n: number) {
+    setMode('endless');
+    setLevelNum(n);
+    applyLevel(generateLevel(randomSeed(), nodeCountFor(n)));
+  }
+
   async function finishLevel(elapsed: number) {
     setSync('saving');
     const row = await recordResult({
       gameId: GAME_ID,
-      mode: 'endless',
-      dateKey: null,
+      mode,
+      dateKey: mode === 'daily' ? dateKeyUTC() : null,
       score: elapsed,
       stats: { level: levelNum, nodes: level.nodes.length },
       moveLog: [],
@@ -168,8 +187,11 @@ export default function UntangleGame() {
         </p>
 
         <div className="arcade-tabs">
-          <button className={`arcade-tab${view === 'play' ? ' active' : ''}`} onClick={() => startLevel(1)}>
-            Play
+          <button className={`arcade-tab${view === 'play' && mode === 'daily' ? ' active' : ''}`} onClick={startDaily}>
+            Today's Puzzle
+          </button>
+          <button className={`arcade-tab${view === 'play' && mode === 'endless' ? ' active' : ''}`} onClick={() => startLevel(1)}>
+            Endless
           </button>
           <button
             className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
@@ -181,7 +203,7 @@ export default function UntangleGame() {
 
         {view === 'leaderboard' ? (
           <div className="arcade-leaderboard-view">
-            <h3>All-Time Fastest</h3>
+            <h3>All-Time Fastest (Endless)</h3>
             <LeaderboardPanel gameId={GAME_ID} mode="endless" dateKey={dateKeyUTC()} ascending formatScore={formatTime} />
             <div className="arcade-actions">
               <button className="btn" onClick={() => setView('play')}>
@@ -192,7 +214,7 @@ export default function UntangleGame() {
         ) : (
           <>
             <div className="untangle-hud">
-              <span>Level {levelNum}</span>
+              <span>{mode === 'daily' ? "Today's Puzzle" : `Level ${levelNum}`}</span>
               <span>
                 {crossings.count} crossing{crossings.count === 1 ? '' : 's'}
               </span>
@@ -248,7 +270,7 @@ export default function UntangleGame() {
 
             {solved && (
               <div className="untangle-result">
-                <h2>Level {levelNum} solved in {formatTime(elapsedMs)}</h2>
+                <h2>{mode === 'daily' ? 'Untangled' : `Level ${levelNum} solved`} in {formatTime(elapsedMs)}</h2>
                 <p>
                   Sync:{' '}
                   <span className={`arcade-badge arcade-badge-${sync}`}>{sync === 'saving' ? 'saving…' : sync}</span>{' '}
@@ -256,19 +278,23 @@ export default function UntangleGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>All-Time Fastest</h3>
+                <h3>{mode === 'daily' ? "Today's Fastest" : 'All-Time Fastest'}</h3>
                 <LeaderboardPanel
                   gameId={GAME_ID}
-                  mode="endless"
+                  mode={mode}
                   dateKey={dateKeyUTC()}
                   ascending
                   formatScore={formatTime}
                   refreshKey={sync === 'synced' ? 1 : 0}
                 />
                 <div className="arcade-actions">
-                  <button className="btn btn-primary" onClick={() => startLevel(levelNum + 1)}>
-                    Next level
-                  </button>
+                  {mode === 'daily' ? (
+                    <p className="hint">Come back tomorrow for a new puzzle!</p>
+                  ) : (
+                    <button className="btn btn-primary" onClick={() => startLevel(levelNum + 1)}>
+                      Next level
+                    </button>
+                  )}
                 </div>
               </div>
             )}
