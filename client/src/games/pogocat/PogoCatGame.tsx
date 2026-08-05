@@ -6,6 +6,7 @@ import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
+import Countdown from '../../components/Countdown';
 import { useStore } from '../../store';
 import {
   HEIGHT,
@@ -189,6 +190,10 @@ export default function PogoCatGame() {
   const [hud, setHud] = useState({ score: 0, fish: 0 });
   const [result, setResult] = useState<{ score: number; hops: number; fish: number } | null>(null);
   const [runId, setRunId] = useState(0);
+  /** Charging/jumping stays locked until the 3-2-1 countdown finishes. The
+   *  cat idles until the first press anyway, so this gates that input. */
+  const [started, setStarted] = useState(false);
+  const startedRef = useRef(false);
 
   useEffect(() => {
     void ensureSignedIn().then((u) => setSignedIn(!!u));
@@ -206,11 +211,18 @@ export default function PogoCatGame() {
     recordedRef.current = false;
     camRef.current = 0;
     squashRef.current = 0;
+    startedRef.current = false;
+    setStarted(false);
     setOver(false);
     setResult(null);
     setSync('idle');
     setHud({ score: 0, fish: 0 });
   }, [runId]);
+
+  function beginPlay() {
+    startedRef.current = true;
+    setStarted(true);
+  }
 
   async function finishRun(s: PogoState) {
     setSync('saving');
@@ -275,6 +287,7 @@ export default function PogoCatGame() {
 
   function press() {
     const s = stateRef.current;
+    if (!startedRef.current) return;
     if (s && s.phase === 'idle' && viewRef.current === 'play') startCharge(s);
   }
   function release() {
@@ -463,6 +476,9 @@ export default function PogoCatGame() {
                 press();
               }}
             />
+
+            {!started && <Countdown onDone={beginPlay} />}
+
             <p className="hint pogocat-hint">Hold (or Space) to charge the spring · release to leap the gap.</p>
 
             {over && (

@@ -5,6 +5,7 @@ import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
+import Countdown from '../../components/Countdown';
 import { useStore } from '../../store';
 import {
   DT,
@@ -228,6 +229,9 @@ export default function DoodleJumpGame() {
 
   const [view, setView] = useState<View>('play');
   const [runKey, setRunKey] = useState(0);
+  /** Physics and steering stay frozen until the 3-2-1 countdown finishes. */
+  const [started, setStarted] = useState(false);
+  const startedRef = useRef(false);
   const [dead, setDead] = useState(false);
   const [finalMeters, setFinalMeters] = useState(0);
   const [signedIn, setSignedIn] = useState(false);
@@ -266,6 +270,13 @@ export default function DoodleJumpGame() {
       raf = requestAnimationFrame(loop);
       acc += Math.min(now - last, 100); // never spiral after a background tab
       last = now;
+      // Draw the opening scene during the countdown, but hold the physics —
+      // otherwise the player is already falling before they can steer.
+      if (!startedRef.current) {
+        acc = 0;
+        drawScene(ctx, stateRef.current, now, bounceRef.current, flashUntilRef.current);
+        return;
+      }
       while (acc >= STEP_MS) {
         acc -= STEP_MS;
         const prev = stateRef.current;
@@ -373,11 +384,18 @@ export default function DoodleJumpGame() {
     flashUntilRef.current = 0;
     bounceRef.current = { at: -1e9, kind: 'normal' };
     pointerDirRef.current = 0;
+    startedRef.current = false;
+    setStarted(false);
     setDead(false);
     setFinalMeters(0);
     setSync('idle');
     setView('play');
     setRunKey((k) => k + 1);
+  }
+
+  function beginPlay() {
+    startedRef.current = true;
+    setStarted(true);
   }
 
   return (
@@ -424,6 +442,9 @@ export default function DoodleJumpGame() {
               onPointerCancel={onPointerEnd}
               onPointerLeave={onPointerEnd}
             />
+
+            {!started && <Countdown onDone={beginPlay} />}
+
             <p className="hint doodlejump-hint">← → (or A/D) to steer — or hold either half of the canvas.</p>
 
             {dead && (

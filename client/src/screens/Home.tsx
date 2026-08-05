@@ -5,7 +5,7 @@ import { loadNickname } from '../session';
 import { useStore } from '../store';
 import { CATEGORY_LABELS, CATEGORY_ORDER, GAMES, dailyGames, type GameEntry } from '../games/catalog';
 import { useDailyProgress } from '../arcade/useDailyProgress';
-import { IconClose, IconPlay } from '../components/icons';
+import { IconCatOnController, IconClose, IconPlay } from '../components/icons';
 import WingNav from '../components/WingNav';
 import { isDesktop } from '../device';
 import Profile from './Profile';
@@ -182,7 +182,9 @@ export default function Home() {
       <div className="home-inner">
         <header className="home-head">
           <h1 className="home-title">
-            <img className="home-logo" src="/pwa-192.png" alt="" />
+            <span className="home-logo">
+              <IconCatOnController />
+            </span>
             LocalRot
           </h1>
           <p className="home-sub">Party with friends, zen out solo, or clear today’s dailies.</p>

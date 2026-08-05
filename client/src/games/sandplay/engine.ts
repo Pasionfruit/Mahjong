@@ -114,18 +114,38 @@ export function generateLevel(seed: number): Level {
   return { grid, colors };
 }
 
+/** Width of the drain mouth at the bottom centre, in columns. Narrow on
+ *  purpose: sand has to funnel down to a point to leave, so the pile forms
+ *  the classic hourglass slope instead of a whole layer vanishing at once. */
+export const FUNNEL_WIDTH = 6;
+
+/** The half-open [start, end) column range of the funnel mouth. */
+export function funnelMouth(): { start: number; end: number } {
+  const start = Math.floor((SAND_COLS - FUNNEL_WIDTH) / 2);
+  return { start, end: start + FUNNEL_WIDTH };
+}
+
+export function isFunnelCol(col: number): boolean {
+  const { start, end } = funnelMouth();
+  return col >= start && col < end;
+}
+
 /**
- * Drains any grain of `activeColor` sitting in the bottom row — the one
- * open bucket. Everything else resting there blocks that column instead
- * of exiting, which is the whole strategic tension: neglect a color too
- * long and it (and whatever piles on top of it) just sits there.
+ * Drains grains of `activeColor` that have reached the funnel mouth — a
+ * narrow opening at the bottom centre, not the whole floor. Sand elsewhere
+ * on the bottom row has to slide down the pile into the mouth before it
+ * can leave, which is what makes the heap funnel to a point rather than
+ * disappearing a layer at a time. Any other color sitting in the mouth
+ * plugs it, which is the strategic tension: neglect a color too long and
+ * it (and whatever piles on top of it) just sits there blocking the exit.
  */
 export function drainBottomRow(grid: SandGrid, activeColor: string | null): { grid: SandGrid; drained: number } {
   if (!activeColor) return { grid, drained: 0 };
   const next = grid.slice();
   let drained = 0;
   const row = SAND_ROWS - 1;
-  for (let col = 0; col < SAND_COLS; col++) {
+  const { start, end } = funnelMouth();
+  for (let col = start; col < end; col++) {
     const i = idx(col, row);
     if (next[i] === activeColor) {
       next[i] = null;
@@ -133,6 +153,24 @@ export function drainBottomRow(grid: SandGrid, activeColor: string | null): { gr
     }
   }
   return { grid: next, drained };
+}
+
+/**
+ * True once every grain has come to rest — i.e. no grain has anywhere to
+ * fall. Checked directly rather than by diffing a simulated step, so it's
+ * cheap and doesn't depend on simulateStep's random diagonal tie-break.
+ * Used to gate input at level start so play can't begin mid-avalanche.
+ */
+export function isSettled(grid: SandGrid): boolean {
+  for (let row = SAND_ROWS - 2; row >= 0; row--) {
+    for (let col = 0; col < SAND_COLS; col++) {
+      if (!grid[idx(col, row)]) continue;
+      if (grid[idx(col, row + 1)] === null) return false;
+      if (col > 0 && grid[idx(col - 1, row + 1)] === null) return false;
+      if (col < SAND_COLS - 1 && grid[idx(col + 1, row + 1)] === null) return false;
+    }
+  }
+  return true;
 }
 
 export function isCleared(grid: SandGrid): boolean {

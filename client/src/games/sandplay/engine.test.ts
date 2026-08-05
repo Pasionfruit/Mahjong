@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  FUNNEL_WIDTH,
   PALETTE,
   SAND_COLS,
   SAND_ROWS,
   countByColor,
   drainBottomRow,
   emptyGrid,
+  funnelMouth,
   generateLevel,
   isCleared,
+  isFunnelCol,
+  isSettled,
   simulateStep,
 } from './engine';
 
@@ -143,32 +147,78 @@ describe('generateLevel', () => {
 
 describe('drainBottomRow', () => {
   const bottom = (SAND_ROWS - 1) * SAND_COLS;
+  const { start: mouthStart, end: mouthEnd } = funnelMouth();
 
-  it('removes every bottom-row grain matching the active color', () => {
+  it('removes matching grains sitting in the funnel mouth', () => {
     const grid = emptyGrid();
-    grid[bottom] = 'red';
-    grid[bottom + 1] = 'blue';
-    grid[bottom + 2] = 'red';
+    grid[bottom + mouthStart] = 'red';
+    grid[bottom + mouthStart + 1] = 'blue';
+    grid[bottom + mouthStart + 2] = 'red';
     const { grid: next, drained } = drainBottomRow(grid, 'red');
     expect(drained).toBe(2);
-    expect(next[bottom]).toBeNull();
-    expect(next[bottom + 1]).toBe('blue'); // wrong color stays — blocks that column
-    expect(next[bottom + 2]).toBeNull();
+    expect(next[bottom + mouthStart]).toBeNull();
+    expect(next[bottom + mouthStart + 1]).toBe('blue'); // wrong color plugs the mouth
+    expect(next[bottom + mouthStart + 2]).toBeNull();
+  });
+
+  it('leaves bottom-row grains OUTSIDE the funnel mouth alone — they must slide in first', () => {
+    const grid = emptyGrid();
+    grid[bottom] = 'red'; // far-left floor, nowhere near the mouth
+    grid[bottom + SAND_COLS - 1] = 'red'; // far-right floor
+    const { grid: next, drained } = drainBottomRow(grid, 'red');
+    expect(drained).toBe(0);
+    expect(next[bottom]).toBe('red');
+    expect(next[bottom + SAND_COLS - 1]).toBe('red');
+  });
+
+  it('the funnel mouth is a narrow opening centered on the floor', () => {
+    expect(mouthEnd - mouthStart).toBe(FUNNEL_WIDTH);
+    expect(FUNNEL_WIDTH).toBeLessThan(SAND_COLS);
+    // Centered: equal floor on both sides.
+    expect(mouthStart).toBe(SAND_COLS - mouthEnd);
+    for (let c = mouthStart; c < mouthEnd; c++) expect(isFunnelCol(c)).toBe(true);
+    expect(isFunnelCol(mouthStart - 1)).toBe(false);
+    expect(isFunnelCol(mouthEnd)).toBe(false);
   });
 
   it('leaves the grid untouched when no bucket is open', () => {
     const grid = emptyGrid();
-    grid[bottom] = 'red';
+    grid[bottom + mouthStart] = 'red';
     const { grid: next, drained } = drainBottomRow(grid, null);
     expect(drained).toBe(0);
-    expect(next[bottom]).toBe('red');
+    expect(next[bottom + mouthStart]).toBe('red');
   });
 
   it('never drains grains above the bottom row', () => {
     const grid = emptyGrid();
-    grid[SAND_COLS] = 'red'; // row 1, not the bottom row
+    grid[SAND_COLS + mouthStart] = 'red'; // row 1 of the mouth column, not the floor
     const { grid: next } = drainBottomRow(grid, 'red');
-    expect(next[SAND_COLS]).toBe('red');
+    expect(next[SAND_COLS + mouthStart]).toBe('red');
+  });
+});
+
+describe('isSettled', () => {
+  it('an empty grid is settled', () => {
+    expect(isSettled(emptyGrid())).toBe(true);
+  });
+
+  it('a grain with empty space below is not settled', () => {
+    const grid = emptyGrid();
+    grid[0] = 'red'; // top-left, nothing under it
+    expect(isSettled(grid)).toBe(false);
+  });
+
+  it('a grain resting on the floor is settled', () => {
+    const grid = emptyGrid();
+    grid[(SAND_ROWS - 1) * SAND_COLS] = 'red';
+    expect(isSettled(grid)).toBe(true);
+  });
+
+  it('a fresh level settles after enough physics ticks', () => {
+    let grid = generateLevel(2024).grid;
+    expect(isSettled(grid)).toBe(false); // starts mid-air
+    for (let i = 0; i < 4000 && !isSettled(grid); i++) grid = simulateStep(grid, () => 0.5);
+    expect(isSettled(grid)).toBe(true);
   });
 });
 

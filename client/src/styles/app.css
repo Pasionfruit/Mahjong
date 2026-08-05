@@ -69,7 +69,16 @@ h4,
 
 /* ── themes ─────────────────────────────────────────────────────────────── */
 
-.app {
+/* Theme variables live on <html>, not .app: .app used to be the only place
+   that defined them, but the bottom nav (WingNav `dock`) is deliberately a
+   SIBLING of .app now (see App.tsx — it can't live inside .app's own
+   scrolling box, an iOS Safari fix), so it's outside .app's subtree and
+   never inherited its custom properties. That's what made the dock's
+   background/icon color silently resolve to nothing — genuinely
+   transparent, not just occluded — letting scrolled cards show straight
+   through it. Defining these on <html> instead makes every top-level
+   sibling (both .app and the dock) see the same values. */
+html {
   /* Dark mode — "harbor haze at dusk": rich saturated harbor blues under
      weathered sand-beige light (driftwood and rope, not peach). Deliberately
      never a harsh black, and warm accents keep it relaxing rather than icy.
@@ -96,7 +105,9 @@ h4,
   --control: rgba(244, 226, 202, 0.09);
   --control-hover: rgba(244, 226, 202, 0.17);
   --panel: #2b3d50;
+}
 
+.app {
   height: 100%;
   /* Dynamic viewport height: in a browser tab the URL bar grows and shrinks —
      dvh tracks the real visible height. */
@@ -137,6 +148,11 @@ h4,
   }
 }
 
+/* Both selectors, for the same reason the base palette sits on <html>:
+   mode.ts stamps data-mode on <html> (so the dock, outside .app, sees it),
+   while .app carries its own copy for the many existing
+   `.app[data-mode='light'] …` component overrides further down. */
+html[data-mode='light'],
 .app[data-mode='light'] {
   /* Light mode — "cozy cabin, by the fire": deep-roast text and dark-oak
      accents (aged furniture wood, not terracotta), cream cards that lift
@@ -384,11 +400,13 @@ h4,
 }
 
 /* The real app icon (cat asleep on a controller) fronts the title. */
+/* Wraps an inline outline icon (not the old raster tile) — .icon sizes
+   itself to 1em, so the font-size here is what actually sets the mark's
+   size, and it picks up the accent color rather than carrying its own. */
 .home-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: inline-flex;
+  font-size: 44px;
+  color: var(--accent);
 }
 
 .home-sub {
@@ -651,35 +669,49 @@ h4,
   background: var(--surface);
   color: var(--paper);
   cursor: pointer;
-  opacity: 0.65;
-  transition: opacity 0.15s, border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 
-/* Harbor haze (dark, default theme): dimming the whole pill via opacity
-   reads as dull gray text on the dark blue background — needs to stay
-   brighter than the cozy-cabin (light) default to actually be legible.
-   :not(.active) keeps this from out-specificity-ing .home-tab.active's
-   opacity: 1 below. */
-.app:not([data-mode='light']) .home-tab:not(.active) {
+/* Dimming lives on the label text only, not the whole button — opacity on
+   the button would multiply through the icon too, muting its color (see
+   .home-tab-icon below, which needs to stay a clear, undimmed beige in
+   harbor haze regardless of active state). */
+.home-tab-label {
+  opacity: 0.65;
+  transition: opacity 0.15s;
+}
+
+.home-tab:hover .home-tab-label {
   opacity: 0.85;
 }
 
-.app:not([data-mode='light']) .home-tab:not(.active):hover {
+.home-tab.active .home-tab-label {
+  opacity: 1;
+}
+
+/* Harbor haze (dark, default theme): a 0.65-opacity label reads as dull
+   gray text on the dark blue background — needs to stay brighter than the
+   cozy-cabin (light) default to actually be legible. Keyed off <html>, not
+   .app: the bottom dock is a sibling of .app (see App.tsx) and would miss
+   an .app-scoped rule entirely. */
+html:not([data-mode='light']) .home-tab-label {
+  opacity: 0.85;
+}
+
+html:not([data-mode='light']) .home-tab:hover .home-tab-label,
+html:not([data-mode='light']) .home-tab.active .home-tab-label {
   opacity: 1;
 }
 
 .home-tab-icon {
   display: inline-flex;
   font-size: 18px;
+  /* Always the beige accent tone, at full clarity — unlike the label, this
+     never dims for an inactive tab (see the comment above). */
   color: var(--accent);
 }
 
-.home-tab:hover {
-  opacity: 0.85;
-}
-
 .home-tab.active {
-  opacity: 1;
   border-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 20%, transparent);
 }
@@ -725,8 +757,11 @@ h4,
     /* max(), not 8px + inset: the home-indicator inset alone (34px on Face ID
        phones) already clears the indicator — stacking both reads as a hole. */
     padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px));
+    /* Fully opaque, and a literal fallback first: if --felt-dark ever fails
+       to resolve here the bar must still paint something solid rather than
+       going transparent and letting scrolled cards show through. */
+    background: #1c2b3a;
     background: var(--felt-dark);
-    background: color-mix(in srgb, var(--felt-dark) 92%, black);
     border-top: 1px solid var(--line);
     box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35);
     /* Force its own GPU compositing layer: without this, a fixed bar over a
@@ -769,10 +804,18 @@ h4,
     background: var(--felt-dark);
   }
 
-  /* Every screen reserves the dock's height so no content hides under it —
-     the app is border-box, so this shrinks the content area, not the box. */
+  /* Structural containment, not just visual occlusion: .app's own box stops
+     exactly at the dock's top edge, so scrolled content can never end up
+     rendered (or scrolled to) behind it in the first place — relying on
+     the dock's z-index/opacity to hide content that's still physically
+     there underneath is exactly what let cards show through during fast
+     scrolling. Bottom, not padding-bottom: this shrinks .app's own
+     scrollable viewport, it doesn't just pad its content. */
   .app {
-    padding-bottom: calc(60px + max(8px, env(safe-area-inset-bottom, 0px)));
+    position: fixed;
+    inset: 0;
+    bottom: calc(60px + max(8px, env(safe-area-inset-bottom, 0px)));
+    height: auto;
   }
 
   .home-inner {
@@ -3077,9 +3120,7 @@ h4,
     padding: 3px;
   }
   .home-logo {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    font-size: 36px;
   }
   .soon-badge {
     font-size: 9px;
@@ -5471,4 +5512,67 @@ h4,
   color: #2e7d4f;
   border-color: #2e7d4f;
   background: rgba(46, 125, 79, 0.15);
+}
+
+/* ── round-start countdown ─────────────────────────────────────────────── */
+
+.countdown {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  /* Above game boards and HUDs, below the error toast (200) so a failure
+     can still surface over it. */
+  z-index: 90;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(2px);
+  /* Purely a visual gate — the game also refuses input underneath, but
+     letting clicks through would just queue them into a board the player
+     can't see yet. */
+  pointer-events: all;
+}
+
+.countdown-num {
+  font-family: 'Momo Trust Display', 'Inter Variable', 'Segoe UI', system-ui, sans-serif;
+  font-size: clamp(72px, 22vw, 148px);
+  line-height: 1;
+  color: var(--accent);
+  text-shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
+  animation: countdown-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.countdown-go {
+  color: var(--play);
+}
+
+.countdown-wait {
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paper);
+  opacity: 0.75;
+}
+
+@keyframes countdown-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countdown-num {
+    animation: none;
+  }
 }

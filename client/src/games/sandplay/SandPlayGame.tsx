@@ -5,6 +5,7 @@ import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
+import Countdown from '../../components/Countdown';
 import { useStore } from '../../store';
 import {
   SAND_COLS,
@@ -13,6 +14,7 @@ import {
   drainBottomRow,
   generateLevel,
   isCleared,
+  isSettled,
   simulateStep,
   type Level,
   type SandGrid,
@@ -65,6 +67,11 @@ export default function SandPlayGame() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [signedIn, setSignedIn] = useState(false);
   const [sync, setSync] = useState<SyncBadge>('idle');
+  /** Buckets stay locked until the opening avalanche has settled AND the
+   *  countdown has finished — you shouldn't be draining a moving pile. */
+  const [settled, setSettled] = useState(false);
+  const [started, setStarted] = useState(false);
+  const startedRef = useRef(false);
 
   useEffect(() => {
     void ensureSignedIn().then((u) => setSignedIn(!!u));
@@ -85,10 +92,13 @@ export default function SandPlayGame() {
     gridRef.current = level.grid;
     activeColorRef.current = null;
     clearedRef.current = false;
+    startedRef.current = false;
     startTimeRef.current = Date.now();
     setActiveColor(null);
     setCleared(false);
     setElapsedMs(0);
+    setSettled(false);
+    setStarted(false);
     setCounts(countByColor(level.grid, level.colors));
     draw();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,11 +108,20 @@ export default function SandPlayGame() {
     const id = window.setInterval(() => {
       if (clearedRef.current) return;
       gridRef.current = simulateStep(gridRef.current);
+      // Physics run during the settle/countdown phase (that's the point —
+      // the pile has to fall into its heap first), but draining doesn't:
+      // activeColorRef stays null until the player can actually pick a
+      // bucket, so nothing can leak out early.
       const drain = drainBottomRow(gridRef.current, activeColorRef.current);
       gridRef.current = drain.grid;
       draw();
-      setElapsedMs(Date.now() - startTimeRef.current);
       setCounts(countByColor(gridRef.current, level.colors));
+      if (!startedRef.current) {
+        // Still settling: hold the clock at zero and watch for stillness.
+        if (isSettled(gridRef.current)) setSettled(true);
+        return;
+      }
+      setElapsedMs(Date.now() - startTimeRef.current);
       if (!clearedRef.current && isCleared(gridRef.current)) {
         clearedRef.current = true;
         setCleared(true);
@@ -112,6 +131,15 @@ export default function SandPlayGame() {
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
+
+  /** Countdown finished — unlock the buckets and start the clock now (not
+   *  at level-generation time, so settling doesn't count against the run). */
+  function beginPlay() {
+    startedRef.current = true;
+    startTimeRef.current = Date.now();
+    setStarted(true);
+    setElapsedMs(0);
+  }
 
   async function finishLevel() {
     const elapsed = Date.now() - startTimeRef.current;
@@ -187,6 +215,8 @@ export default function SandPlayGame() {
 
             <canvas ref={canvasRef} className="sandplay-canvas" width={SAND_COLS * CELL} height={SAND_ROWS * CELL} />
 
+            {!started && <Countdown waitFor={settled} onDone={beginPlay} />}
+
             <div className="sandsort-buckets">
               {level.colors.map((c) => (
                 <button
@@ -194,7 +224,7 @@ export default function SandPlayGame() {
                   className={`sandsort-bucket${activeColor === c ? ' active' : ''}`}
                   style={{ '--bucket-color': c } as CSSProperties}
                   onClick={() => setActiveColor(c)}
-                  disabled={cleared}
+                  disabled={cleared || !started}
                 >
                   <span className="sandsort-bucket-swatch" style={{ background: c }} />
                   <span className="sandsort-bucket-count">{counts[c] ?? 0}</span>

@@ -5,6 +5,7 @@ import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
+import Countdown from '../../components/Countdown';
 import { useStore } from '../../store';
 import {
   BIRD_R,
@@ -190,6 +191,11 @@ export default function FlappyGame() {
 
   const [view, setView] = useState<View>('play');
   const [runKey, setRunKey] = useState(0);
+  /** Flapping stays locked until the 3-2-1 countdown finishes. The bird
+   *  already idles in its 'ready' phase until the first flap, so this just
+   *  gates that first input rather than freezing a running simulation. */
+  const [started, setStarted] = useState(false);
+  const startedRef = useRef(false);
   const [dead, setDead] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
   const [signedIn, setSignedIn] = useState(false);
@@ -249,6 +255,7 @@ export default function FlappyGame() {
     function onKey(e: KeyboardEvent) {
       if (e.code === 'Space' || e.key === 'ArrowUp') {
         e.preventDefault();
+        if (!startedRef.current) return;
         if (stateRef.current.phase !== 'dead') flapRef.current = true;
       }
     }
@@ -258,7 +265,13 @@ export default function FlappyGame() {
 
   function onPointerDown(e: ReactPointerEvent<HTMLCanvasElement>) {
     e.preventDefault();
+    if (!startedRef.current) return;
     if (stateRef.current.phase !== 'dead') flapRef.current = true;
+  }
+
+  function beginPlay() {
+    startedRef.current = true;
+    setStarted(true);
   }
 
   function onDeath(s: RunState) {
@@ -304,6 +317,8 @@ export default function FlappyGame() {
     recordedRef.current = false;
     flashUntilRef.current = 0;
     flapRef.current = false;
+    startedRef.current = false;
+    setStarted(false);
     setDead(false);
     setFinalScore(0);
     setSync('idle');
@@ -351,6 +366,9 @@ export default function FlappyGame() {
               height={HEIGHT * DPR}
               onPointerDown={onPointerDown}
             />
+
+            {!started && <Countdown onDone={beginPlay} />}
+
             <p className="hint flappy-hint">Tap the canvas, Space, or ↑ to flap.</p>
 
             {dead && (

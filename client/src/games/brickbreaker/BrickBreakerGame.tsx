@@ -6,6 +6,7 @@ import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
+import Countdown from '../../components/Countdown';
 import { useStore } from '../../store';
 import {
   BALL_R,
@@ -51,6 +52,9 @@ export default function BrickBreakerGame() {
   const [hud, setHud] = useState({ score: 0, level: 1, lives: START_LIVES });
   const [result, setResult] = useState<{ score: number; level: number; bricks: number } | null>(null);
   const [runId, setRunId] = useState(0);
+  /** Physics and input stay frozen until the 3-2-1 countdown finishes. */
+  const [started, setStarted] = useState(false);
+  const startedRef = useRef(false);
 
   useEffect(() => {
     void ensureSignedIn().then((u) => setSignedIn(!!u));
@@ -67,11 +71,18 @@ export default function BrickBreakerGame() {
     randRef.current = mulberry32(randomSeed());
     stateRef.current = createGame(randRef.current);
     recordedRef.current = false;
+    startedRef.current = false;
+    setStarted(false);
     setOver(false);
     setResult(null);
     setSync('idle');
     setHud({ score: 0, level: 1, lives: START_LIVES });
   }, [runId]);
+
+  function beginPlay() {
+    startedRef.current = true;
+    setStarted(true);
+  }
 
   async function finishRun(s: BrickBreakerState) {
     setSync('saving');
@@ -107,6 +118,12 @@ export default function BrickBreakerGame() {
       last = now;
       const s = stateRef.current;
       if (!s || viewRef.current !== 'play') return;
+      // Draw the board during the countdown, but don't advance physics —
+      // the player sees what they're about to play before it moves.
+      if (!startedRef.current) {
+        draw(s);
+        return;
+      }
       if (!s.over) {
         if (keysRef.current.left) s.paddleX = clampPaddleX(s.paddleX - PADDLE_KEY_SPEED * dt);
         if (keysRef.current.right) s.paddleX = clampPaddleX(s.paddleX + PADDLE_KEY_SPEED * dt);
@@ -139,7 +156,7 @@ export default function BrickBreakerGame() {
   // Keyboard: arrows steer, space launches.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (viewRef.current !== 'play') return;
+      if (viewRef.current !== 'play' || !startedRef.current) return;
       if (e.key === 'ArrowLeft') {
         keysRef.current.left = true;
         e.preventDefault();
@@ -258,9 +275,12 @@ export default function BrickBreakerGame() {
                 e.currentTarget.setPointerCapture(e.pointerId);
                 paddleFromClientX(e.clientX);
                 const s = stateRef.current;
-                if (s && s.attached && !s.over) launchBall(s, randRef.current);
+                if (s && s.attached && !s.over && startedRef.current) launchBall(s, randRef.current);
               }}
             />
+
+            {!started && <Countdown onDone={beginPlay} />}
+
             <p className="hint brickbreaker-hint">Move: mouse, drag, or ← → · Launch: click or space.</p>
 
             {over && (
