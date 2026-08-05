@@ -10,6 +10,7 @@ import { sumoModule } from './sumo';
 import { quoridorModule } from './quoridor';
 import { partyModule } from './party';
 import { bananagramsModule } from './bananagrams';
+import { minefieldModule } from './minefield';
 
 /** Every game the server can host, keyed by its id. Add new games here. */
 export const MODULES: Record<GameId, GameModule> = {
@@ -23,6 +24,7 @@ export const MODULES: Record<GameId, GameModule> = {
   quoridor: quoridorModule,
   party: partyModule,
   bananagrams: bananagramsModule,
+  minefield: minefieldModule,
 };
 
 export function getModule(gameId: GameId): GameModule {

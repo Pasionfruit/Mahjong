@@ -559,3 +559,25 @@ export function IconWordSearch() {
     </I>
   );
 }
+
+/** A small pennant on a post — personal flag marker. */
+export function IconFlag() {
+  return (
+    <I>
+      <path d="M6 21V4" />
+      <path d="M6 4h12l-3.5 4L18 12H6" />
+    </I>
+  );
+}
+
+/** A grid of cells with a mine peeking out — Minefield. */
+export function IconMinefield() {
+  return (
+    <I>
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
+      <circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none" />
+      <path d="M12 8v1M12 15v1M8 12h1M15 12h1M9.3 9.3l.7.7M14 14l.7.7M14.7 9.3l-.7.7M9.3 14.7l.7-.7" />
+    </I>
+  );
+}

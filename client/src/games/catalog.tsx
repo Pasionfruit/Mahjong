@@ -35,6 +35,8 @@ import CrosswordGame from './crossword/CrosswordGame';
 import WordSearchGame from './wordsearch/WordSearchGame';
 import BananagramsGame from './bananagrams/BananagramsGame';
 import BananagramsSettingsPanel from './bananagrams/Settings';
+import MinefieldGame from './minefield/MinefieldGame';
+import MinefieldSettingsPanel from './minefield/Settings';
 import {
   IconTile,
   IconGrid,
@@ -65,6 +67,7 @@ import {
   IconCar,
   IconCrossword,
   IconWordSearch,
+  IconMinefield,
 } from '../components/icons';
 
 /**
@@ -263,6 +266,18 @@ export const GAMES: GameEntry[] = [
     Game: BananagramsGame,
     SettingsPanel: BananagramsSettingsPanel,
     category: 'tabletop',
+    competitive: true,
+  },
+  {
+    id: 'minefield',
+    name: 'Minefield',
+    tagline: 'One shared minefield, everyone clicking — last one standing wins.',
+    players: '2–8 players',
+    Icon: IconMinefield,
+    available: true,
+    Game: MinefieldGame,
+    SettingsPanel: MinefieldSettingsPanel,
+    category: 'action',
     competitive: true,
   },
 

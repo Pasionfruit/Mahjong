@@ -9,6 +9,7 @@ import type { SumoAction } from './sumo';
 import type { QuoridorAction } from './quoridor/meta';
 import type { PartyAction } from './party';
 import type { BananagramsAction } from './bananagrams';
+import type { MinefieldAction } from './minefield';
 
 export type { ArtAction } from './art';
 export type { TetrisAction } from './tetris';
@@ -17,6 +18,7 @@ export type { SumoAction } from './sumo';
 export type { QuoridorAction } from './quoridor/meta';
 export type { PartyAction } from './party';
 export type { BananagramsAction } from './bananagrams';
+export type { MinefieldAction } from './minefield';
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string };
 export type Ack<T = null> = (r: Result<T>) => void;
@@ -52,7 +54,8 @@ export type PlayerAction =
   | SumoAction
   | QuoridorAction
   | PartyAction
-  | BananagramsAction;
+  | BananagramsAction
+  | MinefieldAction;
 
 export interface JoinInfo {
   roomCode: string;

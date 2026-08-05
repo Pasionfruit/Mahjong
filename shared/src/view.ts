@@ -10,6 +10,7 @@ import type { SumoSettings, SumoView } from './sumo';
 import type { QuoridorOnlineView, QuoridorSettings } from './quoridor/meta';
 import type { PartySettings, PartyView } from './party';
 import type { BananagramsSettings, BananagramsView } from './bananagrams';
+import type { MinefieldSettings, MinefieldView } from './minefield';
 
 export type MeldType = 'pong' | 'chow' | 'kongExposed' | 'kongConcealed' | 'kongAdded';
 
@@ -150,7 +151,8 @@ export type ClientGameView =
   | SumoView
   | QuoridorOnlineView
   | PartyView
-  | BananagramsView;
+  | BananagramsView
+  | MinefieldView;
 
 export interface LobbyPlayer {
   seat: number;
@@ -181,7 +183,8 @@ export interface LobbyState {
     | SumoSettings
     | QuoridorSettings
     | PartySettings
-    | BananagramsSettings;
+    | BananagramsSettings
+    | MinefieldSettings;
   /** Player-count bounds for this game, so the lobby can render them. */
   minPlayers: number;
   maxPlayers: number;
@@ -205,7 +208,7 @@ export type GameEvent =
   | { t: 'concealedKong'; seat: number }
   | { t: 'addedKong'; seat: number; tile: Tile }
   | { t: 'flower'; seat: number; tile: Tile }
-  | { t: 'win'; seat: number; by: 'discard' | 'selfDraw' | 'lastStanding' | 'bananas' }
+  | { t: 'win'; seat: number; by: 'discard' | 'selfDraw' | 'lastStanding' | 'bananas' | 'cleared' }
   | { t: 'timeout'; seat: number }
   | { t: 'wallExhausted' }
   // Ultimate Tic-Tac-Toe
@@ -251,4 +254,7 @@ export type GameEvent =
   | { t: 'star'; seat: number }
   // Bananagrams
   | { t: 'peel'; seat: number; bunchLeft: number }
-  | { t: 'dump'; seat: number };
+  | { t: 'dump'; seat: number }
+  // Minefield
+  | { t: 'reveal'; seat: number; count: number }
+  | { t: 'explode'; seat: number; index: number };

@@ -1,0 +1,240 @@
+/* ── Minefield — shared-board Minesweeper battle ────────────────────────── */
+
+.minefield {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* ── top HUD ────────────────────────────────────────────────────────────── */
+
+.minefield-hud {
+  width: min(96vw, 900px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+  z-index: 30;
+}
+
+.minefield-hud-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.minefield-hud-title {
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.minefield-hud-status {
+  font-size: 13px;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── scoreboard strip ───────────────────────────────────────────────────── */
+
+.minefield-scoreboard {
+  width: min(96vw, 900px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.minefield-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+}
+
+.minefield-score.me {
+  border-color: var(--accent);
+}
+
+.minefield-score.out {
+  opacity: 0.5;
+}
+
+.minefield-score-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.minefield-score-name {
+  max-width: 110px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.minefield-score-count {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.minefield-score-out-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--danger);
+}
+
+.minefield-spectate {
+  text-align: center;
+}
+
+/* ── board ──────────────────────────────────────────────────────────────── */
+
+.minefield-board-wrap {
+  width: min(96vw, 82vh, 760px);
+  overflow: auto;
+  border: 2px solid var(--line-strong);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.32);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.4);
+}
+
+.minefield-board {
+  --mf-cell: max(18px, calc((min(96vw, 82vh, 760px) - 6px) / var(--mf-cols)));
+  display: grid;
+  grid-template-columns: repeat(var(--mf-cols), var(--mf-cell));
+  grid-auto-rows: var(--mf-cell);
+  width: max-content;
+}
+
+.minefield-cell {
+  width: var(--mf-cell);
+  height: var(--mf-cell);
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: var(--tile-back);
+  color: var(--paper);
+  font: inherit;
+  font-weight: 800;
+  font-size: calc(var(--mf-cell) * 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.35);
+}
+
+.minefield-cell:disabled {
+  cursor: default;
+}
+
+.minefield-cell.revealed {
+  background: var(--tile-face);
+  color: var(--ink);
+}
+
+.minefield-cell.revealed.mine {
+  background: var(--danger);
+  color: #fff;
+}
+
+.minefield-cell.flagged {
+  color: var(--accent);
+}
+
+/* Classic Minesweeper number coloring. */
+.minefield-cell.n1 { color: #3b7dd8; }
+.minefield-cell.n2 { color: #2e8b3d; }
+.minefield-cell.n3 { color: #c0392b; }
+.minefield-cell.n4 { color: #5a3b9e; }
+.minefield-cell.n5 { color: #8a4b1f; }
+.minefield-cell.n6 { color: #1f9e9e; }
+.minefield-cell.n7 { color: #222; }
+.minefield-cell.n8 { color: #666; }
+
+.minefield-help {
+  text-align: center;
+  font-size: 12.5px;
+  margin: 0;
+  max-width: 92vw;
+}
+
+/* ── transient banners & error toast ────────────────────────────────────── */
+
+.minefield-event {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.82);
+  border: 1px solid var(--accent);
+  color: var(--paper);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  max-width: 94vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 40;
+  animation: minefield-pop 0.18s ease-out;
+}
+
+.minefield-toast {
+  position: fixed;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(120, 30, 20, 0.92);
+  border: 1px solid var(--danger);
+  color: #ffd9d2;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  max-width: 94vw;
+  z-index: 60;
+  animation: minefield-pop 0.18s ease-out;
+}
+
+@keyframes minefield-pop {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .minefield-event,
+  .minefield-toast {
+    animation: none;
+  }
+}
+
+/* ── round-end card ─────────────────────────────────────────────────────── */
+
+.minefield-result-card {
+  max-height: 88vh;
+  overflow-y: auto;
+}
