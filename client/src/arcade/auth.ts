@@ -82,20 +82,6 @@ export async function setDisplayName(name: string): Promise<LinkResult> {
 export type LinkResult = { ok: true } | { ok: false; error: string };
 
 /**
- * Upgrade the current anonymous session to a permanent email identity.
- * Preserves the same auth.uid(), so every existing profile/result/xp row
- * carries over with zero migration — see the design doc's auth UX section
- * for when to actually prompt for this (never a gate, always contextual).
- */
-export async function linkEmail(email: string): Promise<LinkResult> {
-  const supabase = getSupabase();
-  if (!supabase) return { ok: false, error: 'Brain Arcade is not configured yet.' };
-  const { error } = await supabase.auth.updateUser({ email });
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
-}
-
-/**
  * Link a Google identity to the current session (same auth.uid(), zero
  * data migration — see linkEmail above and the design doc's B7). Redirects
  * the whole page to Google's consent screen; on success the browser never
@@ -113,4 +99,51 @@ export async function linkGoogle(): Promise<LinkResult> {
   });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+const MIN_PASSWORD_LENGTH = 6;
+
+/**
+ * The non-Google account path: sets an email + password on the current
+ * session (same auth.uid() as linkEmail — an anonymous session upgrades in
+ * place, nothing migrates). Unlike linkEmail's magic-link-only flow, a
+ * password means the player can come back and sign in on any device
+ * without needing a fresh email link each time. Supabase still emails a
+ * confirmation link before the address (and the ability to sign in with
+ * it elsewhere) is actually active.
+ */
+export async function signUpWithPassword(email: string, password: string): Promise<LinkResult> {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    return { ok: false, error: `Password needs at least ${MIN_PASSWORD_LENGTH} characters.` };
+  }
+  const supabase = getSupabase();
+  if (!supabase) return { ok: false, error: 'Brain Arcade is not configured yet.' };
+  const { error } = await supabase.auth.updateUser({ email, password });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/**
+ * Sign into an existing email+password account — e.g. a returning player
+ * on a new or cleared device. This replaces whatever session is currently
+ * active (including an anonymous one), so it's a genuinely different
+ * identity from here on, not an upgrade — the caller should refresh every
+ * screen's cached auth state after this succeeds (simplest: reload).
+ */
+export async function signInWithPassword(email: string, password: string): Promise<LinkResult> {
+  const supabase = getSupabase();
+  if (!supabase) return { ok: false, error: 'Brain Arcade is not configured yet.' };
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) return { ok: false, error: error.message };
+  cachedDisplayName = null;
+  return { ok: true };
+}
+
+/** Ends the session entirely (not a downgrade to a fresh anonymous one —
+ *  the caller decides whether/when to call ensureSignedIn() again). */
+export async function signOut(): Promise<void> {
+  const supabase = getSupabase();
+  if (!supabase) return;
+  cachedDisplayName = null;
+  await supabase.auth.signOut();
 }

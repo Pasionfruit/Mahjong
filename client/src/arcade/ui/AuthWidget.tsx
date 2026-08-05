@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { ensureSignedIn, getDisplayName, linkEmail, linkGoogle } from '../auth';
+import { ensureSignedIn, getDisplayName, linkGoogle, signOut } from '../auth';
 import { isArcadeConfigured } from '../supabase';
+import EmailAuthForm from './EmailAuthForm';
 
 /**
  * Top-right "lock in your progress" widget, dropped into every Brain
@@ -13,7 +14,6 @@ export default function AuthWidget() {
   const [open, setOpen] = useState(false);
   const [anonymous, setAnonymous] = useState<boolean | null>(null);
   const [name, setName] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -56,13 +56,11 @@ export default function AuthWidget() {
     // On success the browser is already navigating to Google — nothing else to do.
   }
 
-  async function handleEmail() {
-    if (!email.trim()) return setStatus('Enter an email address.');
+  async function handleLogout() {
     setBusy(true);
-    setStatus(null);
-    const r = await linkEmail(email.trim());
+    await signOut();
     setBusy(false);
-    setStatus(r.ok ? 'Check your email for a confirmation link!' : r.error);
+    window.location.reload();
   }
 
   return (
@@ -80,26 +78,20 @@ export default function AuthWidget() {
         <div className="auth-panel">
           <p className="hint">
             {anonymous
-              ? "Lock in your progress so it's never lost — link an account."
-              : 'Link another way to sign in on a new device.'}
+              ? "Lock in your progress so it's never lost — sign into an account."
+              : 'Link another way to sign in on a new device, or log out.'}
           </p>
           <button className="btn btn-primary auth-panel-google" disabled={busy} onClick={() => void handleGoogle()}>
             Continue with Google
           </button>
           <div className="auth-panel-divider">or</div>
-          <label className="field">
-            <span>Email</span>
-            <input
-              type="email"
-              value={email}
-              placeholder="you@example.com"
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <button className="btn" disabled={busy} onClick={() => void handleEmail()}>
-            Send Login Link
-          </button>
+          <EmailAuthForm />
           {status && <p className="hint auth-panel-status">{status}</p>}
+          {!anonymous && (
+            <button className="btn auth-panel-logout" disabled={busy} onClick={() => void handleLogout()}>
+              Log Out
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ensureSignedIn, getDisplayName, linkEmail, linkGoogle, setDisplayName } from '../arcade/auth';
+import { ensureSignedIn, getDisplayName, linkGoogle, setDisplayName, signOut } from '../arcade/auth';
 import { dateKeyUTC } from '../arcade/dailySeed';
 import { EMPTY_STREAK, nextStreakState, xpForResult, xpProgress, type StreakState } from '../arcade/stats';
 import { getUnsyncedResults } from '../arcade/storage/db';
 import { flushOutbox, getAllResults } from '../arcade/storage/outbox';
 import { isArcadeConfigured } from '../arcade/supabase';
+import EmailAuthForm from '../arcade/ui/EmailAuthForm';
 import type { StoredResult } from '../arcade/types';
 import { GAMES, dailyGames } from '../games/catalog';
 import { IconMoon, IconSun, IconUser } from '../components/icons';
@@ -75,7 +76,6 @@ export default function Profile() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const [email, setEmail] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -124,13 +124,11 @@ export default function Profile() {
     if (!r.ok) setStatus(r.error);
   }
 
-  async function handleEmail() {
-    if (!email.trim()) return setStatus('Enter an email address.');
+  async function handleLogout() {
     setBusy(true);
-    setStatus(null);
-    const r = await linkEmail(email.trim());
+    await signOut();
     setBusy(false);
-    setStatus(r.ok ? 'Check your email for a confirmation link!' : r.error);
+    window.location.reload();
   }
 
   async function handleSync() {
@@ -194,6 +192,11 @@ export default function Profile() {
                   ? 'Guest profile on this device — link an account to keep it forever.'
                   : 'Account linked — your progress follows you to any device.'}
           </p>
+          {configured && signedIn && !anonymous && (
+            <button className="btn profile-logout" disabled={busy} onClick={() => void handleLogout()}>
+              Log Out
+            </button>
+          )}
         </div>
       </section>
 
@@ -294,23 +297,12 @@ export default function Profile() {
       {configured && signedIn && anonymous && (
         <section className="profile-card">
           <h3 className="profile-heading">Keep this profile</h3>
-          <p className="hint">Link an account so your scores, streaks, and XP are never lost.</p>
+          <p className="hint">Sign into an account so your scores, streaks, and XP are never lost.</p>
           <button className="btn btn-primary" disabled={busy} onClick={() => void handleGoogle()}>
             Continue with Google
           </button>
           <div className="profile-or">or</div>
-          <div className="profile-edit-row">
-            <input
-              type="email"
-              value={email}
-              placeholder="you@example.com"
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && void handleEmail()}
-            />
-            <button className="btn" disabled={busy} onClick={() => void handleEmail()}>
-              Send link
-            </button>
-          </div>
+          <EmailAuthForm />
         </section>
       )}
 
