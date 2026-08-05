@@ -111,8 +111,25 @@ h4,
    (the bottom nav) are actually anchored to, leaving a gap between the nav
    and the real screen edge. Pinning .app to the viewport with inset instead
    of a height value guarantees it's the exact same rectangle .wing-dock's
-   fixed bottom:0 uses, so they can't drift apart. */
+   fixed bottom:0 uses, so they can't drift apart.
+   That alone wasn't enough: html/body/#root's own height:100% can still
+   render taller than the true visual viewport in standalone mode, making
+   them an (unwanted) outer scroll container — and iOS Safari has a real bug
+   where position:fixed descendants drift/gap during and after scrolling on
+   an ancestor that's scrollable itself, even one that "shouldn't" be. Pin
+   the whole html→body→#root chain to the viewport too, so .app's own
+   overflow:auto is the ONLY scrollable region and there's no outer
+   scroller left for that bug to trigger on. */
 @media (display-mode: standalone) {
+  html,
+  body,
+  #root {
+    position: fixed;
+    inset: 0;
+    height: auto;
+    overflow: hidden;
+  }
+
   .app {
     position: fixed;
     inset: 0;
@@ -638,6 +655,19 @@ h4,
   transition: opacity 0.15s, border-color 0.15s, background 0.15s;
 }
 
+/* Harbor haze (dark, default theme): dimming the whole pill via opacity
+   reads as dull gray text on the dark blue background — needs to stay
+   brighter than the cozy-cabin (light) default to actually be legible.
+   :not(.active) keeps this from out-specificity-ing .home-tab.active's
+   opacity: 1 below. */
+.app:not([data-mode='light']) .home-tab:not(.active) {
+  opacity: 0.85;
+}
+
+.app:not([data-mode='light']) .home-tab:not(.active):hover {
+  opacity: 1;
+}
+
 .home-tab-icon {
   display: inline-flex;
   font-size: 18px;
@@ -699,6 +729,13 @@ h4,
     background: color-mix(in srgb, var(--felt-dark) 92%, black);
     border-top: 1px solid var(--line);
     box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35);
+    /* Force its own GPU compositing layer: without this, a fixed bar over a
+       scrolling sibling (.app is the scroll container, and the dock lives
+       outside it — see App.tsx) can visually lag a frame behind on mobile,
+       letting scrolled content bleed through the bar during fast/momentum
+       scrolling before it redraws on top. */
+    transform: translateZ(0);
+    will-change: transform;
   }
 
   .wing-dock .home-tab {
