@@ -1,11 +1,13 @@
 /**
  * Minefield: Minesweeper as a real-time party battle. Everyone races on one
- * shared board — clicking reveals cells for the whole table. Hit a mine and
- * you're eliminated for the round (still watching, no longer clicking); the
- * board keeps going without you. The round ends when either the board is
- * fully cleared (the finishing click wins it) or only one player is left
- * standing. Fully server-authoritative: the server places every mine and
- * owns every reveal — clients only render.
+ * shared board — clicking reveals cells for the whole table. By default,
+ * hitting a mine eliminates you for the round (still watching, no longer
+ * clicking) and the round ends the instant only one player is left standing
+ * — or, with `eliminateOnMine` off, a mine just costs you the reveal (it's
+ * marked hit and helps everyone else avoid it) and you keep playing. Either
+ * way the board is won the moment it's fully cleared — whoever lands that
+ * final reveal wins outright. Fully server-authoritative: the server places
+ * every mine and owns every reveal — clients only render.
  *
  * Flags are deliberately NOT part of shared state: they're a personal,
  * client-local memory aid (see MinefieldGame.tsx), never sent to the server
@@ -38,11 +40,16 @@ export interface MinefieldSettings {
   /** "Remove all 50/50s" — regenerate until the board is fully solvable by
    *  logic alone, no guessing required. */
   noGuess: boolean;
+  /** Classic rules: hitting a mine eliminates you for the round. Off: a mine
+   *  just costs you that reveal — the cell stays marked for everyone, but
+   *  you keep clicking. */
+  eliminateOnMine: boolean;
 }
 
 export const DEFAULT_MINEFIELD_SETTINGS: MinefieldSettings = {
   preset: 'intermediate',
   noGuess: false,
+  eliminateOnMine: true,
 };
 
 // ── actions ─────────────────────────────────────────────────────────────────
@@ -71,7 +78,9 @@ export interface MinefieldPlayerView {
   /** Safe cells this player has personally revealed (via a click or the
    *  flood-fill it triggered) — the scoreboard number. */
   revealedCount: number;
-  /** Hit a mine this round — can no longer act, but keeps watching. */
+  /** Mines this player has personally hit this round. */
+  minesHit: number;
+  /** True once eliminated — only possible with settings.eliminateOnMine on. */
   eliminated: boolean;
 }
 
@@ -87,6 +96,6 @@ export interface MinefieldView {
   paused: boolean;
   settings: MinefieldSettings;
   round: number;
-  /** Ties are possible (mutual elimination) — every seat listed shares the win. */
+  /** Currently always exactly one seat (cleared the board, or last standing). */
   result: { winnerSeats: number[] } | null;
 }

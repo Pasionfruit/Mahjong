@@ -34,6 +34,7 @@ export interface MinefieldState {
   cells: MfCell[];
   eliminated: boolean[];
   revealedCount: number[];
+  minesHit: number[];
   over: boolean;
   winnerSeats: number[] | null;
 }
@@ -252,6 +253,7 @@ export function newMinefieldGame(
     cells: cells!,
     eliminated: Array.from({ length: playerCount }, () => false),
     revealedCount: Array.from({ length: playerCount }, () => 0),
+    minesHit: Array.from({ length: playerCount }, () => 0),
     over: false,
     winnerSeats: null,
   };
@@ -285,17 +287,21 @@ export function applyMinefieldAction(s: MinefieldState, seat: number, a: Minefie
   if (cell.mine) {
     cell.revealed = true;
     cell.owner = seat;
-    s.eliminated[seat] = true;
+    s.minesHit[seat]! += 1;
     events.push({ t: 'explode', seat, index });
 
-    // The round can never reach zero active seats through this path: it
-    // already ends the instant exactly one remains, so a later elimination
-    // attempt is rejected above (s.over guard) before it could zero out.
-    const remaining = activeSeats(s);
-    if (remaining.length === 1) {
-      s.over = true;
-      s.winnerSeats = remaining;
-      events.push({ t: 'win', seat: remaining[0]!, by: 'lastStanding' });
+    if (s.settings.eliminateOnMine) {
+      s.eliminated[seat] = true;
+      // The round can never reach zero active seats through this path: it
+      // already ends the instant exactly one remains, so a later
+      // elimination attempt is rejected above (s.over guard) before it
+      // could zero out.
+      const remaining = activeSeats(s);
+      if (remaining.length === 1) {
+        s.over = true;
+        s.winnerSeats = remaining;
+        events.push({ t: 'win', seat: remaining[0]!, by: 'lastStanding' });
+      }
     }
     return { ok: true, events };
   }

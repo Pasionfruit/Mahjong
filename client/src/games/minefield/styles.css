@@ -91,6 +91,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+.minefield-score-mines {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
 .minefield-score-out-badge {
   font-size: 10px;
   font-weight: 700;

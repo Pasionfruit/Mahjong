@@ -33,6 +33,10 @@ function sanitizeSettings(
     if (typeof patch.noGuess !== 'boolean') return null;
     next.noGuess = patch.noGuess;
   }
+  if (patch.eliminateOnMine !== undefined) {
+    if (typeof patch.eliminateOnMine !== 'boolean') return null;
+    next.eliminateOnMine = patch.eliminateOnMine;
+  }
   return next;
 }
 
@@ -57,6 +61,7 @@ function view(s: MinefieldState, viewerSeat: number, seats: SeatMeta[], paused: 
       isBot: meta.isBot,
       wins: meta.wins,
       revealedCount: s.revealedCount[seat]!,
+      minesHit: s.minesHit[seat]!,
       eliminated,
     };
   });
@@ -76,8 +81,9 @@ function view(s: MinefieldState, viewerSeat: number, seats: SeatMeta[], paused: 
 }
 
 /** Minefield: real-time shared-board Minesweeper battle (2–8 players). Every
- *  reveal is broadcast to the whole table; hit a mine and you're eliminated
- *  from the round but the board keeps going without you. */
+ *  reveal is broadcast to the whole table; by default hitting a mine
+ *  eliminates you from the round (settings.eliminateOnMine can turn that
+ *  off, letting mines cost you the reveal without knocking you out). */
 export const minefieldModule: GameModule = {
   id: 'minefield',
   minPlayers: MINEFIELD_MIN_PLAYERS,

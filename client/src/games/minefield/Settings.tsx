@@ -63,6 +63,20 @@ export default function MinefieldSettingsPanel() {
           On: every board is regenerated until it's fully solvable by logic alone — no coin-flip guesses,
           ever. Off: classic Minesweeper odds, 50/50s and all.
         </p>
+
+        <label className="setting-row">
+          <span>💣 Keep playing after a mine</span>
+          <input
+            type="checkbox"
+            disabled={!isHost}
+            checked={!settings.eliminateOnMine}
+            onChange={(e) => patch({ eliminateOnMine: !e.target.checked })}
+          />
+        </label>
+        <p className="hint">
+          Checked: a mine just costs you that reveal — the cell stays marked for everyone, but you're
+          free to keep clicking. Unchecked (classic rules): hitting a mine eliminates you for the round.
+        </p>
       </div>
 
       <h2 className="section-title">How to play</h2>
@@ -73,9 +87,11 @@ export default function MinefieldSettingsPanel() {
           reveal cascades into) counts toward your score.
         </p>
         <p>
-          Hit a mine and you're <b>eliminated</b> — out for the rest of the round, but you keep watching.
-          The round ends the instant only one player is still standing, or the moment the whole board is
-          safely cleared — whoever lands that final reveal wins outright.
+          By default, hitting a mine gets you <b>eliminated</b> — out for the rest of the round, but you
+          keep watching, and the round ends the instant only one player is still standing. Turn off "keep
+          playing after a mine" above and mines instead just cost you that reveal — you stay in the game.
+          Either way, the round also ends the moment the whole board is safely cleared — whoever lands
+          that final reveal wins outright.
         </p>
         <p className="hint">
           Right-click (or long-press) a hidden cell to flag it for yourself as a reminder — flags are

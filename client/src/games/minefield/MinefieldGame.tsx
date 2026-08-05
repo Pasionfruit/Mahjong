@@ -30,7 +30,7 @@ export default function MinefieldGame() {
     let msg: string | null = null;
     if (lastEvent.t === 'explode') {
       const name = view.players.find((p) => p.seat === lastEvent.seat)?.nickname ?? 'Someone';
-      msg = `💥 ${name} hit a mine — eliminated!`;
+      msg = view.settings.eliminateOnMine ? `💥 ${name} hit a mine — eliminated!` : `💥 ${name} hit a mine!`;
     } else if (lastEvent.t === 'win' && lastEvent.by === 'lastStanding') {
       const name = view.players.find((p) => p.seat === lastEvent.seat)?.nickname ?? 'Someone';
       msg = `🏆 ${name} is the last one standing!`;
@@ -110,7 +110,8 @@ export default function MinefieldGame() {
         <div className="minefield-hud-left">
           <span className="minefield-hud-title">💣 Minefield</span>
           <span className="minefield-hud-status">
-            Round {view.round} · {view.mineCount} mines · {view.settings.noGuess ? 'no 50/50s' : 'classic'}
+            Round {view.round} · {view.mineCount} mines · {view.settings.noGuess ? 'no 50/50s' : 'classic odds'}
+            {!view.settings.eliminateOnMine && ' · mines don’t eliminate'}
           </span>
         </div>
         <div className="hud-menu">
@@ -165,6 +166,11 @@ export default function MinefieldGame() {
               <span className={`conn-dot ${p.connected ? 'on' : 'off'}`} />
               <span className="minefield-score-name">{p.nickname}</span>
               <span className="minefield-score-count">{p.revealedCount}</span>
+              {p.minesHit > 0 && (
+                <span className="minefield-score-mines" title={`${p.minesHit} mine${p.minesHit === 1 ? '' : 's'} hit`}>
+                  💥{p.minesHit}
+                </span>
+              )}
               {p.eliminated && <span className="minefield-score-out-badge">out</span>}
             </div>
           ))}
