@@ -289,6 +289,8 @@ export default function PeggleGame() {
           <div className="arcade-leaderboard-view">
             <h3>All-Time Best (Endless)</h3>
             <LeaderboardPanel gameId={GAME_ID} mode="endless" dateKey={dateKeyUTC()} ascending={false} />
+            <h3>🔥 Longest Daily Streaks</h3>
+            <LeaderboardPanel gameId={GAME_ID} mode="streak" dateKey={dateKeyUTC()} ascending={false} />
             <div className="arcade-actions">
               <button className="btn" onClick={() => setView('play')}>
                 Back to game

@@ -68,7 +68,7 @@ describe('minesweeperModule', () => {
     expect(minesweeperModule.result(state)).toEqual({
       status: 'lost',
       score: 999_999_999,
-      stats: { time: 0.5, flags: 0 },
+      stats: { time: 0.5, flags: 0, continues: 0, noGuess: 0 },
     });
   });
 
@@ -166,5 +166,97 @@ describe('minesweeperModule', () => {
       expect(minesweeperModule.status(state)).toBe('lost');
       expect(target.mineNeighbors).toContain(state.exploded);
     });
+  });
+});
+
+describe('continue (endless second chance)', () => {
+  function loseAt(seed: number) {
+    let state = reveal(minesweeperModule.generate(seed, undefined), 0);
+    const mineIndex = state.cells.findIndex((c) => c.mine);
+    state = reveal(state, mineIndex, 500);
+    return { state, mineIndex };
+  }
+
+  it('un-reveals the exploded mine, flags it, and resumes play', () => {
+    const { state: lost, mineIndex } = loseAt(7);
+    expect(minesweeperModule.status(lost)).toBe('lost');
+
+    const resumed = minesweeperModule.applyMove(lost, { type: 'continue', index: -1, at: 600 })!;
+    expect(minesweeperModule.status(resumed)).toBe('playing');
+    expect(resumed.exploded).toBeNull();
+    expect(resumed.cells[mineIndex]!.revealed).toBe(false);
+    expect(resumed.cells[mineIndex]!.flagged).toBe(true); // marked so you don't re-click it
+    expect(resumed.continues).toBe(1);
+  });
+
+  it('is rejected when nothing exploded', () => {
+    const fresh = reveal(minesweeperModule.generate(7, undefined), 0);
+    expect(minesweeperModule.applyMove(fresh, { type: 'continue', index: -1, at: 10 })).toBeNull();
+  });
+
+  it('lets play carry on after continuing', () => {
+    const { state: lost } = loseAt(7);
+    let state = minesweeperModule.applyMove(lost, { type: 'continue', index: -1, at: 600 })!;
+    const safe = state.cells.findIndex((c) => !c.mine && !c.revealed);
+    state = reveal(state, safe, 700);
+    expect(minesweeperModule.status(state)).toBe('playing');
+    expect(state.cells[safe]!.revealed).toBe(true);
+  });
+
+  it('a continued win records the loss sentinel so it cannot top clean times', () => {
+    const { state: lost } = loseAt(7);
+    let state = minesweeperModule.applyMove(lost, { type: 'continue', index: -1, at: 600 })!;
+    // Clear every remaining safe cell.
+    for (let i = 0; i < state.cells.length; i++) {
+      if (!state.cells[i]!.mine && !state.cells[i]!.revealed) state = reveal(state, i, 800);
+    }
+    expect(minesweeperModule.status(state)).toBe('won');
+    const res = minesweeperModule.result(state)!;
+    expect(res.status).toBe('won');
+    expect(res.score).toBe(999_999_999); // ranked as DNF — it used a continue
+    expect(res.stats?.continues).toBe(1);
+  });
+
+  it('replay reproduces a continued run exactly', () => {
+    const seed = 7;
+    const mineIndex = reveal(minesweeperModule.generate(seed, undefined), 0).cells.findIndex((c) => c.mine);
+    const log = [
+      { type: 'reveal' as const, index: 0, at: 0 },
+      { type: 'reveal' as const, index: mineIndex, at: 500 },
+      { type: 'continue' as const, index: -1, at: 600 },
+    ];
+    let live = minesweeperModule.generate(seed, undefined);
+    for (const m of log) live = minesweeperModule.applyMove(live, m) ?? live;
+    expect(minesweeperModule.replay(seed, undefined, log)).toEqual(live);
+  });
+});
+
+describe('noGuess boards', () => {
+  it('are marked on the state and stats', () => {
+    const state = reveal(minesweeperModule.generate(11, { noGuess: true }), 40);
+    expect(state.noGuess).toBe(true);
+  });
+
+  it('are solvable by pure logic from the opening reveal', async () => {
+    const { isNoGuessSolvable } = await import('@shared/minesweeperSolver');
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const start = 40; // centre-ish opening click
+      const state = reveal(minesweeperModule.generate(seed, { noGuess: true }), start);
+      const opening = state.cells.reduce<number[]>((acc, c, i) => {
+        if (c.revealed) acc.push(i);
+        return acc;
+      }, []);
+      expect(isNoGuessSolvable(state.cells, state.rows, state.cols, state.mineCount, opening)).toBe(true);
+    }
+  });
+
+  it('still places the right number of mines and keeps the first click safe', () => {
+    for (const seed of [1, 2, 3]) {
+      const start = 40;
+      const state = reveal(minesweeperModule.generate(seed, { noGuess: true }), start);
+      expect(state.cells.filter((c) => c.mine)).toHaveLength(MINE_COUNT);
+      expect(state.cells[start]!.mine).toBe(false);
+      for (const n of neighborsOf(start, ROWS, COLS)) expect(state.cells[n]!.mine).toBe(false);
+    }
   });
 });

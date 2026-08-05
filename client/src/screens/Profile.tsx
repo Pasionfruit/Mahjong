@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ensureSignedIn, getDisplayName, linkGoogle, setDisplayName, signOut } from '../arcade/auth';
 import { dateKeyUTC } from '../arcade/dailySeed';
+import { fetchMyStreaks } from '../arcade/leaderboard';
 import { EMPTY_STREAK, nextStreakState, xpForResult, xpProgress, type StreakState } from '../arcade/stats';
 import { getUnsyncedResults } from '../arcade/storage/db';
 import { flushOutbox, getAllResults } from '../arcade/storage/outbox';
@@ -79,6 +80,9 @@ export default function Profile() {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  /** gameId → current streak, from the server (my_streaks RPC). Empty when
+   *  signed out/unconfigured, in which case the local fold is used. */
+  const [serverStreaks, setServerStreaks] = useState<Map<string, number>>(new Map());
 
   const refresh = useCallback(async () => {
     const [results, unsynced] = await Promise.all([getAllResults(), getUnsyncedResults()]);
@@ -95,6 +99,10 @@ export default function Profile() {
         setAnonymous(u.is_anonymous ?? true);
         const n = await getDisplayName();
         if (!cancelled) setName(n);
+        // Server-derived streaks follow the account across devices; the
+        // local fold below is only a fallback for offline/unconfigured.
+        const mine = await fetchMyStreaks();
+        if (!cancelled) setServerStreaks(new Map(mine.map((s) => [s.gameId, s.streak])));
       });
     }
     return () => {
@@ -234,15 +242,25 @@ export default function Profile() {
         <section className="profile-card">
           <h3 className="profile-heading">Your games</h3>
           <ul className="profile-games">
-            {data.games.map((g) => (
-              <li key={g.id} className="profile-game-row">
-                <span className="profile-game-name">{g.name}</span>
-                <span className="hint">
-                  {g.plays} {g.plays === 1 ? 'play' : 'plays'}
-                  {g.streak > 1 ? ` · ${g.streak}-day streak` : ''}
-                </span>
-              </li>
-            ))}
+            {data.games.map((g) => {
+              // Server value wins when we have one — it's the cross-device
+              // truth; the local fold only sees this device's history.
+              const streak = serverStreaks.get(g.id) ?? g.streak;
+              return (
+                <li key={g.id} className="profile-game-row">
+                  <span className="profile-game-name">{g.name}</span>
+                  <span className="hint">
+                    {g.plays} {g.plays === 1 ? 'play' : 'plays'}
+                    {streak > 0 && (
+                      <span className="profile-streak" title="Current daily streak">
+                        {' '}
+                        · 🔥 {streak}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

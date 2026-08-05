@@ -5576,3 +5576,22 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
     animation: none;
   }
 }
+
+/* ── streaks & Minesweeper endless options ─────────────────────────────── */
+
+.profile-streak {
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The endless-only "no 50/50s" switch, above the board. */
+.minesweeper-noguess {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+}

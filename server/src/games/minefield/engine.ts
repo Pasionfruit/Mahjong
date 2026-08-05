@@ -3,6 +3,7 @@ import {
   type MinefieldAction,
   type MinefieldSettings,
 } from '@shared/minefield';
+import { isNoGuessSolvable } from '@shared/minesweeperSolver';
 import type { GameEvent } from '@shared/view';
 import { mulberry32 } from '../../engine/rng';
 
@@ -117,101 +118,6 @@ function floodFrom(start: number, layout: MfCellLayout[], revealed: boolean[], r
     }
   }
   return toReveal;
-}
-
-// ── no-guess solvability check ──────────────────────────────────────────────
-
-/**
- * Whether the board can be fully cleared from `startRevealed` using pure
- * logical deduction — no 50/50s or worse. Three deduction rules run to a
- * fixpoint: (a) a revealed number whose hidden-neighbor count matches its
- * remaining mine count means all of them are mines (or, if its remaining
- * count is 0, all of them are safe); (b) subset reasoning between two
- * revealed numbers whose hidden-neighbor sets overlap (catches the classic
- * "obvious once you compare two clues" deductions single-point logic
- * misses); (c) once every mine is accounted for, every other hidden cell is
- * safe (and vice versa). This mirrors what a careful human solver — not a
- * guesser — could always deduce; it can't reproduce true SAT-solver-only
- * deductions, but those are rare enough in practice that this is what every
- * real "no-guess" Minesweeper generator actually ships.
- */
-function isNoGuessSolvable(
-  layout: MfCellLayout[],
-  rows: number,
-  cols: number,
-  mineCount: number,
-  startRevealed: readonly number[],
-): boolean {
-  const n = layout.length;
-  const revealed = new Set(startRevealed);
-  const deducedMine = new Set<number>();
-
-  const hiddenNeighborsOf = (i: number) =>
-    neighborsOf(i, rows, cols).filter((x) => !revealed.has(x) && !deducedMine.has(x));
-
-  let progress = true;
-  while (progress) {
-    progress = false;
-
-    // Rule A: single-cell deduction on every revealed numbered cell.
-    for (const i of revealed) {
-      const nbrs = neighborsOf(i, rows, cols);
-      const hidden = hiddenNeighborsOf(i);
-      if (hidden.length === 0) continue;
-      const knownMines = nbrs.filter((x) => deducedMine.has(x)).length;
-      const remaining = layout[i]!.adjacent - knownMines;
-      if (remaining === 0) {
-        for (const h of hidden) revealed.add(h);
-        progress = true;
-      } else if (remaining === hidden.length) {
-        for (const h of hidden) deducedMine.add(h);
-        progress = true;
-      }
-    }
-
-    // Rule B: pairwise subset deduction across the frontier.
-    const frontier = [...revealed].filter((i) => hiddenNeighborsOf(i).length > 0);
-    for (const a of frontier) {
-      const hiddenA = new Set(hiddenNeighborsOf(a));
-      if (hiddenA.size === 0) continue;
-      const remainA = layout[a]!.adjacent - neighborsOf(a, rows, cols).filter((x) => deducedMine.has(x)).length;
-      for (const b of frontier) {
-        if (a === b) continue;
-        const hiddenB = new Set(hiddenNeighborsOf(b));
-        if (hiddenB.size <= hiddenA.size) continue;
-        let subset = true;
-        for (const h of hiddenA) if (!hiddenB.has(h)) { subset = false; break; }
-        if (!subset) continue;
-        const remainB = layout[b]!.adjacent - neighborsOf(b, rows, cols).filter((x) => deducedMine.has(x)).length;
-        const diff = [...hiddenB].filter((h) => !hiddenA.has(h));
-        const diffMines = remainB - remainA;
-        if (diffMines === 0) {
-          for (const d of diff) revealed.add(d);
-          progress = true;
-        } else if (diffMines === diff.length) {
-          for (const d of diff) deducedMine.add(d);
-          progress = true;
-        }
-      }
-    }
-
-    // Rule C: global mine-count deduction.
-    const hiddenAll: number[] = [];
-    for (let i = 0; i < n; i++) if (!revealed.has(i) && !deducedMine.has(i)) hiddenAll.push(i);
-    const remainingMines = mineCount - deducedMine.size;
-    if (hiddenAll.length > 0) {
-      if (remainingMines === 0) {
-        for (const h of hiddenAll) revealed.add(h);
-        progress = true;
-      } else if (remainingMines === hiddenAll.length) {
-        for (const h of hiddenAll) deducedMine.add(h);
-        progress = true;
-      }
-    }
-  }
-
-  for (let i = 0; i < n; i++) if (!layout[i]!.mine && !revealed.has(i)) return false;
-  return true;
 }
 
 const MAX_NOGUESS_ATTEMPTS = 400;

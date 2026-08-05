@@ -205,6 +205,8 @@ export default function UntangleGame() {
           <div className="arcade-leaderboard-view">
             <h3>All-Time Fastest (Endless)</h3>
             <LeaderboardPanel gameId={GAME_ID} mode="endless" dateKey={dateKeyUTC()} ascending formatScore={formatTime} />
+            <h3>🔥 Longest Daily Streaks</h3>
+            <LeaderboardPanel gameId={GAME_ID} mode="streak" dateKey={dateKeyUTC()} ascending={false} />
             <div className="arcade-actions">
               <button className="btn" onClick={() => setView('play')}>
                 Back to game

@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
 import { ensureSignedIn, linkGoogle } from '../auth';
-import { currentUserId, fetchAlltimeLeaderboard, fetchDailyLeaderboard, type LeaderboardRow } from '../leaderboard';
+import {
+  currentUserId,
+  fetchAlltimeLeaderboard,
+  fetchDailyLeaderboard,
+  fetchStreakLeaderboard,
+  type LeaderboardRow,
+} from '../leaderboard';
 import { isArcadeConfigured } from '../supabase';
 import EmailAuthForm from './EmailAuthForm';
 
 interface LeaderboardPanelProps {
   gameId: string;
-  mode: 'daily' | 'endless';
+  /** 'streak' ranks longest current daily streaks instead of scores; it
+   *  ignores `dateKey`/`ascending`/`formatScore` (always longest-first,
+   *  rendered as "N days"). */
+  mode: 'daily' | 'endless' | 'streak';
   dateKey: string;
   ascending: boolean;
   formatScore?: (score: number) => string;
@@ -72,7 +81,12 @@ export default function LeaderboardPanel({
     let cancelled = false;
     setRows(null);
     void currentUserId().then((id) => !cancelled && setMyId(id));
-    const load = mode === 'daily' ? fetchDailyLeaderboard(gameId, dateKey, ascending) : fetchAlltimeLeaderboard(gameId, ascending);
+    const load =
+      mode === 'streak'
+        ? fetchStreakLeaderboard(gameId)
+        : mode === 'daily'
+          ? fetchDailyLeaderboard(gameId, dateKey, ascending)
+          : fetchAlltimeLeaderboard(gameId, ascending);
     void load.then((r) => !cancelled && setRows(r));
     return () => {
       cancelled = true;
@@ -102,10 +116,14 @@ export default function LeaderboardPanel({
     return (
       <>
         {cta}
-        <p className="hint leaderboard-empty">No scores yet — be the first!</p>
+        <p className="hint leaderboard-empty">
+          {mode === 'streak' ? 'No streaks going yet — start one today!' : 'No scores yet — be the first!'}
+        </p>
       </>
     );
   }
+
+  const show = mode === 'streak' ? (n: number) => `🔥 ${n} day${n === 1 ? '' : 's'}` : formatScore;
 
   return (
     <>
@@ -115,7 +133,7 @@ export default function LeaderboardPanel({
           <li key={r.userId} className={`leaderboard-row${r.userId === myId ? ' leaderboard-row-me' : ''}`}>
             <span className="leaderboard-rank">#{r.rank}</span>
             <span className="leaderboard-name">{r.displayName}</span>
-            <span className="leaderboard-score">{formatScore(r.score)}</span>
+            <span className="leaderboard-score">{show(r.score)}</span>
           </li>
         ))}
       </ol>

@@ -1,18 +1,28 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { dateKeyUTC } from '../../arcade/dailySeed';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
+import type { SoloMode } from '../../arcade/useSoloGame';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
-import { COLS, isChordReady, minesweeperModule } from './engine';
+import { COLS, isChordReady, minesweeperModule, type MinesweeperSettings } from './engine';
 
 function formatTime(ms: number): string {
   return (ms / 1000).toFixed(1) + 's';
 }
 
 export default function MinesweeperGame() {
+  // Endless-only: the daily stays classic so everyone races the same board.
+  const [noGuess, setNoGuess] = useState(false);
+  // Read through a ref so a toggle-then-restart in the same tick can't race
+  // React's batched state update (same pattern as Crossword's difficulty).
+  const noGuessRef = useRef(noGuess);
+  const resolveSettings = useCallback(
+    (m: SoloMode): MinesweeperSettings => ({ noGuess: m === 'endless' && noGuessRef.current }),
+    [],
+  );
   const { mode, state, status, result, signedIn, sync, streak, dailyDoneToday, move, start, forceSync } =
-    useSoloGame(minesweeperModule, () => undefined);
+    useSoloGame(minesweeperModule, resolveSettings);
   const [flagMode, setFlagMode] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [view, setView] = useState<'play' | 'leaderboard'>('play');
@@ -72,6 +82,21 @@ export default function MinesweeperGame() {
           </button>
         </div>
 
+        {view === 'play' && mode === 'endless' && (
+          <label className="minesweeper-noguess">
+            <input
+              type="checkbox"
+              checked={noGuess}
+              onChange={(e) => {
+                noGuessRef.current = e.target.checked; // synchronous — the restart below reads it
+                setNoGuess(e.target.checked);
+                void start('endless', { fresh: true });
+              }}
+            />
+            <span>🎲 No 50/50s — every board solvable by logic alone</span>
+          </label>
+        )}
+
         {view === 'leaderboard' ? (
           <div className="arcade-leaderboard-view">
             <h3>All-Time Fastest (Endless)</h3>
@@ -82,6 +107,8 @@ export default function MinesweeperGame() {
               ascending
               formatScore={(s) => (s >= 999_999_999 ? 'DNF' : formatTime(s))}
             />
+            <h3>🔥 Longest Daily Streaks</h3>
+            <LeaderboardPanel gameId="minesweeper" mode="streak" dateKey={dateKeyUTC()} ascending={false} />
             <div className="arcade-actions">
               <button className="btn" onClick={() => setView('play')}>
                 Back to game
@@ -134,6 +161,27 @@ export default function MinesweeperGame() {
             {!playing && (
               <div className="minesweeper-result">
                 <h2>{result?.status === 'won' ? `Cleared in ${formatTime(elapsedMs)}! 🎉` : 'Boom. 💥'}</h2>
+
+                {/* Endless second chance: un-reveals the mine that got you
+                    (auto-flagged as a marker) and resumes the same board.
+                    Daily is one attempt by design — everyone gets the same
+                    single shot at the shared board. */}
+                {result?.status === 'lost' && mode === 'endless' && (
+                  <div className="arcade-actions">
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => void move({ type: 'continue', index: -1, at: Date.now() })}
+                    >
+                      ♻️ Continue from here
+                    </button>
+                  </div>
+                )}
+                {state.continues > 0 && (
+                  <p className="hint">
+                    Practice run — {state.continues} continue{state.continues === 1 ? '' : 's'} used, so this
+                    one won't be ranked.
+                  </p>
+                )}
                 <p>
                   Sync:{' '}
                   <span className={`arcade-badge arcade-badge-${sync}`}>{sync === 'saving' ? 'saving…' : sync}</span>{' '}

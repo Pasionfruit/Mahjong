@@ -250,9 +250,105 @@ as $$
   limit least(greatest(coalesce(p_limit, 10), 1), 50);
 $$;
 
+-- ── streaks ────────────────────────────────────────────────────────────────
+--
+-- Streaks are DERIVED from game_results rather than stored on profiles: the
+-- daily rows are already the source of truth (one per player per game per
+-- day, enforced by game_results_one_daily), so a denormalized counter could
+-- only ever drift out of sync with them. Computing on read also means a
+-- streak follows the account across devices for free — the client's local
+-- IndexedDB copy is just a cache for offline display.
+--
+-- "Current streak" = the run of consecutive UTC days ending today or
+-- yesterday. Yesterday still counts so today's puzzle isn't retroactively
+-- lost before it's played. Classic gaps-and-islands: subtracting a dense
+-- row_number() from the date makes every consecutive run share a constant.
+create or replace function public.current_streaks(p_game_id text default null)
+returns table (user_id uuid, game_id text, streak integer, last_day date)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with days as (
+    select distinct r.user_id, r.game_id, r.date_key
+    from public.game_results r
+    where r.mode = 'daily'
+      and r.date_key is not null
+      and (p_game_id is null or r.game_id = p_game_id)
+  ),
+  grouped as (
+    select d.user_id, d.game_id, d.date_key,
+           d.date_key - (row_number() over (
+             partition by d.user_id, d.game_id order by d.date_key
+           ))::integer as island
+    from days d
+  ),
+  runs as (
+    select g.user_id, g.game_id, g.island,
+           count(*)::integer as len,
+           max(g.date_key) as last_day
+    from grouped g
+    group by g.user_id, g.game_id, g.island
+  )
+  -- At most one run per (user, game) can end today/yesterday, so this is
+  -- already one row per pair — no extra dedup needed.
+  select runs.user_id, runs.game_id, runs.len, runs.last_day
+  from runs
+  where runs.last_day >= ((now() at time zone 'utc')::date - 1);
+$$;
+
+-- Top current daily streaks for one game. display_name comes from profiles
+-- (not game_results' denormalized copy) so a rename shows up immediately
+-- and can't split a player across rows.
+create or replace function public.get_streak_leaderboard(
+  p_game_id text,
+  p_limit integer default 10
+)
+returns table (user_id uuid, display_name text, score double precision, rnk bigint)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select s.user_id,
+         p.display_name,
+         s.streak::double precision as score,
+         rank() over (order by s.streak desc) as rnk
+  from public.current_streaks(p_game_id) s
+  join public.profiles p on p.id = s.user_id
+  order by rnk, s.last_day desc
+  limit least(greatest(coalesce(p_limit, 10), 1), 50);
+$$;
+
+-- Every current streak for the CALLING user, one row per game — powers the
+-- per-game streak counters on the profile screen in a single round trip.
+-- SECURITY DEFINER only so it can reach the internal helper; auth.uid()
+-- still resolves to the CALLER inside a definer function, so the filter is
+-- what actually scopes this to your own rows.
+create or replace function public.my_streaks()
+returns table (game_id text, streak integer, last_day date)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select s.game_id, s.streak, s.last_day
+  from public.current_streaks(null) s
+  where s.user_id = auth.uid()
+  order by s.streak desc, s.game_id;
+$$;
+
 -- The RPCs are the public read surface: callable by both the anonymous role
 -- (pre-sign-in leaderboard peeks, degraded-mode daily word) and signed-in
 -- players. Everything else stays behind RLS.
 grant execute on function public.get_daily_word() to anon, authenticated;
 grant execute on function public.get_daily_leaderboard(text, date, integer, boolean) to anon, authenticated;
 grant execute on function public.get_alltime_leaderboard(text, integer, boolean) to anon, authenticated;
+grant execute on function public.get_streak_leaderboard(text, integer) to anon, authenticated;
+grant execute on function public.my_streaks() to authenticated;
+-- current_streaks is deliberately NOT granted: it returns raw user_ids for
+-- every player, which neither client caller needs. The two wrappers above
+-- are SECURITY DEFINER, so they can still reach it while exposing only
+-- display names (leaderboard) or your own rows (my_streaks).
+revoke execute on function public.current_streaks(text) from anon, authenticated;

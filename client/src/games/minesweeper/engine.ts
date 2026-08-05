@@ -1,4 +1,5 @@
 import { mulberry32 } from '@shared/rng';
+import { isNoGuessSolvable } from '@shared/minesweeperSolver';
 import type { SoloGameModule, SoloResult, SoloStatus } from '../../arcade/types';
 
 /**
@@ -9,6 +10,17 @@ import type { SoloGameModule, SoloResult, SoloStatus } from '../../arcade/types'
 export const ROWS = 9;
 export const COLS = 9;
 export const MINE_COUNT = 10;
+
+export interface MinesweeperSettings {
+  /** Endless only: regenerate until the board needs no coin-flip guesses.
+   *  The daily stays classic so everyone races the same board. */
+  noGuess: boolean;
+}
+
+export const DEFAULT_MINESWEEPER_SETTINGS: MinesweeperSettings = { noGuess: false };
+
+/** How many layouts to try before falling back to the last candidate. */
+const MAX_NOGUESS_ATTEMPTS = 300;
 
 /** A loss can never accidentally rank as a "fastest time" — see the design
  *  doc: no won/lost column on game_results, so a sentinel keeps losses at
@@ -34,10 +46,18 @@ export interface MinesweeperState {
   exploded: number | null;
   firstMoveAt: number | null;
   lastMoveAt: number | null;
+  /** Whether this board was generated guess-free (endless opt-in). */
+  noGuess: boolean;
+  /** Second chances taken this run. Any run with continues > 0 is a
+   *  practice run — see result(), which withholds it from the leaderboard. */
+  continues: number;
 }
 
 export interface MinesweeperMove {
-  type: 'reveal' | 'flag';
+  /** 'continue' takes a second chance after an explosion: the mine that
+   *  got you is un-revealed and auto-flagged, and play resumes. */
+  type: 'reveal' | 'flag' | 'continue';
+  /** Ignored for 'continue'. */
   index: number;
   /** Client timestamp (Date.now()), carried on the move itself so the pure
    *  engine never reads the wall clock — see the design doc on why timing
@@ -134,7 +154,7 @@ function isWon(state: MinesweeperState): boolean {
   return state.cells.every((c) => c.mine || c.revealed);
 }
 
-function generate(seed: number, _settings: void): MinesweeperState {
+function generate(seed: number, settings: MinesweeperSettings | undefined): MinesweeperState {
   const cells: Cell[] = Array.from({ length: ROWS * COLS }, () => ({
     mine: false,
     revealed: false,
@@ -151,10 +171,51 @@ function generate(seed: number, _settings: void): MinesweeperState {
     exploded: null,
     firstMoveAt: null,
     lastMoveAt: null,
+    noGuess: settings?.noGuess ?? false,
+    continues: 0,
   };
 }
 
+/** Build the adjacency-annotated board for one mine placement. */
+function cellsFor(mineSet: Set<number>, base: Cell[], rows: number, cols: number): Cell[] {
+  const withMines = base.map((c, i) => ({ ...c, mine: mineSet.has(i) }));
+  return withMines.map((c, i) => ({
+    ...c,
+    adjacent: neighborsOf(i, rows, cols).filter((n) => withMines[n]!.mine).length,
+  }));
+}
+
+/**
+ * Lay the mines for a first click at `safeIndex`. With noGuess on, keep
+ * re-rolling the layout (varying the seed deterministically, so a replay of
+ * the same move log lands on the same board) until one is solvable by pure
+ * logic from that opening reveal — falling back to the last candidate
+ * rather than looping forever if none qualifies.
+ */
+function layMines(state: MinesweeperState, safeIndex: number): Cell[] {
+  const { rows, cols, mineCount } = state;
+  const attempts = state.noGuess ? MAX_NOGUESS_ATTEMPTS : 1;
+  let candidate: Cell[] | null = null;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const mineSet = placeMines((state.seed + attempt * 0x9e3779b9) >>> 0, safeIndex, rows, cols, mineCount);
+    candidate = cellsFor(mineSet, state.cells, rows, cols);
+    if (!state.noGuess) break;
+    const opening = floodFrom(safeIndex, candidate, rows, cols);
+    if (isNoGuessSolvable(candidate, rows, cols, mineCount, opening)) break;
+  }
+  return candidate!;
+}
+
 function applyMove(state: MinesweeperState, move: MinesweeperMove): MinesweeperState | null {
+  // A continue is the one move that's legal *because* the run is over: it
+  // un-reveals the mine that got you, flags it as a marker, and resumes.
+  if (move.type === 'continue') {
+    if (state.exploded === null) return null; // nothing to recover from
+    const cells = state.cells.slice();
+    cells[state.exploded] = { ...cells[state.exploded]!, revealed: false, flagged: true };
+    return { ...state, cells, exploded: null, continues: state.continues + 1, lastMoveAt: move.at };
+  }
+
   if (state.exploded !== null || isWon(state)) return null;
   const existing = state.cells[move.index];
   if (!existing) return null;
@@ -186,12 +247,7 @@ function applyMove(state: MinesweeperState, move: MinesweeperMove): MinesweeperS
   let firstMoveAt = state.firstMoveAt;
 
   if (!minesPlaced) {
-    const mineSet = placeMines(state.seed, move.index, state.rows, state.cols, state.mineCount);
-    const withMines = state.cells.map((c, i) => ({ ...c, mine: mineSet.has(i) }));
-    cells = withMines.map((c, i) => ({
-      ...c,
-      adjacent: neighborsOf(i, state.rows, state.cols).filter((n) => withMines[n]!.mine).length,
-    }));
+    cells = layMines(state, move.index);
     minesPlaced = true;
     firstMoveAt = move.at;
   } else {
@@ -223,14 +279,28 @@ function result(state: MinesweeperState): SoloResult | null {
   const elapsedMs =
     state.firstMoveAt !== null && state.lastMoveAt !== null ? state.lastMoveAt - state.firstMoveAt : 0;
   const flags = state.cells.filter((c) => c.flagged).length;
+  // A run that took a second chance would otherwise have been a loss, so
+  // ranking its time against clean runs would be comparing different games.
+  // It still records (XP, play history, "continue and finish the board"),
+  // it just carries the loss sentinel so it can't top a real time.
+  const practice = state.continues > 0;
   return {
     status: s,
-    score: won ? elapsedMs : LOSS_SENTINEL,
-    stats: { time: Math.round(elapsedMs / 100) / 10, flags },
+    score: won && !practice ? elapsedMs : LOSS_SENTINEL,
+    stats: {
+      time: Math.round(elapsedMs / 100) / 10,
+      flags,
+      continues: state.continues,
+      noGuess: state.noGuess ? 1 : 0,
+    },
   };
 }
 
-function replay(seed: number, settings: void, moveLog: MinesweeperMove[]): MinesweeperState {
+function replay(
+  seed: number,
+  settings: MinesweeperSettings | undefined,
+  moveLog: MinesweeperMove[],
+): MinesweeperState {
   let state = generate(seed, settings);
   for (const move of moveLog) state = applyMove(state, move) ?? state;
   return state;
@@ -244,7 +314,11 @@ function shareText(state: MinesweeperState): string {
   return `Minesweeper ✅ — cleared in ${r?.stats?.time}s`;
 }
 
-export const minesweeperModule: SoloGameModule<MinesweeperState, MinesweeperMove, void> = {
+export const minesweeperModule: SoloGameModule<
+  MinesweeperState,
+  MinesweeperMove,
+  MinesweeperSettings | undefined
+> = {
   id: 'minesweeper',
   scoreDirection: 'asc',
   generate,

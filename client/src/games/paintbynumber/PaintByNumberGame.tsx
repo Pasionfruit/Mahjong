@@ -157,6 +157,8 @@ export default function PaintByNumberGame() {
               ascending
               formatScore={formatTime}
             />
+            <h3>🔥 Longest Daily Streaks</h3>
+            <LeaderboardPanel gameId="paintbynumber" mode="streak" dateKey={dateKeyUTC()} ascending={false} />
             <div className="arcade-actions">
               <button className="btn" onClick={() => setView('play')}>
                 Back to game
