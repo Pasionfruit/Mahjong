@@ -1,17 +1,28 @@
-import { useState } from 'react';
-import { signInWithPassword, signUpWithPassword } from '../auth';
+import { useEffect, useState } from 'react';
+import {
+  consumeOAuthError,
+  linkGoogle,
+  signInWithGoogle,
+  signInWithPassword,
+  signUpWithPassword,
+} from '../auth';
 
 type Tab = 'signup' | 'login';
 
 /**
- * Shared by AuthWidget (popover) and Profile (full section) — the
- * non-Google account path. "Create Account" upgrades the current session
- * in place (same auth.uid(), existing progress carries over — same
- * principle as linkGoogle). "Log In" signs into a *different*, already-
- * existing account, so it reloads the page on success: every open
- * screen's cached signed-in/display-name state needs a clean slate, and
- * there's no app-wide reactive auth store to push the change through
- * otherwise.
+ * Shared by AuthWidget, Profile and the leaderboard prompt — the whole
+ * account surface, Google and email, in one place.
+ *
+ * The two tabs are genuinely different operations, not styling:
+ *  • Create Account upgrades THIS session in place (same auth.uid(), your
+ *    existing progress carries over) — linkIdentity / updateUser.
+ *  • Log In signs into a *different*, already-existing account, so it
+ *    reloads on success: every screen's cached auth state needs a clean
+ *    slate and there's no app-wide reactive auth store to push through.
+ *
+ * Google needs both for the same reason email does: once a Google account
+ * is linked to one profile, linking it again from a second device fails,
+ * so a returning player has to sign in rather than link.
  */
 export default function EmailAuthForm() {
   const [tab, setTab] = useState<Tab>('signup');
@@ -20,9 +31,27 @@ export default function EmailAuthForm() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
+  // A failed Google round trip returns here with the reason in the URL.
+  // Surface it on mount and flip to Log In when that's the way forward.
+  useEffect(() => {
+    const err = consumeOAuthError();
+    if (!err) return;
+    setStatus(err);
+    if (/log in/i.test(err)) setTab('login');
+  }, []);
+
   function switchTab(next: Tab) {
     setTab(next);
     setStatus(null);
+  }
+
+  async function google() {
+    setBusy(true);
+    setStatus(null);
+    const r = tab === 'signup' ? await linkGoogle() : await signInWithGoogle();
+    setBusy(false);
+    if (!r.ok) setStatus(r.error);
+    // On success the browser is already navigating to Google.
   }
 
   async function submit() {
@@ -54,6 +83,12 @@ export default function EmailAuthForm() {
           Log In
         </button>
       </div>
+
+      <button className="btn btn-primary auth-panel-google" disabled={busy} onClick={() => void google()}>
+        {tab === 'signup' ? 'Continue with Google' : 'Sign in with Google'}
+      </button>
+      <div className="auth-panel-divider">or</div>
+
       <label className="field">
         <span>Email</span>
         <input type="email" value={email} placeholder="you@example.com" onChange={(e) => setEmail(e.target.value)} />

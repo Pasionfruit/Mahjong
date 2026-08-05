@@ -117,30 +117,13 @@ html {
   color: var(--paper);
 }
 
-/* Installed to the home screen (standalone): iOS's dvh/100% height math can
-   disagree with the visual-viewport rectangle that position:fixed children
-   (the bottom nav) are actually anchored to, leaving a gap between the nav
-   and the real screen edge. Pinning .app to the viewport with inset instead
-   of a height value guarantees it's the exact same rectangle .wing-dock's
-   fixed bottom:0 uses, so they can't drift apart.
-   That alone wasn't enough: html/body/#root's own height:100% can still
-   render taller than the true visual viewport in standalone mode, making
-   them an (unwanted) outer scroll container — and iOS Safari has a real bug
-   where position:fixed descendants drift/gap during and after scrolling on
-   an ancestor that's scrollable itself, even one that "shouldn't" be. Pin
-   the whole html→body→#root chain to the viewport too, so .app's own
-   overflow:auto is the ONLY scrollable region and there's no outer
-   scroller left for that bug to trigger on. */
+/* Installed to the home screen (standalone): iOS mis-measures dvh here,
+   so pin .app to the viewport rectangle directly instead of relying on a
+   height. The elaborate html/body/#root pinning this used to also need is
+   gone with the fixed bottom bar it was propping up — the phone nav is a
+   hamburger + inset:0 sheet now (see WingNav.tsx), which doesn't care how
+   the viewport is measured. */
 @media (display-mode: standalone) {
-  html,
-  body,
-  #root {
-    position: fixed;
-    inset: 0;
-    height: auto;
-    overflow: hidden;
-  }
-
   .app {
     position: fixed;
     inset: 0;
@@ -649,9 +632,10 @@ html[data-mode='light'],
   margin-bottom: 20px;
 }
 
-/* The app-wide dock only exists on phones; wide viewports use the inline
-   pill row on the Home screen instead. */
-.home-tabs.wing-dock {
+/* The app-wide phone nav (hamburger + sheet) only exists on phones; wide
+   viewports use the inline pill row on the Home screen instead. Note this
+   targets the wrapper .wing-dock itself — it is no longer a .home-tabs. */
+.wing-dock {
   display: none;
 }
 
@@ -738,88 +722,98 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
   margin-bottom: 24px;
 }
 
-/* On phones the wing switcher becomes a fixed bottom nav bar — thumb reach
-   beats top-of-page tabs, and it stays put on every screen (games too). */
+/* On phones the wing switcher is a hamburger + full-screen sheet rather
+   than a fixed bottom bar. See WingNav.tsx for why: the bar depended on
+   env(safe-area-inset-bottom), dynamic viewport units and position:fixed
+   next to a scroll container, all of which iOS standalone mode gets
+   subtly wrong. Nothing here relies on any of them. */
 @media (max-width: 700px) {
   .home-tabs.wing-inline {
     display: none;
   }
 
-  .home-tabs.wing-dock {
-    display: flex;
+  /* `contents` so the wrapper adds no box of its own — the burger and the
+     sheet position themselves against the viewport. */
+  .wing-dock {
+    display: contents;
+  }
+
+  /* Small floating button, top-right, clear of the safe area. Top insets
+     are well behaved on iOS in a way bottom ones are not. */
+  .wing-burger {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 40;
-    margin: 0;
-    gap: 6px;
-    /* max(), not 8px + inset: the home-indicator inset alone (34px on Face ID
-       phones) already clears the indicator — stacking both reads as a hole. */
-    padding: 8px 10px max(8px, env(safe-area-inset-bottom, 0px));
-    /* Fully opaque, and a literal fallback first: if --felt-dark ever fails
-       to resolve here the bar must still paint something solid rather than
-       going transparent and letting scrolled cards show through. */
+    top: max(10px, env(safe-area-inset-top, 0px));
+    right: 10px;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    font-size: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--line-strong);
     background: #1c2b3a;
     background: var(--felt-dark);
-    border-top: 1px solid var(--line);
-    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.35);
-    /* Force its own GPU compositing layer: without this, a fixed bar over a
-       scrolling sibling (.app is the scroll container, and the dock lives
-       outside it — see App.tsx) can visually lag a frame behind on mobile,
-       letting scrolled content bleed through the bar during fast/momentum
-       scrolling before it redraws on top. */
-    transform: translateZ(0);
-    will-change: transform;
+    color: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
   }
 
-  .wing-dock .home-tab {
-    position: relative;
-    flex: 1;
-    flex-direction: column;
-    gap: 3px;
-    padding: 7px 2px 6px;
-    font-size: 11px;
-    border-radius: 12px;
-    white-space: nowrap;
-    border: none;
-    background: none;
-  }
-
-  .wing-dock .home-tab.active {
-    background: var(--control);
-  }
-
-  .wing-dock .home-tab-icon {
-    font-size: 21px;
-  }
-
-  .wing-dock .daily-tab-count {
+  .wing-burger-dot {
     position: absolute;
-    top: -2px;
-    right: 4px;
-    margin: 0;
-    font-size: 9.5px;
-    padding: 1px 5px;
-    background: var(--felt-dark);
+    top: 7px;
+    right: 7px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
   }
 
-  /* Structural containment, not just visual occlusion: .app's own box stops
-     exactly at the dock's top edge, so scrolled content can never end up
-     rendered (or scrolled to) behind it in the first place — relying on
-     the dock's z-index/opacity to hide content that's still physically
-     there underneath is exactly what let cards show through during fast
-     scrolling. Bottom, not padding-bottom: this shrinks .app's own
-     scrollable viewport, it doesn't just pad its content. */
-  .app {
+  /* The sheet is a plain inset:0 overlay — no viewport-unit math at all. */
+  .wing-sheet {
     position: fixed;
     inset: 0;
-    bottom: calc(60px + max(8px, env(safe-area-inset-bottom, 0px)));
-    height: auto;
+    z-index: 69;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
   }
 
-  .home-inner {
-    padding-bottom: 12px;
+  .wing-sheet-scrim {
+    position: absolute;
+    inset: 0;
+    border: none;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.55);
+    cursor: pointer;
+  }
+
+  .home-tabs.wing-sheet-tabs {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0;
+    padding: calc(max(10px, env(safe-area-inset-top, 0px)) + 58px) 12px 16px;
+    min-width: 190px;
+    background: #1c2b3a;
+    background: var(--felt-dark);
+    border-left: 1px solid var(--line);
+    box-shadow: -8px 0 26px rgba(0, 0, 0, 0.45);
+  }
+
+  .wing-sheet-tabs .home-tab {
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 11px 14px;
+    font-size: 15px;
+    border-radius: 12px;
+  }
+
+  .wing-sheet-tabs .home-tab-icon {
+    font-size: 20px;
   }
 }
 
@@ -5372,7 +5366,9 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
   width: 100%;
   max-width: 100%;
   height: auto;
-  aspect-ratio: 64 / 96;
+  /* 64 wide × (96 sim rows + 24 chute/bucket rows) — must track
+     CANVAS_ROWS in SandPlayGame.tsx or the drawing gets letterboxed. */
+  aspect-ratio: 64 / 120;
   margin: 0 auto 12px;
   border-radius: 10px;
   border: 1px solid var(--line);

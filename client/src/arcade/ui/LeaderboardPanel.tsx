@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ensureSignedIn, linkGoogle } from '../auth';
+import { ensureSignedIn } from '../auth';
 import {
   currentUserId,
   fetchAlltimeLeaderboard,
@@ -30,17 +30,6 @@ interface LeaderboardPanelProps {
  *  sign in" has an obvious answer. */
 function SignInToRank() {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleGoogle() {
-    setBusy(true);
-    setError(null);
-    const r = await linkGoogle();
-    setBusy(false);
-    if (!r.ok) setError(r.error);
-    // On success the browser is already navigating to Google.
-  }
 
   return (
     <div className="leaderboard-auth">
@@ -51,12 +40,7 @@ function SignInToRank() {
       ) : (
         <div className="leaderboard-auth-panel">
           <p className="hint">Sign in with Google or create a profile so your name and scores stick around.</p>
-          <button className="btn btn-primary auth-panel-google" disabled={busy} onClick={() => void handleGoogle()}>
-            Continue with Google
-          </button>
-          <div className="auth-panel-divider">or</div>
           <EmailAuthForm />
-          {error && <p className="hint auth-panel-status">{error}</p>}
         </div>
       )}
     </div>

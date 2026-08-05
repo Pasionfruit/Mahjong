@@ -8,10 +8,13 @@ import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import Countdown from '../../components/Countdown';
 import { useStore } from '../../store';
 import {
+  FUNNEL_TOP_ROW,
   SAND_COLS,
   SAND_ROWS,
   countByColor,
   drainBottomRow,
+  funnelInset,
+  funnelMouth,
   generateLevel,
   isCleared,
   isSettled,
@@ -23,6 +26,21 @@ import {
 const CELL = 4;
 const TICK_MS = 40;
 const GAME_ID = 'sandplay';
+
+/** Extra canvas rows drawn BELOW the grid: the gap the drained grains fall
+ *  through, plus the collecting bucket. Not part of the simulation. */
+const CHUTE_ROWS = 10;
+const BUCKET_ROWS = 14;
+const EXTRA_ROWS = CHUTE_ROWS + BUCKET_ROWS;
+const CANVAS_ROWS = SAND_ROWS + EXTRA_ROWS;
+
+/** One drained grain, animating from the funnel mouth into the bucket. */
+interface FallingGrain {
+  x: number; // grid columns (fractional)
+  y: number; // grid rows (fractional), starting at SAND_ROWS
+  vy: number;
+  color: string;
+}
 
 type Mode = 'daily' | 'endless';
 type View = 'play' | 'leaderboard';
@@ -36,9 +54,33 @@ function formatTime(ms: number): string {
   return (ms / 1000).toFixed(1) + 's';
 }
 
-function redraw(ctx: CanvasRenderingContext2D, grid: SandGrid) {
+function redraw(
+  ctx: CanvasRenderingContext2D,
+  grid: SandGrid,
+  falling: FallingGrain[],
+  collected: Record<string, number>,
+  activeColor: string | null,
+) {
+  const W = SAND_COLS * CELL;
   ctx.fillStyle = '#0b1f17';
-  ctx.fillRect(0, 0, SAND_COLS * CELL, SAND_ROWS * CELL);
+  ctx.fillRect(0, 0, W, CANVAS_ROWS * CELL);
+
+  // ── funnel walls: one filled path down each side, so the taper reads as
+  // a solid hopper rather than a staircase of individual cells.
+  ctx.fillStyle = '#2b3d50';
+  for (const side of ['left', 'right'] as const) {
+    ctx.beginPath();
+    ctx.moveTo(side === 'left' ? 0 : W, FUNNEL_TOP_ROW * CELL);
+    for (let row = FUNNEL_TOP_ROW; row < SAND_ROWS; row++) {
+      const inset = funnelInset(row) * CELL;
+      ctx.lineTo(side === 'left' ? inset : W - inset, row * CELL);
+    }
+    ctx.lineTo(side === 'left' ? 0 : W, SAND_ROWS * CELL);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // ── the sand itself
   for (let row = 0; row < SAND_ROWS; row++) {
     for (let col = 0; col < SAND_COLS; col++) {
       const color = grid[row * SAND_COLS + col];
@@ -47,6 +89,50 @@ function redraw(ctx: CanvasRenderingContext2D, grid: SandGrid) {
       ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
     }
   }
+
+  // ── grains in flight between the mouth and the bucket
+  for (const g of falling) {
+    ctx.fillStyle = g.color;
+    ctx.fillRect(g.x * CELL, g.y * CELL, CELL, CELL);
+  }
+
+  // ── the bucket
+  const bucketTop = (SAND_ROWS + CHUTE_ROWS) * CELL;
+  const bucketH = BUCKET_ROWS * CELL;
+  const bucketW = W * 0.42;
+  const bucketX = (W - bucketW) / 2;
+  // Contents first, so the rim strokes over them.
+  const total = Object.values(collected).reduce((a, b) => a + b, 0);
+  if (total > 0) {
+    // Fill proportionally, capped so a long run doesn't overflow the pail.
+    const fillFrac = Math.min(1, total / 260);
+    const fillH = (bucketH - 4) * fillFrac;
+    let y = bucketTop + bucketH - 2 - fillH;
+    for (const [color, n] of Object.entries(collected)) {
+      if (n <= 0) continue;
+      const h = fillH * (n / total);
+      // Taper the contents with the bucket's own walls.
+      const t = (y - bucketTop) / bucketH;
+      const halfTop = (bucketW / 2) * (1 - 0.18 * t);
+      ctx.fillStyle = color;
+      ctx.fillRect(W / 2 - halfTop + 2, y, halfTop * 2 - 4, h + 0.5);
+      y += h;
+    }
+  }
+  // Slightly tapered pail outline.
+  ctx.strokeStyle = activeColor ?? '#7d8f9e';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(bucketX, bucketTop);
+  ctx.lineTo(bucketX + bucketW * 0.09, bucketTop + bucketH);
+  ctx.lineTo(bucketX + bucketW * 0.91, bucketTop + bucketH);
+  ctx.lineTo(bucketX + bucketW, bucketTop);
+  ctx.stroke();
+  // Rim.
+  ctx.beginPath();
+  ctx.moveTo(bucketX - 3, bucketTop);
+  ctx.lineTo(bucketX + bucketW + 3, bucketTop);
+  ctx.stroke();
 }
 
 export default function SandPlayGame() {
@@ -60,6 +146,11 @@ export default function SandPlayGame() {
   const activeColorRef = useRef<string | null>(null);
   const clearedRef = useRef(false);
   const startTimeRef = useRef<number>(Date.now());
+  /** Grains mid-flight from the funnel mouth to the bucket, and what the
+   *  bucket has caught so far (per color). Refs, not state: they update
+   *  every 40ms tick and only ever feed the canvas. */
+  const fallingRef = useRef<FallingGrain[]>([]);
+  const collectedRef = useRef<Record<string, number>>({});
 
   const [activeColor, setActiveColor] = useState<string | null>(null);
   const [cleared, setCleared] = useState(false);
@@ -84,8 +175,24 @@ export default function SandPlayGame() {
 
   const draw = () => {
     const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) redraw(ctx, gridRef.current);
+    if (ctx) redraw(ctx, gridRef.current, fallingRef.current, collectedRef.current, activeColorRef.current);
   };
+
+  /** Advance in-flight grains; land them in the bucket at the chute's end. */
+  function stepFalling(): void {
+    const landY = SAND_ROWS + CHUTE_ROWS;
+    const next: FallingGrain[] = [];
+    for (const g of fallingRef.current) {
+      g.vy += 0.08;
+      g.y += g.vy;
+      if (g.y >= landY) {
+        collectedRef.current[g.color] = (collectedRef.current[g.color] ?? 0) + 1;
+      } else {
+        next.push(g);
+      }
+    }
+    fallingRef.current = next;
+  }
 
   // (Re)start whenever a new level is generated.
   useEffect(() => {
@@ -94,6 +201,8 @@ export default function SandPlayGame() {
     clearedRef.current = false;
     startedRef.current = false;
     startTimeRef.current = Date.now();
+    fallingRef.current = [];
+    collectedRef.current = {};
     setActiveColor(null);
     setCleared(false);
     setElapsedMs(0);
@@ -114,6 +223,20 @@ export default function SandPlayGame() {
       // bucket, so nothing can leak out early.
       const drain = drainBottomRow(gridRef.current, activeColorRef.current);
       gridRef.current = drain.grid;
+      // Every drained grain becomes a visible particle falling into the
+      // bucket — the drain is no longer sand silently vanishing.
+      if (drain.drained > 0 && activeColorRef.current) {
+        const { start, end } = funnelMouth();
+        for (let i = 0; i < drain.drained; i++) {
+          fallingRef.current.push({
+            x: start + Math.random() * (end - start - 1),
+            y: SAND_ROWS,
+            vy: 0.35,
+            color: activeColorRef.current,
+          });
+        }
+      }
+      stepFalling();
       draw();
       setCounts(countByColor(gridRef.current, level.colors));
       if (!startedRef.current) {
@@ -215,7 +338,12 @@ export default function SandPlayGame() {
               {mode === 'endless' ? `Level ${endlessLevel} · ` : ''}⏱ {formatTime(elapsedMs)}
             </p>
 
-            <canvas ref={canvasRef} className="sandplay-canvas" width={SAND_COLS * CELL} height={SAND_ROWS * CELL} />
+            <canvas
+              ref={canvasRef}
+              className="sandplay-canvas"
+              width={SAND_COLS * CELL}
+              height={CANVAS_ROWS * CELL}
+            />
 
             {!started && <Countdown waitFor={settled} onDone={beginPlay} />}
 

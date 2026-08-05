@@ -101,6 +101,56 @@ export async function linkGoogle(): Promise<LinkResult> {
   return { ok: true };
 }
 
+/**
+ * Sign IN with Google, as opposed to linkGoogle's "attach Google to this
+ * anonymous session". These are genuinely different operations and the
+ * distinction bites on a second device: once a Google account is linked to
+ * one user, linkIdentity for that same account fails ("identity already
+ * linked"), because it would have to belong to two users at once. A
+ * returning player on a new phone needs THIS — it replaces the local
+ * anonymous session with their existing account, exactly like
+ * signInWithPassword does for the email path.
+ */
+export async function signInWithGoogle(): Promise<LinkResult> {
+  const supabase = getSupabase();
+  if (!supabase) return { ok: false, error: 'Brain Arcade is not configured yet.' };
+  cachedDisplayName = null;
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin },
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+/**
+ * An OAuth failure comes back as query/hash params on the redirect, not as
+ * a rejected promise — the promise resolved fine when we *left* for Google.
+ * Nothing read these before, so a failed Google round trip looked
+ * identical to never having pressed the button. Returns the message (and
+ * clears the params so a reload doesn't resurrect a stale error).
+ */
+export function consumeOAuthError(): string | null {
+  if (typeof window === 'undefined') return null;
+  const read = (s: string) => new URLSearchParams(s.startsWith('#') || s.startsWith('?') ? s.slice(1) : s);
+  const fromHash = read(window.location.hash);
+  const fromQuery = read(window.location.search);
+  const desc =
+    fromHash.get('error_description') ??
+    fromQuery.get('error_description') ??
+    fromHash.get('error') ??
+    fromQuery.get('error');
+  if (!desc) return null;
+  const clean = decodeURIComponent(desc.replace(/\+/g, ' '));
+  window.history.replaceState(null, '', window.location.pathname);
+  // Supabase's raw wording here is opaque; name the actual situation and
+  // the way out, since this is the exact second-device case above.
+  if (/already/i.test(clean) && /linked|registered|exists/i.test(clean)) {
+    return 'That Google account already belongs to a profile. Use "Log In" below to sign into it on this device.';
+  }
+  return clean;
+}
+
 const MIN_PASSWORD_LENGTH = 6;
 
 /**

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ensureSignedIn, getDisplayName, linkGoogle, setDisplayName, signOut } from '../arcade/auth';
+import { ensureSignedIn, getDisplayName, setDisplayName, signOut } from '../arcade/auth';
 import { dateKeyUTC } from '../arcade/dailySeed';
 import { fetchMyStreaks } from '../arcade/leaderboard';
 import { EMPTY_STREAK, nextStreakState, xpForResult, xpProgress, type StreakState } from '../arcade/stats';
@@ -122,14 +122,6 @@ export default function Profile() {
     } else {
       setStatus(r.error);
     }
-  }
-
-  async function handleGoogle() {
-    setBusy(true);
-    setStatus(null);
-    const r = await linkGoogle();
-    setBusy(false);
-    if (!r.ok) setStatus(r.error);
   }
 
   async function handleLogout() {
@@ -316,10 +308,8 @@ export default function Profile() {
         <section className="profile-card">
           <h3 className="profile-heading">Keep this profile</h3>
           <p className="hint">Sign into an account so your scores, streaks, and XP are never lost.</p>
-          <button className="btn btn-primary" disabled={busy} onClick={() => void handleGoogle()}>
-            Continue with Google
-          </button>
-          <div className="profile-or">or</div>
+          {/* Google is inside the form now, so it follows the Create
+              Account / Log In tabs — see EmailAuthForm's doc comment. */}
           <EmailAuthForm />
         </section>
       )}

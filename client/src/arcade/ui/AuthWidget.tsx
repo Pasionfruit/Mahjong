@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ensureSignedIn, getDisplayName, linkGoogle, signOut } from '../auth';
+import { ensureSignedIn, getDisplayName, signOut } from '../auth';
 import { isArcadeConfigured } from '../supabase';
 import EmailAuthForm from './EmailAuthForm';
 
@@ -47,15 +47,6 @@ export default function AuthWidget() {
 
   if (!isArcadeConfigured() || anonymous === null) return null;
 
-  async function handleGoogle() {
-    setBusy(true);
-    setStatus(null);
-    const r = await linkGoogle();
-    setBusy(false);
-    if (!r.ok) setStatus(r.error);
-    // On success the browser is already navigating to Google — nothing else to do.
-  }
-
   async function handleLogout() {
     setBusy(true);
     await signOut();
@@ -81,10 +72,9 @@ export default function AuthWidget() {
               ? "Lock in your progress so it's never lost — sign into an account."
               : 'Link another way to sign in on a new device, or log out.'}
           </p>
-          <button className="btn btn-primary auth-panel-google" disabled={busy} onClick={() => void handleGoogle()}>
-            Continue with Google
-          </button>
-          <div className="auth-panel-divider">or</div>
+          {/* Google lives inside EmailAuthForm now, so it follows the
+              Create Account / Log In tabs — a returning player on a new
+              device needs sign-in, not link. */}
           <EmailAuthForm />
           {status && <p className="hint auth-panel-status">{status}</p>}
           {!anonymous && (

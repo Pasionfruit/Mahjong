@@ -48,18 +48,26 @@ function idx(col: number, row: number): number {
 export function simulateStep(grid: SandGrid, rand: () => number = Math.random): SandGrid {
   const next = grid.slice();
   for (let row = SAND_ROWS - 2; row >= 0; row--) {
-    for (let col = 0; col < SAND_COLS; col++) {
+    // Alternate the horizontal scan direction per row. With a fixed
+    // left-to-right scan, a grain that slides diagonally right lands in the
+    // cell under the NEXT column, blocking that grain's straight-down path
+    // and pushing it right too — the bias compounds and shears the whole
+    // heap sideways instead of letting it settle symmetrically into the
+    // funnel. Flipping direction cancels the bias out.
+    const leftToRight = rand() < 0.5;
+    for (let n = 0; n < SAND_COLS; n++) {
+      const col = leftToRight ? n : SAND_COLS - 1 - n;
       const i = idx(col, row);
       const color = next[i];
       if (!color) continue;
-      const below = idx(col, row + 1);
-      if (next[below] === null) {
-        next[below] = color;
+      if (isOpen(next, col, row + 1)) {
+        next[idx(col, row + 1)] = color;
         next[i] = null;
         continue;
       }
-      const leftOpen = col > 0 && next[idx(col - 1, row + 1)] === null;
-      const rightOpen = col < SAND_COLS - 1 && next[idx(col + 1, row + 1)] === null;
+      // Diagonals let the heap slump inward along the funnel's slope.
+      const leftOpen = isOpen(next, col - 1, row + 1);
+      const rightOpen = isOpen(next, col + 1, row + 1);
       if (leftOpen && rightOpen) {
         const target = rand() < 0.5 ? idx(col - 1, row + 1) : idx(col + 1, row + 1);
         next[target] = color;
@@ -119,10 +127,35 @@ export function generateLevel(seed: number): Level {
  *  the classic hourglass slope instead of a whole layer vanishing at once. */
 export const FUNNEL_WIDTH = 6;
 
-/** The half-open [start, end) column range of the funnel mouth. */
+/** Row where the container stops being a straight-sided box and starts
+ *  tapering inward. Everything above this is full width. */
+export const FUNNEL_TOP_ROW = 66;
+
+/**
+ * How many columns are solid wall on EACH side at `row` — 0 above the
+ * taper, growing linearly to (SAND_COLS - FUNNEL_WIDTH)/2 at the floor, so
+ * the container is a hopper: straight sides down to FUNNEL_TOP_ROW, then a
+ * V narrowing to exactly the drain mouth.
+ */
+export function funnelInset(row: number): number {
+  if (row < FUNNEL_TOP_ROW) return 0;
+  const span = SAND_ROWS - 1 - FUNNEL_TOP_ROW;
+  const maxInset = (SAND_COLS - FUNNEL_WIDTH) / 2;
+  if (span <= 0) return Math.floor(maxInset);
+  return Math.round(((row - FUNNEL_TOP_ROW) / span) * maxInset);
+}
+
+/** Solid funnel wall — sand can never occupy or pass through these. */
+export function isWall(col: number, row: number): boolean {
+  const inset = funnelInset(row);
+  return col < inset || col >= SAND_COLS - inset;
+}
+
+/** The half-open [start, end) open column range at the very bottom — i.e.
+ *  the drain mouth, derived from the wall geometry so the two can't drift. */
 export function funnelMouth(): { start: number; end: number } {
-  const start = Math.floor((SAND_COLS - FUNNEL_WIDTH) / 2);
-  return { start, end: start + FUNNEL_WIDTH };
+  const inset = funnelInset(SAND_ROWS - 1);
+  return { start: inset, end: SAND_COLS - inset };
 }
 
 export function isFunnelCol(col: number): boolean {
@@ -130,26 +163,42 @@ export function isFunnelCol(col: number): boolean {
   return col >= start && col < end;
 }
 
+/** A cell a grain may move into: inside the grid and not wall. */
+function isOpen(grid: SandGrid, col: number, row: number): boolean {
+  if (col < 0 || col >= SAND_COLS || row < 0 || row >= SAND_ROWS) return false;
+  if (isWall(col, row)) return false;
+  return grid[row * SAND_COLS + col] === null;
+}
+
+/** How many rows deep the neck sifts. Draining ONLY the single bottom row
+ *  deadlocks: a settled heap can leave all ~6 mouth cells holding inactive
+ *  colors, and since nothing can dislodge a settled grain the level becomes
+ *  unwinnable. Sifting the neck means the open color always has a way out,
+ *  while inactive colors still accumulate there and choke throughput —
+ *  which is the intended tension, without the dead end. */
+export const NECK_DEPTH = 4;
+
 /**
- * Drains grains of `activeColor` that have reached the funnel mouth — a
- * narrow opening at the bottom centre, not the whole floor. Sand elsewhere
- * on the bottom row has to slide down the pile into the mouth before it
- * can leave, which is what makes the heap funnel to a point rather than
- * disappearing a layer at a time. Any other color sitting in the mouth
- * plugs it, which is the strategic tension: neglect a color too long and
- * it (and whatever piles on top of it) just sits there blocking the exit.
+ * Drains grains of `activeColor` sitting in the funnel neck — the narrow
+ * column range at the bottom centre, over the last NECK_DEPTH rows. Sand
+ * elsewhere has to slide down the funnel into the neck before it can
+ * leave, which is what makes the heap taper to a point rather than
+ * disappearing a layer at a time. Inactive colors settling in the neck
+ * crowd out the space the open color needs, so neglecting a color still
+ * costs you throughput.
  */
 export function drainBottomRow(grid: SandGrid, activeColor: string | null): { grid: SandGrid; drained: number } {
   if (!activeColor) return { grid, drained: 0 };
   const next = grid.slice();
   let drained = 0;
-  const row = SAND_ROWS - 1;
   const { start, end } = funnelMouth();
-  for (let col = start; col < end; col++) {
-    const i = idx(col, row);
-    if (next[i] === activeColor) {
-      next[i] = null;
-      drained++;
+  for (let row = SAND_ROWS - 1; row > SAND_ROWS - 1 - NECK_DEPTH; row--) {
+    for (let col = start; col < end; col++) {
+      const i = idx(col, row);
+      if (next[i] === activeColor) {
+        next[i] = null;
+        drained++;
+      }
     }
   }
   return { grid: next, drained };
@@ -165,9 +214,12 @@ export function isSettled(grid: SandGrid): boolean {
   for (let row = SAND_ROWS - 2; row >= 0; row--) {
     for (let col = 0; col < SAND_COLS; col++) {
       if (!grid[idx(col, row)]) continue;
-      if (grid[idx(col, row + 1)] === null) return false;
-      if (col > 0 && grid[idx(col - 1, row + 1)] === null) return false;
-      if (col < SAND_COLS - 1 && grid[idx(col + 1, row + 1)] === null) return false;
+      // Mirrors simulateStep's move test exactly — a wall is not somewhere
+      // a grain can fall, so a heap resting against the funnel counts as
+      // settled rather than looping forever.
+      if (isOpen(grid, col, row + 1)) return false;
+      if (isOpen(grid, col - 1, row + 1)) return false;
+      if (isOpen(grid, col + 1, row + 1)) return false;
     }
   }
   return true;
