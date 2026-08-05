@@ -106,12 +106,17 @@ h4,
   color: var(--paper);
 }
 
-/* Installed to the home screen (standalone): iOS mis-measures dvh there,
-   leaving the app — and its fixed bottom nav — floating above the real
-   screen edge. The html→#root chain is all 100%, so plain % is exact. */
+/* Installed to the home screen (standalone): iOS's dvh/100% height math can
+   disagree with the visual-viewport rectangle that position:fixed children
+   (the bottom nav) are actually anchored to, leaving a gap between the nav
+   and the real screen edge. Pinning .app to the viewport with inset instead
+   of a height value guarantees it's the exact same rectangle .wing-dock's
+   fixed bottom:0 uses, so they can't drift apart. */
 @media (display-mode: standalone) {
   .app {
-    height: 100%;
+    position: fixed;
+    inset: 0;
+    height: auto;
   }
 }
 
