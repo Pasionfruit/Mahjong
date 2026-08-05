@@ -50,6 +50,39 @@ Dashboard → Project Settings → API Keys. The variable names must be exactly
 these (`VITE_` prefix) — wrong names fail silently. Restart `npm run dev`
 after changing the file; rebuild for production.
 
+### Deployed builds (Render) — these are BUILD-time vars
+
+`.env.local` is gitignored, so a deploy has no copy of it. Both vars must be
+set on the host itself: Render dashboard → the service → **Environment**
+(they're declared in `render.yaml` as `sync: false`, i.e. "prompt me").
+
+Vite bakes `import.meta.env.VITE_*` in as literals **at build time**. Unset,
+they compile to `undefined`, the client-creation branch in
+`client/src/arcade/supabase.ts` becomes dead code, and Rollup tree-shakes
+the whole Supabase library out. There's no error — Brain Arcade just reports
+itself unconfigured, so the Profile screen's account section, the "Continue
+with Google" button, and the leaderboard sign-in prompt render *nothing*.
+
+Because they're build-time, adding them requires a **rebuild** ("Clear build
+cache & deploy" / any new deploy). A plain restart re-serves the old bundle
+and changes nothing.
+
+Quick check on a deployed bundle — if this prints nothing, the vars weren't
+set for that build:
+
+```sh
+curl -s https://<your-app>/assets/index-*.js | grep -c supabase
+```
+
+### Redirect URLs for the deployed domain
+
+`linkGoogle()` sends the browser back to `window.location.origin`, so each
+domain the app runs on must be allow-listed: Supabase → Authentication →
+**URL Configuration** → set **Site URL** to your production origin and add
+every other origin (e.g. `http://localhost:5173`) under **Redirect URLs**.
+Miss this and Google sign-in completes on Google's side, then bounces to an
+"invalid redirect" error instead of returning signed in.
+
 ## 4. Verify it works
 
 1. Open any Zen Endless game → header shows **“✓ signed in”**.

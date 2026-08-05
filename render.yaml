@@ -1,0 +1,38 @@
+# Render deployment (Infrastructure as Code).
+#
+# One Web Service: `npm run build` builds the client (Vite) and the server
+# (esbuild), then `npm start` runs Express, which also serves the built
+# client from client/dist.
+#
+# IMPORTANT — the two VITE_* vars below are BUILD-TIME, not runtime. Vite
+# statically replaces `import.meta.env.VITE_*` with literal values when it
+# builds. If they're unset at build time they become `undefined`, the
+# Supabase client-creation branch in client/src/arcade/supabase.ts turns
+# into dead code, and Rollup tree-shakes the entire Supabase library out of
+# the bundle. The visible symptom is NOT an error — Brain Arcade just
+# silently reports itself unconfigured, so the Profile screen's account
+# section, the "Continue with Google" button, and the leaderboard sign-in
+# prompt all render nothing at all. Setting them later has no effect until
+# the service is REBUILT (a plain restart reuses the old bundle).
+#
+# They're marked `sync: false` so Render prompts for them in the dashboard
+# rather than reading them from this file — the publishable key is safe to
+# expose in client code (it's the old "anon" key), but there's no reason to
+# commit it. Set both under: Render dashboard → the service → Environment.
+services:
+  - type: web
+    name: mahjong
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      # Brain Arcade / Supabase — see client/.env.example. Values come from
+      # the Supabase dashboard (Connect, or Project Settings → API Keys).
+      # Names must be exactly these: Vite only exposes VITE_-prefixed vars.
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_PUBLISHABLE_KEY
+        sync: false
