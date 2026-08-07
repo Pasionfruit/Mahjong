@@ -705,21 +705,11 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
   margin: 30px 0;
 }
 
-/* ── connect wing ──────────────────────────────────────────────────────── */
+/* ── party wing: the connect strip above the game catalog ─────────────── */
 
-.connect-wing {
+.party-connect {
   max-width: 460px;
-  margin: 0 auto;
-}
-
-.connect-hint {
-  text-align: center;
-  margin: 0 0 12px;
-}
-
-.connect-host-row {
-  text-align: center;
-  margin-bottom: 24px;
+  margin: 0 auto 4px;
 }
 
 /* On phones the wing switcher is a hamburger + full-screen sheet rather

@@ -7,7 +7,7 @@ export type Screen = 'home' | 'lobby' | 'game';
 /** Home-screen wing selected in the bottom navigation. Lives here (not in
  *  Home) because the nav is rendered app-wide — tapping a tab mid-game must
  *  land on the right wing after the screen unwinds back to Home. */
-export type Wing = 'connect' | 'party' | 'daily' | 'zen' | 'profile';
+export type Wing = 'party' | 'daily' | 'zen' | 'profile' | 'settings';
 
 /** Upsert one stroke delta into a canvas's stroke list (immutably). */
 function mergeStroke(
@@ -63,7 +63,7 @@ export const useStore = create<AppState>((set) => ({
   log: [],
   notice: null,
   localGame: null,
-  wing: 'connect',
+  wing: 'party',
   artStrokes: {},
   artRound: 0,
   setConnected: (connected) => set({ connected }),

@@ -10,6 +10,7 @@ import { IconCatOnController, IconClose, IconPlay } from '../components/icons';
 import WingNav from '../components/WingNav';
 import { isDesktop } from '../device';
 import Profile from './Profile';
+import Settings from './Settings';
 
 export default function Home() {
   const [nickname, setNickname] = useState(loadNickname());
@@ -27,9 +28,9 @@ export default function Home() {
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
-  // A nickname complaint from another wing lands after Connect mounts.
+  // A nickname complaint from another wing lands after Party mounts.
   useEffect(() => {
-    if (wing === 'connect' && wantNickFocus.current) {
+    if (wing === 'party' && wantNickFocus.current) {
       wantNickFocus.current = false;
       nickRef.current?.focus();
       nickRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -63,9 +64,9 @@ export default function Home() {
       return;
     }
     if (!name) {
-      // Nickname lives on the Connect page — send them there, field focused.
+      // Nickname lives at the top of the Party wing — jump there, focused.
       wantNickFocus.current = true;
-      setWing('connect');
+      setWing('party');
       return complain('Pick a nickname before you play!', true);
     }
     setBusy(true);
@@ -204,49 +205,10 @@ export default function Home() {
 
         <WingNav />
 
-        {wing === 'connect' ? (
-          <div className="connect-wing">
-            <label className="field home-nick">
-              <span>Nickname</span>
-              <input
-                ref={nickRef}
-                value={nickname}
-                maxLength={16}
-                placeholder="Your name at the table"
-                onChange={(e) => setNickname(e.target.value)}
-              />
-            </label>
-
-            <div className="join-panel">
-              <span className="join-label">Joining a friend? Enter their table code.</span>
-              <div className="join-row">
-                <input
-                  className="code-input"
-                  value={code}
-                  maxLength={4}
-                  placeholder="CODE"
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  onKeyDown={(e) => e.key === 'Enter' && join()}
-                />
-                <button className="btn" disabled={busy} onClick={join}>
-                  Join
-                </button>
-              </div>
-            </div>
-
-            <div className="home-divider">or</div>
-            <p className="hint connect-hint">
-              Hosting instead? Head to the Party tab, pick a game, and share the 4-letter code
-              with your friends.
-            </p>
-            <div className="connect-host-row">
-              <button className="btn btn-primary" onClick={() => setWing('party')}>
-                Browse party games
-              </button>
-            </div>
-          </div>
-        ) : wing === 'profile' ? (
+        {wing === 'profile' ? (
           <Profile />
+        ) : wing === 'settings' ? (
+          <Settings />
         ) : wing === 'daily' ? (
           <section className="category-section">
             <div className="daily-summary">
@@ -265,15 +227,54 @@ export default function Home() {
             </div>
             <div className="game-grid">{dailies.map((g) => gameCard(g, true))}</div>
           </section>
-        ) : sections.length === 0 ? (
-          <p className="home-empty hint">New games are on their way — check back soon!</p>
         ) : (
-          sections.map(({ cat, games }) => (
-            <section key={cat} className="category-section">
-              <h2 className="category-heading">{CATEGORY_LABELS[cat]}</h2>
-              <div className="game-grid">{games.map((g) => gameCard(g))}</div>
-            </section>
-          ))
+          <>
+            {wing === 'party' && (
+              <div className="party-connect">
+                <label className="field home-nick">
+                  <span>Nickname</span>
+                  <input
+                    ref={nickRef}
+                    value={nickname}
+                    maxLength={16}
+                    placeholder="Your name at the table"
+                    onChange={(e) => setNickname(e.target.value)}
+                  />
+                </label>
+
+                <div className="join-panel">
+                  <span className="join-label">Joining a friend? Enter their table code.</span>
+                  <div className="join-row">
+                    <input
+                      className="code-input"
+                      value={code}
+                      maxLength={4}
+                      placeholder="CODE"
+                      onChange={(e) => setCode(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => e.key === 'Enter' && join()}
+                    />
+                    <button className="btn" disabled={busy} onClick={join}>
+                      Join
+                    </button>
+                  </div>
+                </div>
+
+                <div className="home-divider">
+                  or host a table — pick a game and share the 4-letter code
+                </div>
+              </div>
+            )}
+            {sections.length === 0 ? (
+              <p className="home-empty hint">New games are on their way — check back soon!</p>
+            ) : (
+              sections.map(({ cat, games }) => (
+                <section key={cat} className="category-section">
+                  <h2 className="category-heading">{CATEGORY_LABELS[cat]}</h2>
+                  <div className="game-grid">{games.map((g) => gameCard(g))}</div>
+                </section>
+              ))
+            )}
+          </>
         )}
       </div>
     </div>

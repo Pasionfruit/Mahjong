@@ -6,19 +6,19 @@ import { useDailyProgress } from '../arcade/useDailyProgress';
 import {
   IconCalendarCheck,
   IconClose,
-  IconLink,
+  IconGear,
   IconMenu,
   IconPartyPopper,
-  IconUser,
+  IconTrophy,
   IconZenLotus,
 } from './icons';
 
 const WING_TABS: { wing: Wing; label: string; Icon: ComponentType }[] = [
-  { wing: 'connect', label: 'Connect', Icon: IconLink },
   { wing: 'party', label: 'Party', Icon: IconPartyPopper },
   { wing: 'daily', label: 'Daily', Icon: IconCalendarCheck },
   { wing: 'zen', label: 'Zen', Icon: IconZenLotus },
-  { wing: 'profile', label: 'Stats', Icon: IconUser },
+  { wing: 'profile', label: 'Stats', Icon: IconTrophy },
+  { wing: 'settings', label: 'Settings', Icon: IconGear },
 ];
 
 /**
