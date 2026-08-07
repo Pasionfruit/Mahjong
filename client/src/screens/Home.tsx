@@ -84,9 +84,9 @@ export default function Home() {
     if (!r.ok) complain(r.error);
   }
 
-  /** Uniform carousel card: rounded app-icon tile + title, with a round play
-   *  button on the right that launches straight in. Tapping the card itself
-   *  opens the summary popup. */
+  /** Square card: title on top, the game's glyph enlarged in the middle,
+   *  and a full-width play button along the bottom. Tapping anywhere else
+   *  on the card opens the summary popup. */
   function gameCard(g: GameEntry, daily = false) {
     const done = daily && dailyDone.has(g.id);
     return (
@@ -104,27 +104,25 @@ export default function Home() {
           }
         }}
       >
-        <div className="game-card-head">
-          <div className="game-card-icon">
-            <g.Icon />
-          </div>
-          <div className="game-card-title">
-            <span className="game-card-name">{daily ? g.dailyLabel ?? g.name : g.name}</span>
-            {!g.available && <span className="soon-badge">Soon</span>}
-            {done && <span className="daily-done-badge">✓ Done</span>}
-          </div>
-          <button
-            className="game-card-play"
-            aria-label={`Play ${g.name}`}
-            disabled={busy || !g.available || (g.desktopOnly && !desktop)}
-            onClick={(e) => {
-              e.stopPropagation();
-              create(g);
-            }}
-          >
-            <IconPlay />
-          </button>
+        <div className="game-card-title">
+          <span className="game-card-name">{daily ? g.dailyLabel ?? g.name : g.name}</span>
+          {!g.available && <span className="soon-badge">Soon</span>}
+          {done && <span className="daily-done-badge">✓ Done</span>}
         </div>
+        <div className="game-card-icon">
+          <g.Icon />
+        </div>
+        <button
+          className="game-card-play"
+          aria-label={`Play ${g.name}`}
+          disabled={busy || !g.available || (g.desktopOnly && !desktop)}
+          onClick={(e) => {
+            e.stopPropagation();
+            create(g);
+          }}
+        >
+          <IconPlay />
+        </button>
       </div>
     );
   }

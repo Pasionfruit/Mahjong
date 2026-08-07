@@ -14,8 +14,8 @@ import {
 } from './icons';
 
 const WING_TABS: { wing: Wing; label: string; Icon: ComponentType }[] = [
-  { wing: 'party', label: 'Party', Icon: IconPartyPopper },
   { wing: 'daily', label: 'Daily', Icon: IconCalendarCheck },
+  { wing: 'party', label: 'Party', Icon: IconPartyPopper },
   { wing: 'zen', label: 'Zen', Icon: IconZenLotus },
   { wing: 'profile', label: 'Stats', Icon: IconTrophy },
   { wing: 'settings', label: 'Settings', Icon: IconGear },

@@ -405,7 +405,7 @@ html[data-mode='light'],
 
 .game-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
   margin-bottom: 24px;
 }
@@ -414,18 +414,20 @@ html[data-mode='light'],
    category must not balloon its two cards across the whole row. */
 @media (min-width: 980px) {
   .game-grid {
-    grid-template-columns: repeat(auto-fill, 272px);
+    grid-template-columns: repeat(auto-fill, 168px);
   }
 }
 
+/* Square card: title / enlarged glyph / play bar, top to bottom. */
 .game-card {
+  aspect-ratio: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  gap: 8px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 12px 14px;
+  padding: 12px;
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
   cursor: pointer;
   transition: border-color 0.15s;
@@ -439,60 +441,59 @@ html[data-mode='light'],
   opacity: 0.6;
 }
 
-.game-card-head {
+/* Minimal line glyph in the accent ink, enlarged in the card's middle. */
+.game-card-icon {
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
-  /* keeps one- and two-line titles the same card height */
-  min-height: 46px;
-}
-
-/* Minimal line glyph in the accent ink. */
-.game-card-icon {
-  flex-shrink: 0;
-  display: flex;
-  font-size: 28px;
+  justify-content: center;
+  font-size: 46px;
   color: var(--accent);
+  min-height: 0;
 }
 
 .game-card-title {
-  font-size: 16px;
+  font-size: 15px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
   flex-wrap: wrap;
-  /* grow so the play button hugs the card's right edge */
-  flex: 1;
   min-width: 0;
+  /* one- and two-line titles leave the glyph at the same height */
+  min-height: 2.5em;
 }
 
 .game-card-name {
-  /* a real flex item (anonymous ones floor at the longest word and clip
-     under the play button) that hyphenates long names on narrow cards */
+  /* Break long names ONLY at proper syllable boundaries — no mid-word
+     snapping (needs lang="en" on <html>, which index.html sets). */
   min-width: 0;
-  overflow-wrap: break-word;
   hyphens: auto;
 }
 
-/* Chromeless: just a green play triangle. */
+/* Full-width play bar along the card's bottom, green triangle centered. */
 .game-card-play {
   flex-shrink: 0;
+  width: 100%;
+  height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
-  border: none;
-  background: none;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--control);
   color: var(--play);
-  font-size: 27px;
+  font-size: 21px;
   line-height: 0;
   cursor: pointer;
-  transition: transform 0.12s, filter 0.12s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .game-card-play:hover:not(:disabled) {
-  transform: scale(1.12);
-  filter: brightness(1.1);
+  background: var(--control-hover);
+  border-color: color-mix(in srgb, var(--play) 55%, var(--line));
 }
 
 .game-card-play:disabled {
@@ -3149,32 +3150,32 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
   .lobby-actions { flex-wrap: wrap; }
   .category-heading { font-size: 13px; }
 
-  /* Compact game cards: two per row, tighter spacing. */
+  /* Compact square cards: three per row, tighter spacing. */
   .game-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
   }
   .game-card {
     min-width: 0;
-    padding: 10px 12px;
-  }
-  .game-card-head {
-    gap: 8px;
-    min-height: 38px;
+    padding: 8px;
+    gap: 4px;
+    border-radius: 12px;
   }
   .game-card-icon {
-    font-size: 22px;
+    font-size: 30px;
   }
   .game-card-title {
-    font-size: 13.5px;
-    gap: 5px;
+    font-size: 11.5px;
+    gap: 4px;
+    min-height: 2.4em;
   }
   .game-card-players {
     font-size: 11px;
   }
   .game-card-play {
-    font-size: 22px;
-    padding: 3px;
+    height: 26px;
+    font-size: 17px;
+    border-radius: 7px;
   }
   .home-logo {
     font-size: 36px;
