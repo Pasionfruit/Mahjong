@@ -329,6 +329,20 @@ export function IconHourglass() {
 }
 
 /** A plump bird mid-flap between two pipes — Flappy Bird. */
+/** Pixel t-rex silhouette — Dino Run. */
+export function IconDino() {
+  return (
+    <I>
+      <path
+        fill="currentColor"
+        stroke="none"
+        fillRule="evenodd"
+        d="M13 2h8v7h-5v2h4v3h-5v3h2v3h-3v-3h-2v5h-3v-5l-4-2-3 3-2-2 5-4V9l8-2V2Zm2 2h2v2h-2V4Z"
+      />
+    </I>
+  );
+}
+
 export function IconFlappy() {
   return (
     <I>

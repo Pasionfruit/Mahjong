@@ -22,6 +22,7 @@ import MinesweeperGame from './minesweeper/MinesweeperGame';
 import Twenty48Game from './twenty48/Twenty48Game';
 import SandPlayGame from './sandplay/SandPlayGame';
 import FlappyGame from './flappy/FlappyGame';
+import DinoGame from './dino/DinoGame';
 import DoodleJumpGame from './doodlejump/DoodleJumpGame';
 import BrickBreakerGame from './brickbreaker/BrickBreakerGame';
 import PeggleGame from './peggle/PeggleGame';
@@ -55,6 +56,7 @@ import {
   IconMine,
   IconMergeTiles,
   IconHourglass,
+  IconDino,
   IconFlappy,
   IconSpring,
   IconPaddle,
@@ -291,6 +293,19 @@ export const GAMES: GameEntry[] = [
     available: true,
     local: true,
     Game: FlappyGame,
+    category: 'arcade',
+    competitive: false,
+    hasLeaderboard: true,
+  },
+  {
+    id: 'dino',
+    name: 'Dino Run',
+    tagline: 'Jump the cacti, duck the pterodactyls — the desert never ends.',
+    players: '1 player',
+    Icon: IconDino,
+    available: true,
+    local: true,
+    Game: DinoGame,
     category: 'arcade',
     competitive: false,
     hasLeaderboard: true,
