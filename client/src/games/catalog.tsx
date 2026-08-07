@@ -34,6 +34,7 @@ import SudokuGame from './sudoku/SudokuGame';
 import ParkingJamGame from './parkingjam/ParkingJamGame';
 import CrosswordGame from './crossword/CrosswordGame';
 import WordSearchGame from './wordsearch/WordSearchGame';
+import WordTypeGame from './wordtype/WordTypeGame';
 import BananagramsGame from './bananagrams/BananagramsGame';
 import BananagramsSettingsPanel from './bananagrams/Settings';
 import MinefieldGame from './minefield/MinefieldGame';
@@ -68,6 +69,7 @@ import {
   IconSudoku,
   IconCar,
   IconCrossword,
+  IconKeyboard,
   IconWordSearch,
   IconMinefield,
 } from '../components/icons';
@@ -519,6 +521,21 @@ export const GAMES: GameEntry[] = [
     competitive: false,
     hasDaily: true,
     dailyLabel: 'Word Search',
+    hasLeaderboard: true,
+  },
+  {
+    id: 'wordtype',
+    name: 'Word Type',
+    tagline: "Race to type the word of the day, its definition, and a tiny story - typos cost time.",
+    players: '1 player',
+    Icon: IconKeyboard,
+    available: true,
+    local: true,
+    Game: WordTypeGame,
+    category: 'word',
+    competitive: false,
+    hasDaily: true,
+    dailyLabel: 'Word of the Day',
     hasLeaderboard: true,
   },
 

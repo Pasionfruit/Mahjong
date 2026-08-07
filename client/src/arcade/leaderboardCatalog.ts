@@ -8,7 +8,8 @@
 export interface BoardSpec {
   /** Section title shown above the list. */
   label: string;
-  mode: 'endless' | 'streak';
+  /** 'daily' boards rank today's runs only (the panel gets today's dateKey). */
+  mode: 'daily' | 'endless' | 'streak';
   /** Lower-is-better boards (times, fewest moves) rank ascending. */
   ascending: boolean;
   formatScore?: (score: number) => string;
@@ -123,6 +124,15 @@ export const LEADERBOARDS: GameBoards[] = [
     gameId: 'wordguess',
     name: 'Word Guess',
     boards: [{ label: 'All-Time Best (Endless)', mode: 'endless', ascending: false }, STREAKS],
+  },
+  {
+    gameId: 'wordtype',
+    name: 'Word Type',
+    boards: [
+      { label: "Today's Fastest Typists", mode: 'daily', ascending: true, formatScore: time },
+      { label: 'All-Time Fastest (Practice)', mode: 'endless', ascending: true, formatScore: time },
+      STREAKS,
+    ],
   },
   {
     gameId: 'paintbynumber',

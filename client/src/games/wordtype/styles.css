@@ -1,0 +1,87 @@
+/* Word Type — game-local chrome. Shared shell classes live in styles/app.css. */
+
+.arcade-card.wordtype-card {
+  width: min(560px, 100%);
+}
+
+.wordtype-board {
+  text-align: left;
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  cursor: text;
+  transition: border-color 0.12s;
+}
+
+.wordtype-board.wrong {
+  border-color: var(--danger);
+}
+
+.wordtype-section + .wordtype-section {
+  margin-top: 12px;
+}
+
+.wordtype-section-title {
+  margin: 0 0 3px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.65;
+}
+
+.wordtype-text {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.wordtype-the-word {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.wt-char {
+  opacity: 0.45;
+}
+
+.wt-char.typed {
+  opacity: 1;
+  color: var(--play);
+}
+
+.wt-char.current {
+  opacity: 1;
+  border-bottom: 2px solid var(--accent);
+  animation: wt-blink 1s steps(2, start) infinite;
+}
+
+@keyframes wt-blink {
+  50% {
+    border-color: transparent;
+  }
+}
+
+.wordtype-mistakes {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Real input so phones summon a keyboard — visually gone, never display:none
+   (that would make it unfocusable). */
+.wordtype-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  border: 0;
+  padding: 0;
+}
+
+.wordtype-result h2 {
+  margin: 12px 0 6px;
+}

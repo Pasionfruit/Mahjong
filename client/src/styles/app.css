@@ -1294,7 +1294,8 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
 .twenty48-result,
 .untangle-result,
 .wordguess-result,
-.wordsearch-result {
+.wordsearch-result,
+.wordtype-result {
   position: fixed;
   left: 50%;
   top: 50%;

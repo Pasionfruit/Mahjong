@@ -498,6 +498,16 @@ export function IconCalendarCheck() {
 }
 
 /** A sun — light mode. */
+/** A compact keyboard — Word Type. */
+export function IconKeyboard() {
+  return (
+    <I>
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9 14h6" />
+    </I>
+  );
+}
+
 export function IconGear() {
   return (
     <I>
