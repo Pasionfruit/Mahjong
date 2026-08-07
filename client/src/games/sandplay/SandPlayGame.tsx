@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { play } from '../../audio';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import { ensureSignedIn } from '../../arcade/auth';
 import { dailySeed, dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
@@ -357,7 +358,7 @@ export default function SandPlayGame() {
             </div>
 
             {cleared && (
-              <div className="sandsort-result">
+              <ResultPanel className="sandsort-result">
                 <h2>Cleared in {formatTime(elapsedMs)}! 🎉</h2>
                 <p>
                   Sync:{' '}
@@ -368,14 +369,19 @@ export default function SandPlayGame() {
                 </p>
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
-                    <p className="hint">Come back tomorrow for a new level!</p>
+                    <>
+                      <p className="hint">Beat your time — retries keep your best score.</p>
+                      <button className="btn btn-primary" onClick={() => startMode('daily')}>
+                        Retry today's
+                      </button>
+                    </>
                   ) : (
                     <button className="btn btn-primary" onClick={() => startMode('endless', { chain: true })}>
                       Next level
                     </button>
                   )}
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

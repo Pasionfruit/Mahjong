@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import type { SoloMode } from '../../arcade/useSoloGame';
 import { useSoloGame } from '../../arcade/useSoloGame';
@@ -132,7 +133,7 @@ export default function MinesweeperGame() {
             </div>
 
             {!playing && (
-              <div className="minesweeper-result">
+              <ResultPanel className="minesweeper-result">
                 <h2>{result?.status === 'won' ? `Cleared in ${formatTime(elapsedMs)}! 🎉` : 'Boom. 💥'}</h2>
 
                 {/* Endless second chance: un-reveals the mine that got you
@@ -164,14 +165,19 @@ export default function MinesweeperGame() {
                 </p>
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
-                    <p className="hint">{dailyDoneToday ? "Come back tomorrow for a new board!" : ''}</p>
+                    <>
+                      <p className="hint">Beat your time — retries keep your best score.</p>
+                      <button className="btn btn-primary" onClick={() => void start('daily', { fresh: true })}>
+                        Retry today's
+                      </button>
+                    </>
                   ) : (
                     <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
                       Play again
                     </button>
                   )}
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { mulberry32 } from '@shared/rng';
 import { play } from '../../audio';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import { ensureSignedIn } from '../../arcade/auth';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
@@ -265,7 +266,7 @@ export default function BrickBreakerGame() {
             <p className="hint brickbreaker-hint">Move: mouse, drag, or ← → · Launch: click or space.</p>
 
             {over && (
-              <div className="brickbreaker-result">
+              <ResultPanel className="brickbreaker-result">
                 <h2>Game over — score {result?.score ?? 0}</h2>
                 <p className="hint">
                   Reached level {result?.level ?? 1} · {result?.bricks ?? 0} bricks smashed
@@ -282,7 +283,7 @@ export default function BrickBreakerGame() {
                     Play again
                   </button>
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
@@ -195,7 +196,7 @@ export default function PaintByNumberGame() {
             </div>
 
             {status === 'won' && (
-              <div className="paintbynumber-result">
+              <ResultPanel className="paintbynumber-result">
                 <h2>Beautiful! 🎉 Finished in {formatTime(result?.score ?? 0)}</h2>
                 <p className="hint">
                   {result?.stats?.mistakes ?? 0} mistake{(result?.stats?.mistakes ?? 0) === 1 ? '' : 's'} ·{' '}
@@ -210,14 +211,19 @@ export default function PaintByNumberGame() {
                 </p>
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
-                    <p className="hint">{dailyDoneToday ? 'Come back tomorrow for a new page!' : ''}</p>
+                    <>
+                      <p className="hint">Beat your time — retries keep your best score.</p>
+                      <button className="btn btn-primary" onClick={() => void start('daily', { fresh: true })}>
+                        Retry today's
+                      </button>
+                    </>
                   ) : (
                     <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
                       Play again
                     </button>
                   )}
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

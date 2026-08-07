@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { mulberry32 } from '@shared/rng';
 import { play } from '../../audio';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import { ensureSignedIn } from '../../arcade/auth';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
@@ -360,17 +361,17 @@ export default function PogoCatGame() {
     ctx.arc(319, 76, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    // Platforms.
+    // Platforms — each pillar rises to its own height.
     for (const p of s.platforms) {
       const x = p.x - cam;
       if (x + p.w < -30 || x > WIDTH + 30) continue;
       ctx.fillStyle = '#14382a';
-      ctx.fillRect(x, PLATFORM_Y, p.w, HEIGHT - PLATFORM_Y);
+      ctx.fillRect(x, p.y, p.w, HEIGHT - p.y);
       ctx.fillStyle = '#2a6a4a';
-      ctx.fillRect(x, PLATFORM_Y, p.w, 6);
+      ctx.fillRect(x, p.y, p.w, 6);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-      ctx.fillRect(x + p.w - 5, PLATFORM_Y + 6, 5, HEIGHT - PLATFORM_Y - 6);
-      if (p.fish) drawFish(ctx, x + p.w / 2, PLATFORM_Y - 12 + Math.sin(time * 0.1) * 2.5);
+      ctx.fillRect(x + p.w - 5, p.y + 6, 5, HEIGHT - p.y - 6);
+      if (p.fish) drawFish(ctx, x + p.w / 2, p.y - 12 + Math.sin(time * 0.1) * 2.5);
     }
 
     // The cat: grounded (idle bounce / charging crouch) or mid-arc.
@@ -386,12 +387,13 @@ export default function PogoCatGame() {
       inAir = true;
     } else {
       catX = s.catX - cam;
+      const standY = s.platforms[s.current]!.y;
       if (s.phase === 'charging') {
-        groundY = PLATFORM_Y;
+        groundY = standY;
         comp = 0.25 + 0.6 * s.charge;
       } else {
         const hop = Math.abs(Math.sin(time * 0.09)) * 13;
-        groundY = PLATFORM_Y - hop;
+        groundY = standY - hop;
         comp = hop < 2 ? 0.35 : 0.08;
       }
     }
@@ -399,7 +401,7 @@ export default function PogoCatGame() {
     if (!inAir) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
       ctx.beginPath();
-      ctx.ellipse(catX, PLATFORM_Y + 4, 15, 4, 0, 0, Math.PI * 2);
+      ctx.ellipse(catX, s.platforms[s.current]!.y + 4, 15, 4, 0, 0, Math.PI * 2);
       ctx.fill();
       comp = Math.max(comp, 0.55 * squashNorm);
     }
@@ -463,7 +465,7 @@ export default function PogoCatGame() {
             <p className="hint pogocat-hint">Hold (or Space) to charge the spring · release to leap the gap.</p>
 
             {over && (
-              <div className="pogocat-result">
+              <ResultPanel className="pogocat-result">
                 <h2>Splat! Final score {result?.score ?? 0} 🐾</h2>
                 <p className="hint">
                   {result?.hops ?? 0} platforms landed · {result?.fish ?? 0} fish snagged
@@ -480,7 +482,7 @@ export default function PogoCatGame() {
                     Play again
                   </button>
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

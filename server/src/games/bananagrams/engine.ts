@@ -258,6 +258,23 @@ export function applyBananagramsAction(
       p.board.delete(from);
       break;
     }
+    case 'shift': {
+      // Slide the whole layout one cell — only if every tile stays on the board.
+      if (p.board.size === 0) return { ok: false, error: 'No placed tiles to move.' };
+      for (const key of p.board.keys()) {
+        const nx = (key % BG_SIZE) + a.dx;
+        const ny = ((key / BG_SIZE) | 0) + a.dy;
+        if (nx < 0 || nx >= BG_SIZE || ny < 0 || ny >= BG_SIZE) {
+          return { ok: false, error: 'That would push tiles off the board.' };
+        }
+      }
+      const moved = new Map<number, BgTile>();
+      for (const [key, tile] of p.board) {
+        moved.set(bgCellKey((key % BG_SIZE) + a.dx, ((key / BG_SIZE) | 0) + a.dy), tile);
+      }
+      p.board = moved;
+      break;
+    }
     case 'dump': {
       const trayIdx = p.tray.findIndex((t) => t.id === a.tileId);
       if (trayIdx < 0) return { ok: false, error: 'You can only dump a tile from your tray.' };

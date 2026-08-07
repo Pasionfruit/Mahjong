@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { play } from '../../audio';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import { ensureSignedIn } from '../../arcade/auth';
 import { dailySeed, dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
@@ -317,7 +318,7 @@ export default function PeggleGame() {
             />
 
             {over && (
-              <div className="peggle-result">
+              <ResultPanel className="peggle-result">
                 {status === 'won' ? (
                   <h2 className="peggle-fever">EXTREME FEVER!</h2>
                 ) : (
@@ -338,14 +339,19 @@ export default function PeggleGame() {
                 </p>
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
-                    <p className="hint">Come back tomorrow for a new map!</p>
+                    <>
+                      <p className="hint">Beat your score — retries keep your best.</p>
+                      <button className="btn btn-primary" onClick={() => startMode('daily')}>
+                        Retry today's
+                      </button>
+                    </>
                   ) : (
                     <button className="btn btn-primary" onClick={() => startMode('endless', { chain: true })}>
                       Next map
                     </button>
                   )}
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

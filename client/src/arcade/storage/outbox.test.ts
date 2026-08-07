@@ -29,10 +29,26 @@ type OpResult = { error: { code?: string; message?: string } | null };
 function fakeClient(opts: {
   upsert?: (row: unknown) => Promise<OpResult>;
   insert?: (row: unknown) => Promise<OpResult>;
+  /** The row improveDailyRow's select finds (null = none). */
+  existingDaily?: { id: string; score: number } | null;
+  update?: (patch: unknown) => Promise<OpResult>;
 }) {
   const upsert = opts.upsert ?? (async () => ({ error: null }));
   const insert = opts.insert ?? (async () => ({ error: null }));
-  return { from: () => ({ upsert, insert }) } as unknown as ReturnType<typeof getSupabase>;
+  const update = opts.update ?? (async () => ({ error: null }));
+  // Chainable select: .select().eq()… .maybeSingle() resolves the rigged row.
+  const chain = {
+    eq: () => chain,
+    maybeSingle: async () => ({ data: opts.existingDaily ?? null, error: null }),
+  };
+  return {
+    from: () => ({
+      upsert,
+      insert,
+      select: () => chain,
+      update: (patch: unknown) => ({ eq: () => update(patch) }),
+    }),
+  } as unknown as ReturnType<typeof getSupabase>;
 }
 
 beforeEach(async () => {
@@ -203,5 +219,38 @@ describe('flushOutbox', () => {
     await flushOutbox();
 
     expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('a daily RETRY with a better score overwrites the existing row', async () => {
+    // Minesweeper daily is time-based: lower wins. Existing 120 > retry 99.
+    const upsert = vi.fn().mockResolvedValue({ error: { code: '23505', message: 'duplicate' } });
+    const update = vi.fn().mockResolvedValue({ error: null });
+    mockedGetSupabase.mockReturnValue(null);
+    await recordResult(baseResult); // score 99
+    mockedGetSupabase.mockReturnValue(
+      fakeClient({ upsert, update, existingDaily: { id: 'existing-1', score: 120 } }),
+    );
+
+    await flushOutbox();
+
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ score: 99 }));
+    const [stored] = await getAllResults();
+    expect(stored!.syncedAt).not.toBeNull();
+  });
+
+  it('a daily retry with a WORSE score leaves the existing row alone', async () => {
+    const upsert = vi.fn().mockResolvedValue({ error: { code: '23505', message: 'duplicate' } });
+    const update = vi.fn().mockResolvedValue({ error: null });
+    mockedGetSupabase.mockReturnValue(null);
+    await recordResult(baseResult); // score 99
+    mockedGetSupabase.mockReturnValue(
+      fakeClient({ upsert, update, existingDaily: { id: 'existing-1', score: 50 } }),
+    );
+
+    await flushOutbox();
+
+    expect(update).not.toHaveBeenCalled();
+    const [stored] = await getAllResults();
+    expect(stored!.syncedAt).not.toBeNull();
   });
 });

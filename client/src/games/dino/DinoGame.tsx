@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { play } from '../../audio';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import { ensureSignedIn } from '../../arcade/auth';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
@@ -385,7 +386,7 @@ export default function DinoGame() {
             </p>
 
             {dead && (
-              <div className="dino-result">
+              <ResultPanel className="dino-result">
                 <h2>{finalScore} m before the cactus won 🌵</h2>
                 <p className="hint">Top speed {Math.round(scrollSpeed(stateRef.current.dist))} px/s</p>
                 <p>
@@ -400,7 +401,7 @@ export default function DinoGame() {
                     Play again
                   </button>
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

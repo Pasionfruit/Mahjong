@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
@@ -140,7 +141,7 @@ export default function SudokuGame() {
             )}
 
             {!playing && (
-              <div className="sudoku-result">
+              <ResultPanel className="sudoku-result">
                 <h2>Solved in {formatTime(result?.score ?? elapsedMs)}! 🎉</h2>
                 <p className="hint">Mistakes: {result?.stats?.mistakes ?? state.mistakes}</p>
                 <p>
@@ -155,7 +156,7 @@ export default function SudokuGame() {
                     Play again
                   </button>
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { play } from '../../audio';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import { ensureSignedIn } from '../../arcade/auth';
 import { dailySeed, dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
@@ -231,7 +232,7 @@ export default function WordTypeGame() {
         {!started && <Countdown onDone={beginPlay} />}
 
         {finished && (
-          <div className="wordtype-result">
+          <ResultPanel className="wordtype-result">
             <h2>Typed in {formatTime(finalScore)}! ⌨️</h2>
             <p className="hint">
               Raw {formatTime(finalScore - run.mistakes * PENALTY_MS)} · {run.mistakes} typo
@@ -247,8 +248,11 @@ export default function WordTypeGame() {
             <div className="arcade-actions">
               {mode === 'daily' ? (
                 <>
-                  <p className="hint">Come back tomorrow for a new word!</p>
-                  <button className="btn btn-primary" onClick={() => startMode('endless')}>
+                  <p className="hint">Beat your time — retries keep your best score.</p>
+                  <button className="btn btn-primary" onClick={() => startMode('daily')}>
+                    Retry today's
+                  </button>
+                  <button className="btn" onClick={() => startMode('endless')}>
                     Practice more
                   </button>
                 </>
@@ -258,7 +262,7 @@ export default function WordTypeGame() {
                 </button>
               )}
             </div>
-          </div>
+          </ResultPanel>
         )}
 
         <button className="btn arcade-leave" onClick={() => useStore.getState().setLocalGame(null)}>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
@@ -95,7 +96,7 @@ export default function MagicSortGame() {
             </div>
 
             {!playing && (
-              <div className="magicsort-result">
+              <ResultPanel className="magicsort-result">
                 <h2>Solved in {result?.score} moves!</h2>
                 <p className="hint">Colors sorted: {result?.stats?.colors}</p>
                 <p>
@@ -112,7 +113,7 @@ export default function MagicSortGame() {
                     New puzzle
                   </button>
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { play } from '../../audio';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import { ensureSignedIn } from '../../arcade/auth';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
@@ -362,7 +363,7 @@ export default function FlappyGame() {
             <p className="hint flappy-hint">Tap the canvas, Space, or ↑ to flap.</p>
 
             {dead && (
-              <div className="flappy-result">
+              <ResultPanel className="flappy-result">
                 <h2>
                   {finalScore} pipe{finalScore === 1 ? '' : 's'} cleared 🐤
                 </h2>
@@ -381,7 +382,7 @@ export default function FlappyGame() {
                     Play again
                   </button>
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

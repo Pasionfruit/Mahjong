@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type TouchEvent } from 'react';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
@@ -151,7 +152,7 @@ export default function Twenty48Game() {
             </div>
 
             {!playing && (
-              <div className="twenty48-result">
+              <ResultPanel className="twenty48-result">
                 <h2>Game over — final score {result?.score}</h2>
                 <p className="hint">Highest tile: {result?.stats?.highestTile}</p>
                 <p>
@@ -166,7 +167,7 @@ export default function Twenty48Game() {
                     Play again
                   </button>
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { play } from '../../audio';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import { ensureSignedIn } from '../../arcade/auth';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
@@ -426,7 +427,7 @@ export default function DoodleJumpGame() {
             <p className="hint doodlejump-hint">← → (or A/D) to steer — or hold either half of the canvas.</p>
 
             {dead && (
-              <div className="doodlejump-result">
+              <ResultPanel className="doodlejump-result">
                 <h2>Reached {finalMeters} m 🐸</h2>
                 <p className="hint">Max height: {finalMeters} m</p>
                 <p>
@@ -441,7 +442,7 @@ export default function DoodleJumpGame() {
                     Play again
                   </button>
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

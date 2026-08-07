@@ -216,15 +216,16 @@ function BoardCanvas({
       seenSeqRef.current = lc?.seq ?? 0;
     } else if (lc && lc.seq !== seenSeqRef.current) {
       seenSeqRef.current = lc.seq;
-      // Only multi-line clears get the staggered dissolve; singles stay snappy.
-      if (lc.rows.length >= 2) {
+      // Every clear dissolves — a single line is just one quick row melt;
+      // multi-line clears stagger bottom-up.
+      if (lc.rows.length >= 1) {
         fxRef.current = {
           rows: [...lc.rows].sort((a, b) => b.y - a.y),
           preGrid: rebuildPreGrid(player.grid, lc.rows),
           start: performance.now(),
           total: fxDuration(lc.rows.length),
         };
-        if (mine) play('combo');
+        if (mine) play(lc.rows.length >= 2 ? 'combo' : 'point');
       }
     }
 

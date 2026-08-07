@@ -137,6 +137,38 @@ describe('tile conservation', () => {
   });
 });
 
+describe('shift (move all placed tiles)', () => {
+  it('slides every placed tile one cell and keeps letters intact', () => {
+    const s = newGame();
+    put(s, 0, 'A', 5, 5);
+    put(s, 0, 'T', 6, 5);
+    const res = applyBananagramsAction(s, 0, { t: 'bg', op: 'shift', dx: 1, dy: 0 });
+    expect(res.ok).toBe(true);
+    const p = s.players[0]!;
+    expect(p.board.get(bgCellKey(6, 5))!.letter).toBe('A');
+    expect(p.board.get(bgCellKey(7, 5))!.letter).toBe('T');
+    expect(p.board.size).toBe(2);
+    const down = applyBananagramsAction(s, 0, { t: 'bg', op: 'shift', dx: 0, dy: 1 });
+    expect(down.ok).toBe(true);
+    expect(p.board.get(bgCellKey(6, 6))!.letter).toBe('A');
+  });
+
+  it('refuses a shift that would push any tile off the board', () => {
+    const s = newGame();
+    put(s, 0, 'A', 0, 3);
+    put(s, 0, 'T', 1, 3);
+    const res = applyBananagramsAction(s, 0, { t: 'bg', op: 'shift', dx: -1, dy: 0 });
+    expect(res.ok).toBe(false);
+    expect(s.players[0]!.board.get(bgCellKey(0, 3))!.letter).toBe('A'); // untouched
+  });
+
+  it('refuses a shift with nothing placed', () => {
+    const s = newGame();
+    const res = applyBananagramsAction(s, 0, { t: 'bg', op: 'shift', dx: 0, dy: 1 });
+    expect(res.ok).toBe(false);
+  });
+});
+
 describe('placement rules', () => {
   it('rejects out-of-bounds cells', () => {
     const s = newGame();

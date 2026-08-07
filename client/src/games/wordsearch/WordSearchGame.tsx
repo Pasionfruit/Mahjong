@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, type PointerEvent } from 'react';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
@@ -154,7 +155,7 @@ export default function WordSearchGame() {
             </div>
 
             {!playing && (
-              <div className="wordsearch-result">
+              <ResultPanel className="wordsearch-result">
                 <h2>All words found in {formatTime(result?.score ?? 0)}! 🎉</h2>
                 <p>
                   Sync:{' '}
@@ -165,14 +166,19 @@ export default function WordSearchGame() {
                 </p>
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
-                    <p className="hint">{dailyDoneToday ? 'Come back tomorrow for a new puzzle!' : ''}</p>
+                    <>
+                      <p className="hint">Beat your time — retries keep your best score.</p>
+                      <button className="btn btn-primary" onClick={() => void start('daily', { fresh: true })}>
+                        Retry today's
+                      </button>
+                    </>
                   ) : (
                     <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
                       Play again
                     </button>
                   )}
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

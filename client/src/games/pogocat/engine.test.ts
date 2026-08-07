@@ -11,6 +11,11 @@ import {
   MAX_VY,
   MIN_W,
   PLATFORM_Y,
+  jumpDistanceAt,
+  MAX_DROP,
+  MAX_RISE,
+  PLATFORM_MAX_Y,
+  PLATFORM_MIN_Y,
   chargeToVelocity,
   createPogo,
   flatJumpDistance,
@@ -77,7 +82,7 @@ describe('landing detection', () => {
   it('landing inside the next platform span succeeds and scores', () => {
     const d = flatJumpDistance(0.5);
     const catX = 85;
-    const s = makeState([{ x: 30, w: 110, fish: false }, { x: catX + d - 25, w: 60, fish: false }], catX);
+    const s = makeState([{ x: 30, y: PLATFORM_Y, w: 110, fish: false }, { x: catX + d - 25, y: PLATFORM_Y, w: 60, fish: false }], catX);
     leap(s, 0.5);
     expect(s.phase).toBe('jumping');
     expect(settle(s)).toBe('landed');
@@ -92,7 +97,7 @@ describe('landing detection', () => {
 
   it('missing every platform falls into the gap and dies', () => {
     const d = flatJumpDistance(0.5);
-    const s = makeState([{ x: 30, w: 110, fish: false }, { x: 85 + d + 100, w: 60, fish: false }], 85);
+    const s = makeState([{ x: 30, y: PLATFORM_Y, w: 110, fish: false }, { x: 85 + d + 100, y: PLATFORM_Y, w: 60, fish: false }], 85);
     leap(s, 0.5);
     expect(settle(s)).toBe('fell');
     expect(s.phase).toBe('dead');
@@ -101,7 +106,7 @@ describe('landing detection', () => {
   });
 
   it('a tiny hop landing back on the same platform neither scores nor dies', () => {
-    const s = makeState([{ x: 30, w: 200, fish: false }], 40);
+    const s = makeState([{ x: 30, y: PLATFORM_Y, w: 200, fish: false }], 40);
     leap(s, 0); // min distance ≈ 53 lands at ≈93, still on [30, 230]
     expect(settle(s)).toBe('landed');
     expect(s.current).toBe(0);
@@ -111,7 +116,7 @@ describe('landing detection', () => {
 
   it('landing on a fish platform collects it for a +3 bonus, once', () => {
     const d = flatJumpDistance(0.5);
-    const s = makeState([{ x: 30, w: 110, fish: false }, { x: 85 + d - 25, w: 60, fish: true }], 85);
+    const s = makeState([{ x: 30, y: PLATFORM_Y, w: 110, fish: false }, { x: 85 + d - 25, y: PLATFORM_Y, w: 60, fish: true }], 85);
     leap(s, 0.5);
     expect(settle(s)).toBe('landed');
     expect(s.score).toBe(1 + FISH_BONUS);
@@ -121,8 +126,8 @@ describe('landing detection', () => {
 
   it('landingIndex finds the containing span only at/after `from`', () => {
     const platforms: Platform[] = [
-      { x: 0, w: 50, fish: false },
-      { x: 100, w: 50, fish: false },
+      { x: 0, y: PLATFORM_Y, w: 50, fish: false },
+      { x: 100, y: PLATFORM_Y, w: 50, fish: false },
     ];
     expect(landingIndex(25, platforms, 0)).toBe(0);
     expect(landingIndex(125, platforms, 0)).toBe(1);
@@ -133,7 +138,7 @@ describe('landing detection', () => {
 
 describe('charge mechanics', () => {
   it('startCharge only fires from idle; releaseJump only from charging', () => {
-    const s = makeState([{ x: 30, w: 110, fish: false }], 85);
+    const s = makeState([{ x: 30, y: PLATFORM_Y, w: 110, fish: false }], 85);
     releaseJump(s); // idle → no-op
     expect(s.phase).toBe('idle');
     startCharge(s);
@@ -149,7 +154,7 @@ describe('charge mechanics', () => {
   });
 
   it('tickCharge ping-pongs and never leaves [0, 1]', () => {
-    const s = makeState([{ x: 30, w: 110, fish: false }], 85);
+    const s = makeState([{ x: 30, y: PLATFORM_Y, w: 110, fish: false }], 85);
     startCharge(s);
     let hitTop = false;
     let hitBottomAfterTop = false;
@@ -171,7 +176,7 @@ describe('platform generation', () => {
 
     const chain = (seed: number) => {
       const rand = mulberry32(seed);
-      const platforms: Platform[] = [{ x: 30, w: 110, fish: false }];
+      const platforms: Platform[] = [{ x: 30, y: PLATFORM_Y, w: 110, fish: false }];
       for (let i = 1; i <= 50; i++) platforms.push(nextPlatform(platforms[i - 1]!, i, rand));
       return platforms;
     };
@@ -181,7 +186,7 @@ describe('platform generation', () => {
 
   it('difficulty ramp stays bounded and every platform stays reachable', () => {
     const rand = mulberry32(9);
-    const platforms: Platform[] = [{ x: 30, w: 110, fish: false }];
+    const platforms: Platform[] = [{ x: 30, y: PLATFORM_Y, w: 110, fish: false }];
     for (let i = 1; i <= 300; i++) platforms.push(nextPlatform(platforms[i - 1]!, i, rand));
     for (let i = 1; i < platforms.length; i++) {
       const prev = platforms[i - 1]!;
@@ -199,7 +204,7 @@ describe('platform generation', () => {
 
   it('later platforms trend narrower with wider gaps', () => {
     const rand = mulberry32(21);
-    const platforms: Platform[] = [{ x: 30, w: 110, fish: false }];
+    const platforms: Platform[] = [{ x: 30, y: PLATFORM_Y, w: 110, fish: false }];
     for (let i = 1; i <= 120; i++) platforms.push(nextPlatform(platforms[i - 1]!, i, rand));
     const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
     const widths = platforms.map((p) => p.w);
@@ -223,18 +228,47 @@ describe('platform generation', () => {
 
 describe('stepJump edges', () => {
   it('is a no-op unless jumping', () => {
-    const s = makeState([{ x: 30, w: 110, fish: false }], 85);
+    const s = makeState([{ x: 30, y: PLATFORM_Y, w: 110, fish: false }], 85);
     expect(stepJump(s, 1, mulberry32(1))).toBe('air');
     expect(s.phase).toBe('idle');
   });
 
   it('starts the arc at platform height moving up, then arcs back down', () => {
-    const s = makeState([{ x: 30, w: 400, fish: false }], 85);
+    const s = makeState([{ x: 30, y: PLATFORM_Y, w: 400, fish: false }], 85);
     leap(s, 0.7);
     expect(s.jump!.y).toBe(PLATFORM_Y);
     stepJump(s, 1, mulberry32(1));
     expect(s.jump!.y).toBeLessThan(PLATFORM_Y); // rose (y-down coords)
     const out = settle(s);
     expect(out).toBe('landed');
+  });
+});
+
+describe('varied platform heights', () => {
+  it('every generated hop stays within step limits, bounds, and full-charge reach', () => {
+    const rand = mulberry32(42);
+    let prev = { x: 30, y: PLATFORM_Y, w: 110, fish: false };
+    for (let i = 1; i <= 300; i++) {
+      const next = nextPlatform(prev, i, rand);
+      expect(next.y).toBeGreaterThanOrEqual(PLATFORM_MIN_Y);
+      expect(next.y).toBeLessThanOrEqual(PLATFORM_MAX_Y);
+      expect(prev.y - next.y).toBeLessThanOrEqual(MAX_RISE); // climb cap
+      expect(next.y - prev.y).toBeLessThanOrEqual(MAX_DROP); // drop cap
+      // Reachable at full charge even launching from prev's far-left edge.
+      const span = next.x - prev.x;
+      expect(span).toBeLessThanOrEqual(jumpDistanceAt(1, prev.y - next.y) - 15.9);
+      prev = next;
+    }
+  });
+
+  it('heights actually vary once the ramp kicks in', () => {
+    const rand = mulberry32(7);
+    let prev = { x: 30, y: PLATFORM_Y, w: 110, fish: false };
+    const ys = new Set<number>();
+    for (let i = 1; i <= 40; i++) {
+      prev = nextPlatform(prev, i, rand);
+      ys.add(prev.y);
+    }
+    expect(ys.size).toBeGreaterThan(5);
   });
 });

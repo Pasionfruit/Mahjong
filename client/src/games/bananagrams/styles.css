@@ -280,6 +280,28 @@
   margin-top: 24px;
 }
 
+/* ── move-all controls ──────────────────────────────────────────────────── */
+
+.banana-shift {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 8px 0 2px;
+}
+
+.banana-shift-label {
+  font-size: 12px;
+  opacity: 0.7;
+  margin-right: 4px;
+}
+
+.banana-shift-btn {
+  padding: 5px 13px;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
 /* ── transient banners & error toast ────────────────────────────────────── */
 
 .banana-event {

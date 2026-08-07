@@ -16,8 +16,15 @@
 export const WIDTH = 380;
 export const HEIGHT = 540;
 
-/** Top surface of every platform (side view, y grows downward). */
+/** Top surface of the FIRST platform (side view, y grows downward). Later
+ *  platforms vary their own `y` within [PLATFORM_MIN_Y, PLATFORM_MAX_Y]. */
 export const PLATFORM_Y = 430;
+export const PLATFORM_MIN_Y = 300;
+export const PLATFORM_MAX_Y = 472;
+/** Biggest climb between neighbors — kept well inside full-charge reach. */
+export const MAX_RISE = 55;
+/** Biggest drop between neighbors — keeps the next ledge on screen. */
+export const MAX_DROP = 70;
 /** Falling past this y (into a gap) ends the run. */
 export const FALL_LIMIT = HEIGHT + 60;
 
@@ -47,6 +54,8 @@ export type Rand = () => number;
 
 export interface Platform {
   x: number;
+  /** Top surface of this platform. */
+  y: number;
   w: number;
   /** A bonus fish sits on this platform (+FISH_BONUS when landed on). */
   fish: boolean;
@@ -99,6 +108,19 @@ export function maxFlatDistance(): number {
 }
 
 /**
+ * Horizontal distance of a jump landing `rise` px ABOVE the launch height
+ * (rise ≤ 0 = landing level or below): d = vx·(vy + √(vy² − 2g·rise))/g.
+ * Climbing eats reach, which is why gaps are clamped against the actual
+ * height difference, not the flat arc.
+ */
+export function jumpDistanceAt(charge: number, rise: number): number {
+  const { vx, vy } = chargeToVelocity(charge);
+  const disc = vy * vy - 2 * GRAVITY * Math.max(0, rise);
+  if (disc <= 0) return 0;
+  return (vx * (vy + Math.sqrt(disc))) / GRAVITY;
+}
+
+/**
  * The platform after `prev` (its 0-based sequence `index` drives the
  * difficulty ramp): widths shrink toward MIN_W, gaps grow toward MAX_GAP,
  * both jittered by the injected rand but always bounded — and the gap is
@@ -108,11 +130,21 @@ export function maxFlatDistance(): number {
 export function nextPlatform(prev: Platform, index: number, rand: Rand): Platform {
   const targetW = Math.max(MIN_W, START_W - index * 1.2);
   const w = Math.max(MIN_W, Math.min(MAX_W, targetW + (rand() * 2 - 1) * 8));
+  // Heights ramp in: the first few ledges stay near the start height, then
+  // the spread widens — always stepping at most MAX_RISE up / MAX_DROP down.
+  const spread = Math.min(60, index * 5);
+  let y = prev.y + (rand() * 2 - 1) * spread;
+  y = Math.max(prev.y - MAX_RISE, Math.min(prev.y + MAX_DROP, y));
+  y = Math.max(PLATFORM_MIN_Y, Math.min(PLATFORM_MAX_Y, y));
+  y = Math.round(y);
   const baseGap = Math.min(MAX_GAP, MIN_GAP + 12 + index * 1.4);
   let gap = Math.max(MIN_GAP, Math.min(MAX_GAP, baseGap + (rand() * 2 - 1) * 18));
-  gap = Math.min(gap, maxFlatDistance() - prev.w - 16);
+  // Reachable at full charge even from prev's far-left edge, for the ACTUAL
+  // climb this hop demands (climbing shortens the arc).
+  gap = Math.min(gap, jumpDistanceAt(1, prev.y - y) - prev.w - 16);
+  gap = Math.max(gap, MIN_GAP / 2);
   const fish = index > 2 && rand() < FISH_CHANCE;
-  return { x: prev.x + prev.w + gap, w, fish };
+  return { x: prev.x + prev.w + gap, y, w, fish };
 }
 
 /** Keep a lookahead of upcoming platforms generated past the cat. */
@@ -124,7 +156,7 @@ function ensurePlatforms(state: PogoState, rand: Rand): void {
 }
 
 export function createPogo(rand: Rand): PogoState {
-  const first: Platform = { x: 30, w: 110, fish: false };
+  const first: Platform = { x: 30, y: PLATFORM_Y, w: 110, fish: false };
   const state: PogoState = {
     platforms: [first],
     current: 0,
@@ -167,7 +199,7 @@ export function tickCharge(state: PogoState, dt: number): void {
 export function releaseJump(state: PogoState): void {
   if (state.phase !== 'charging') return;
   const { vx, vy } = chargeToVelocity(state.charge);
-  state.jump = { x: state.catX, y: PLATFORM_Y, vx, vy: -vy };
+  state.jump = { x: state.catX, y: state.platforms[state.current]!.y, vx, vy: -vy };
   state.phase = 'jumping';
 }
 
@@ -198,10 +230,23 @@ export function stepJump(state: PogoState, dt: number, rand: Rand): JumpOutcome 
   j.y += j.vy * dt + 0.5 * GRAVITY * dt * dt;
   j.vy += GRAVITY * dt;
 
-  if (j.vy > 0 && prevY < PLATFORM_Y && j.y >= PLATFORM_Y) {
-    const t = (PLATFORM_Y - prevY) / (j.y - prevY);
-    const landX = prevX + (j.x - prevX) * t;
-    const idx = landingIndex(landX, state.platforms, state.current);
+  if (j.vy > 0) {
+    // Platforms sit at different heights now: find the EARLIEST descending
+    // crossing of any platform's surface whose span contains the cat.
+    let idx = -1;
+    let bestT = Infinity;
+    let landX = 0;
+    for (let i = state.current; i < state.platforms.length; i++) {
+      const p = state.platforms[i]!;
+      if (!(prevY <= p.y && j.y >= p.y) || j.y === prevY) continue;
+      const t = (p.y - prevY) / (j.y - prevY);
+      const x = prevX + (j.x - prevX) * t;
+      if (x >= p.x && x <= p.x + p.w && t < bestT) {
+        bestT = t;
+        idx = i;
+        landX = x;
+      }
+    }
     if (idx >= 0) {
       const advanced = idx - state.current;
       state.current = idx;
@@ -223,7 +268,7 @@ export function stepJump(state: PogoState, dt: number, rand: Rand): JumpOutcome 
       }
       return 'landed';
     }
-    // Crossed platform height over a gap — keep falling.
+    // No surface under the arc this step — keep falling.
   }
 
   if (j.y > FALL_LIMIT) {

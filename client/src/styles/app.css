@@ -1292,6 +1292,39 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
 .sandsort-result,
 .sudoku-result,
 .twenty48-result,
+/* X in the result modal's corner (ResultPanel). */
+.result-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  padding: 6px;
+  font-size: 15px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--paper);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.result-close:hover {
+  opacity: 1;
+  background: var(--control);
+}
+
+/* Floating pill that brings a tucked-away result back. */
+.result-peek {
+  position: fixed;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 56;
+  font-weight: 600;
+  border-radius: 999px;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4);
+}
+
 .untangle-result,
 .wordguess-result,
 .wordsearch-result,

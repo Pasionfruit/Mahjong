@@ -60,7 +60,9 @@ export type BananagramsAction =
   /** Take one of your placed tiles back into your tray. */
   | { t: 'bg'; op: 'recall'; tileId: number }
   /** Trade a tray tile back into the bunch for three fresh ones. */
-  | { t: 'bg'; op: 'dump'; tileId: number };
+  | { t: 'bg'; op: 'dump'; tileId: number }
+  /** Slide ALL of your placed tiles one cell (unit dx/dy, one axis). */
+  | { t: 'bg'; op: 'shift'; dx: number; dy: number };
 
 // ── views ───────────────────────────────────────────────────────────────────
 

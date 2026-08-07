@@ -1,5 +1,6 @@
 import type { StoredResult } from '../types';
 import { currentUser, getDisplayName } from '../auth';
+import { LEADERBOARDS } from '../leaderboardCatalog';
 import { getSupabase } from '../supabase';
 import { xpForResult } from '../stats';
 import { getAllResults, getUnsyncedResults, putResult } from './db';
@@ -33,6 +34,49 @@ function toRow(r: StoredResult, userId: string, displayName: string) {
 
 /** Postgres unique_violation — see the daily-uniqueness constraint on game_results. */
 const UNIQUE_VIOLATION = '23505';
+
+/** Whether a lower score wins for this game (times / fewest moves), read
+ *  from the same board catalog the Stats page renders from. */
+function lowerIsBetter(gameId: string): boolean {
+  const g = LEADERBOARDS.find((x) => x.gameId === gameId);
+  const board = g?.boards.find((b) => b.mode === 'daily') ?? g?.boards.find((b) => b.mode === 'endless');
+  return board?.ascending ?? false;
+}
+
+/**
+ * Daily retry support: the daily slot is unique per player per day, so a
+ * second run of the same daily 23505s. Instead of dropping it, keep the
+ * PLAYER'S BEST — overwrite the existing row when the retry scored better.
+ * No XP is awarded on the update path (retries can't farm XP).
+ */
+async function improveDailyRow(
+  supabase: NonNullable<ReturnType<typeof getSupabase>>,
+  userId: string,
+  row: StoredResult,
+): Promise<void> {
+  // Best-effort only — any failure here still leaves the result marked
+  // synced (the official first run already exists server-side).
+  try {
+    const { data, error } = await supabase
+      .from('game_results')
+      .select('id, score')
+      .eq('user_id', userId)
+      .eq('game_id', row.gameId)
+      .eq('mode', 'daily')
+      .eq('date_key', row.dateKey)
+      .maybeSingle();
+    if (error || !data) return;
+    const better = lowerIsBetter(row.gameId) ? row.score < data.score : row.score > data.score;
+    if (!better) return;
+    const { error: upErr } = await supabase
+      .from('game_results')
+      .update({ score: row.score, stats: row.stats, move_log: row.moveLog, completed_at: row.completedAt })
+      .eq('id', data.id);
+    if (upErr) console.error('[arcade] failed to improve daily result', row.id, upErr);
+  } catch (e) {
+    console.error('[arcade] daily improve attempt failed', row.id, e);
+  }
+}
 
 /**
  * Award XP for a freshly-synced result — best-effort, never blocks marking
@@ -80,6 +124,10 @@ export async function flushOutbox(): Promise<void> {
       .from('game_results')
       .upsert(toRow(row, user.id, displayName), { onConflict: 'id' });
     if (!error || error.code === UNIQUE_VIOLATION) {
+      // A daily conflict may be a RETRY of today's puzzle — keep the best.
+      if (error && row.mode === 'daily' && row.dateKey) {
+        await improveDailyRow(supabase, user.id, row);
+      }
       await putResult({ ...row, syncedAt: new Date().toISOString() });
       if (!error) void awardXp(user.id, row);
     } else {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
 import { play } from '../../audio';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import { ensureSignedIn } from '../../arcade/auth';
 import { dailySeed, dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
@@ -285,7 +286,7 @@ export default function UntangleGame() {
             </div>
 
             {solved && (
-              <div className="untangle-result">
+              <ResultPanel className="untangle-result">
                 <h2>{mode === 'daily' ? 'Untangled' : `Level ${levelNum} solved`} in {formatTime(elapsedMs)}</h2>
                 <p>
                   Sync:{' '}
@@ -296,14 +297,19 @@ export default function UntangleGame() {
                 </p>
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
-                    <p className="hint">Come back tomorrow for a new puzzle!</p>
+                    <>
+                      <p className="hint">Beat your time — retries keep your best score.</p>
+                      <button className="btn btn-primary" onClick={startDaily}>
+                        Retry today's
+                      </button>
+                    </>
                   ) : (
                     <button className="btn btn-primary" onClick={() => startLevel(levelNum + 1)}>
                       Next level
                     </button>
                   )}
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

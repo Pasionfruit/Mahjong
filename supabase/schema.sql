@@ -210,14 +210,21 @@ stable
 security definer
 set search_path = public
 as $$
-  select r.user_id, r.display_name, r.score,
+  -- Best result per player (daily retries keep only their best), then rank.
+  select b.user_id, b.display_name, b.score,
          rank() over (
-           order by case when p_ascending then r.score end asc,
-                    case when not p_ascending then r.score end desc
+           order by case when p_ascending then b.score end asc,
+                    case when not p_ascending then b.score end desc
          ) as rnk
-  from public.game_results r
-  where r.game_id = p_game_id and r.mode = 'daily' and r.date_key = p_date
-  order by rnk, r.completed_at
+  from (
+    select distinct on (r.user_id) r.user_id, r.display_name, r.score
+    from public.game_results r
+    where r.game_id = p_game_id and r.mode = 'daily' and r.date_key = p_date
+    order by r.user_id,
+             case when p_ascending then r.score end asc,
+             case when not p_ascending then r.score end desc
+  ) b
+  order by rnk
   limit least(greatest(coalesce(p_limit, 10), 1), 50);
 $$;
 

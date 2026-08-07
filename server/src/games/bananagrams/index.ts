@@ -22,12 +22,22 @@ import {
   type BgSeat,
 } from './engine';
 
-const OPS = new Set(['place', 'recall', 'dump']);
+const OPS = new Set(['place', 'recall', 'dump', 'shift']);
 
 function validateAction(a: unknown): boolean {
   if (typeof a !== 'object' || a === null) return false;
   const x = a as Record<string, unknown>;
   if (x.t !== 'bg' || typeof x.op !== 'string' || !OPS.has(x.op)) return false;
+  if (x.op === 'shift') {
+    // One cell along exactly one axis.
+    return (
+      typeof x.dx === 'number' &&
+      typeof x.dy === 'number' &&
+      Number.isInteger(x.dx) &&
+      Number.isInteger(x.dy) &&
+      Math.abs(x.dx) + Math.abs(x.dy) === 1
+    );
+  }
   if (typeof x.tileId !== 'number' || !Number.isFinite(x.tileId)) return false;
   if (x.op === 'place') {
     return (

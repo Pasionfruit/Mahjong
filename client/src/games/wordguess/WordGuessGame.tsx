@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { mulberry32 } from '@shared/rng';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import { dateKeyUTC } from '../../arcade/dailySeed';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import { useStore } from '../../store';
@@ -149,7 +150,7 @@ export default function WordGuessGame() {
                 </div>
               </>
             ) : (
-              <div className="wordguess-result">
+              <ResultPanel className="wordguess-result">
                 <h2>{result?.status === 'won' ? 'Solved it! 🎉' : `The word was ${state.answer.toUpperCase()}`}</h2>
                 <p>
                   Sync:{' '}
@@ -160,14 +161,19 @@ export default function WordGuessGame() {
                 </p>
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
-                    <p className="hint">{dailyDoneToday ? 'Come back tomorrow for a new word!' : ''}</p>
+                    <>
+                      <p className="hint">Beat your score — retries keep your best.</p>
+                      <button className="btn btn-primary" onClick={() => void start('daily', { fresh: true })}>
+                        Retry today's
+                      </button>
+                    </>
                   ) : (
                     <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
                       Play again
                     </button>
                   )}
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

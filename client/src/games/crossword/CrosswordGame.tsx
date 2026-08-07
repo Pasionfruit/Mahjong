@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import type { SoloMode } from '../../arcade/useSoloGame';
 import { useSoloGame } from '../../arcade/useSoloGame';
@@ -323,7 +324,7 @@ export default function CrosswordGame() {
             )}
 
             {!playing && (
-              <div className="crossword-result">
+              <ResultPanel className="crossword-result">
                 <h2>Solved in {formatTime(result?.score ?? elapsedMs)}! 🎉</h2>
                 <p>
                   Sync:{' '}
@@ -334,14 +335,19 @@ export default function CrosswordGame() {
                 </p>
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
-                    <p className="hint">{dailyDoneToday ? 'Come back tomorrow for a new mini!' : ''}</p>
+                    <>
+                      <p className="hint">Beat your time — retries keep your best score.</p>
+                      <button className="btn btn-primary" onClick={() => void start('daily', { fresh: true })}>
+                        Retry today's
+                      </button>
+                    </>
                   ) : (
                     <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
                       Play again
                     </button>
                   )}
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

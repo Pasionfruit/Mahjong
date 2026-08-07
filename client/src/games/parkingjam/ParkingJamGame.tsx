@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import ResultPanel from '../../arcade/ui/ResultPanel';
 import AuthWidget from '../../arcade/ui/AuthWidget';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
@@ -222,7 +223,7 @@ export default function ParkingJamGame() {
             </div>
 
             {!playing && (
-              <div className="parkingjam-result">
+              <ResultPanel className="parkingjam-result">
                 <h2>Escaped in {result?.score} moves!</h2>
                 <p className="hint">Optimal was {result?.stats?.optimal} moves.</p>
                 <p>
@@ -239,7 +240,7 @@ export default function ParkingJamGame() {
                     New puzzle
                   </button>
                 </div>
-              </div>
+              </ResultPanel>
             )}
           </>
         )}

@@ -185,6 +185,12 @@ export default function BananagramsGame() {
     setSel(null);
   }
 
+  /** Slide every placed tile one cell — frees room to grow the grid. */
+  function shiftBoard(dx: number, dy: number): void {
+    if (!playing || !you || you.board.length === 0) return;
+    act({ t: 'bg', op: 'shift', dx, dy });
+  }
+
   const boardStyle = {
     '--bg-n': BG_SIZE,
     gridTemplateColumns: `repeat(${BG_SIZE}, var(--bg-cell))`,
@@ -305,6 +311,24 @@ export default function BananagramsGame() {
               {boardCells}
             </div>
           </div>
+
+          {you.board.length > 0 && (
+            <div className="banana-shift" aria-label="Move all placed tiles">
+              <span className="banana-shift-label">Move all</span>
+              <button className="btn banana-shift-btn" onClick={() => shiftBoard(-1, 0)} aria-label="Move all tiles left">
+                ←
+              </button>
+              <button className="btn banana-shift-btn" onClick={() => shiftBoard(0, -1)} aria-label="Move all tiles up">
+                ↑
+              </button>
+              <button className="btn banana-shift-btn" onClick={() => shiftBoard(0, 1)} aria-label="Move all tiles down">
+                ↓
+              </button>
+              <button className="btn banana-shift-btn" onClick={() => shiftBoard(1, 0)} aria-label="Move all tiles right">
+                →
+              </button>
+            </div>
+          )}
 
           <div className="banana-tray-box" onClick={onTrayArea}>
             <span className="banana-tray-label">Tray · {you.tray.length}</span>
