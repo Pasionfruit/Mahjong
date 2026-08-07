@@ -1,7 +1,5 @@
 import { useMemo, useRef, useState, type PointerEvent } from 'react';
-import { dateKeyUTC } from '../../arcade/dailySeed';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
 import { GRID_SIZE, wordSearchModule } from './engine';
@@ -115,27 +113,9 @@ export default function WordSearchGame() {
           >
             Endless
           </button>
-          <button
-            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
-            onClick={() => setView('leaderboard')}
-          >
-            🏆 Leaderboard
-          </button>
         </div>
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Fastest (Endless)</h3>
-            <LeaderboardPanel gameId="wordsearch" mode="endless" dateKey={dateKeyUTC()} ascending formatScore={formatTime} />
-            <h3>🔥 Longest Daily Streaks</h3>
-            <LeaderboardPanel gameId="wordsearch" mode="streak" dateKey={dateKeyUTC()} ascending={false} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <div
               ref={gridRef}
@@ -183,15 +163,6 @@ export default function WordSearchGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>{mode === 'daily' ? "Today's Fastest" : 'All-Time Fastest'}</h3>
-                <LeaderboardPanel
-                  gameId="wordsearch"
-                  mode={mode}
-                  dateKey={dateKeyUTC()}
-                  ascending
-                  formatScore={formatTime}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
                     <p className="hint">{dailyDoneToday ? 'Come back tomorrow for a new puzzle!' : ''}</p>

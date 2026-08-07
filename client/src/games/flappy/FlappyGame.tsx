@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { ensureSignedIn } from '../../arcade/auth';
-import { dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import Countdown from '../../components/Countdown';
 import { useStore } from '../../store';
 import {
@@ -28,8 +26,8 @@ const GAME_ID = 'flappy';
 const DPR = 2;
 const STEP_MS = DT * 1000;
 const FLASH_MS = 280;
-/** Brief hit flash before the result panel slides in. */
-const DEATH_PANEL_DELAY_MS = 550;
+/** Hit flash + the bird's tumble to the ground before the panel slides in. */
+const DEATH_PANEL_DELAY_MS = 1000;
 
 type View = 'play' | 'leaderboard';
 type SyncBadge = 'idle' | 'saving' | 'synced' | 'queued';
@@ -236,7 +234,10 @@ export default function FlappyGame() {
         flapRef.current = false;
         const next = step(prev, { flap }, Math.random);
         stateRef.current = next;
-        if (next.phase === 'dead') {
+        // The run is over the moment the bird leaves 'playing' — via 'dying'
+        // (pipe hit, still tumbling to the ground) or straight to 'dead'
+        // (ground hit). The tumble keeps animating while the panel waits.
+        if (prev.phase === 'playing' && next.phase !== 'playing') {
           flashUntilRef.current = now + FLASH_MS;
           onDeath(next);
         }
@@ -255,7 +256,8 @@ export default function FlappyGame() {
       if (e.code === 'Space' || e.key === 'ArrowUp') {
         e.preventDefault();
         if (!startedRef.current) return;
-        if (stateRef.current.phase !== 'dead') flapRef.current = true;
+        const ph = stateRef.current.phase;
+        if (ph === 'ready' || ph === 'playing') flapRef.current = true;
       }
     }
     window.addEventListener('keydown', onKey);
@@ -265,7 +267,8 @@ export default function FlappyGame() {
   function onPointerDown(e: ReactPointerEvent<HTMLCanvasElement>) {
     e.preventDefault();
     if (!startedRef.current) return;
-    if (stateRef.current.phase !== 'dead') flapRef.current = true;
+    const ph = stateRef.current.phase;
+    if (ph === 'ready' || ph === 'playing') flapRef.current = true;
   }
 
   function beginPlay() {
@@ -334,29 +337,8 @@ export default function FlappyGame() {
           Thread the pipes — every pair scores a point.
         </p>
 
-        <div className="arcade-tabs">
-          <button className={`arcade-tab${view === 'play' ? ' active' : ''}`} onClick={() => setView('play')}>
-            Play
-          </button>
-          <button
-            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
-            onClick={() => setView('leaderboard')}
-          >
-            🏆 Leaderboard
-          </button>
-        </div>
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Most Pipes</h3>
-            <LeaderboardPanel gameId={GAME_ID} mode="endless" dateKey={dateKeyUTC()} ascending={false} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <canvas
               ref={canvasRef}
@@ -385,14 +367,6 @@ export default function FlappyGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>All-Time Most Pipes</h3>
-                <LeaderboardPanel
-                  gameId={GAME_ID}
-                  mode="endless"
-                  dateKey={dateKeyUTC()}
-                  ascending={false}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   <button className="btn btn-primary" onClick={restart}>
                     Play again

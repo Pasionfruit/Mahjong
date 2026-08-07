@@ -103,10 +103,27 @@ describe('scoring', () => {
 });
 
 describe('collisions', () => {
-  it('hitting a pipe ends the run', () => {
+  it('hitting a pipe starts the death tumble, not an instant freeze', () => {
     const s = playingState({ pipes: [pipe({ x: BIRD_X - 10, gapY: 420, gapH: 120 })] });
     const next = step(s, { flap: false }, noRand);
-    expect(next.phase).toBe('dead');
+    expect(next.phase).toBe('dying');
+  });
+
+  it('a dying bird falls to the ground, ignoring flaps, then is dead', () => {
+    let s: RunState = { ...playingState({ birdY: 120, birdVy: 0 }), phase: 'dying' };
+    const world = { dist: s.dist, pipes: s.pipes.map((p) => ({ ...p })) };
+    let prevY = s.birdY;
+    let ticks = 0;
+    while (s.phase === 'dying' && ticks++ < 600) {
+      s = step(s, { flap: true }, noRand); // flapping must not rescue it
+      expect(s.birdY).toBeGreaterThanOrEqual(prevY);
+      prevY = s.birdY;
+    }
+    expect(s.phase).toBe('dead');
+    expect(s.birdY).toBe(GROUND_Y - BIRD_R);
+    // The world froze while it fell — no scrolling, no scoring.
+    expect(s.dist).toBe(world.dist);
+    expect(s.pipes).toEqual(world.pipes);
   });
 
   it('hitting the ground ends the run and clamps the bird onto it', () => {

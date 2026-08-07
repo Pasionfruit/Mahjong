@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { mulberry32 } from '@shared/rng';
 import { dateKeyUTC } from '../../arcade/dailySeed';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useStore } from '../../store';
 import { fetchDailyAnswer } from './dailyWord';
 import { MAX_GUESSES, WORD_LENGTH, type LetterState, wordGuessModule } from './engine';
@@ -101,27 +100,9 @@ export default function WordGuessGame() {
           >
             Endless
           </button>
-          <button
-            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
-            onClick={() => setView('leaderboard')}
-          >
-            🏆 Leaderboard
-          </button>
         </div>
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Best (Endless)</h3>
-            <LeaderboardPanel gameId="wordguess" mode="endless" dateKey={dateKeyUTC()} ascending={false} />
-            <h3>🔥 Longest Daily Streaks</h3>
-            <LeaderboardPanel gameId="wordguess" mode="streak" dateKey={dateKeyUTC()} ascending={false} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <div className="wordguess-grid">
               {rows.map((row, i) => (
@@ -177,8 +158,6 @@ export default function WordGuessGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>{mode === 'daily' ? "Today's Leaderboard" : 'All-Time Best'}</h3>
-                <LeaderboardPanel gameId="wordguess" mode={mode} dateKey={dateKeyUTC()} ascending={false} refreshKey={sync === 'synced' ? 1 : 0} />
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
                     <p className="hint">{dailyDoneToday ? 'Come back tomorrow for a new word!' : ''}</p>

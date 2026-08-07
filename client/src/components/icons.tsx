@@ -615,26 +615,24 @@ export function IconCatOnController() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {/* Controller: flat top edge with a grip curving down at each end. */}
-      <path d="M7 15h10" />
-      <path d="M7 15c-1.9 0-3.3 1.1-3.7 2.8-.3 1.3.5 2.2 1.6 2.2.8 0 1.4-.4 1.9-1.1L8 17.4" />
-      <path d="M17 15c1.9 0 3.3 1.1 3.7 2.8.3 1.3-.5 2.2-1.6 2.2-.8 0-1.4-.4-1.9-1.1L16 17.4" />
+      {/* Gamepad: one closed outline — grips, bottom edge and all. */}
+      <path d="M6.5 11h11a5 5 0 0 1 4.9 6l-.9 4.2a2.6 2.6 0 0 1-4.5 1.1L14.6 20H9.4L7 22.3a2.6 2.6 0 0 1-4.5-1.1L1.6 17a5 5 0 0 1 4.9-6Z" />
       {/* D-pad (left) and two face buttons (right). */}
-      <path d="M5.9 17.6h1.6M6.7 16.8v1.6" />
-      <circle cx="16.9" cy="16.9" r=".6" fill="currentColor" stroke="none" />
-      <circle cx="18.4" cy="18.1" r=".6" fill="currentColor" stroke="none" />
-      {/* Curled sleeping body: a low, wide arc resting along the controller
-          — a loaf shape, wider than it is tall, so it reads as "curled up"
-          rather than as a second head. */}
-      <path d="M6.9 14.9c-.5-2.4 1.2-4.6 3.9-5 2.9-.4 5.6 1.3 6.2 3.8.1.4.1.8.1 1.2" />
-      {/* Tail curling back around the near side of the loaf. */}
-      <path d="M7.2 14.9c.8.3 1.7.1 2.3-.6.5-.6.4-1.4-.3-1.7" />
-      {/* Head tucked down at the right end, with two ears. */}
-      <circle cx="15.4" cy="12.1" r="2.1" />
-      <path d="M13.9 10.5 13.4 8.9l1.6.6M16.9 10.6l1.1-1.2.1 1.6" />
-      {/* Closed eyes (two soft curves) and whiskers — the "asleep" tell. */}
-      <path d="M14.3 12.1c.3.3.7.3 1 0M16.2 12.1c.2.2.5.2.7 0" />
-      <path d="M17.2 13.2h1.3M17.2 13.9l1.2.4" />
+      <path d="M8 14v4M6 16h4" />
+      <circle cx="15.5" cy="17" r="0.8" fill="currentColor" stroke="none" />
+      <circle cx="18" cy="14.8" r="0.8" fill="currentColor" stroke="none" />
+      {/* Cat asleep along the top: low loaf body rising into the head. */}
+      <path d="M7.6 11c-.4-2.8 1.7-4.8 4.3-4.7 1.5.1 2.8.8 3.5 2" />
+      {/* Tail curling off the left end of the loaf. */}
+      <path d="M7.6 11c-.9.2-1.9-.2-2.1-1.1-.2-.8.4-1.5 1.2-1.5" />
+      {/* Head resting at the right end… */}
+      <circle cx="15.9" cy="8.6" r="2.2" />
+      {/* …with solid pointed ears — the unmistakably-feline tell. */}
+      <path d="M14.4 7 14 5l1.8.9Z" fill="currentColor" stroke="none" />
+      <path d="m17.2 6.9 1.5-1.4.2 2Z" fill="currentColor" stroke="none" />
+      {/* Closed eye and whiskers: fast asleep. */}
+      <path d="M15 8.8c.3.3.8.3 1.1 0" />
+      <path d="M18.4 9.4h1.2M18.3 10.1l1.1.4" />
     </svg>
   );
 }

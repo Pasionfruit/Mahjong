@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { dateKeyUTC } from '../../arcade/dailySeed';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
 import { CAPACITY, PALETTE, magicSortModule } from './engine';
@@ -58,32 +56,8 @@ export default function MagicSortGame() {
       <div className="arcade-card arcade-card-wide">
         <h1>🧪 Magic Sort</h1>
 
-        <div className="arcade-tabs">
-          <button
-            className={`arcade-tab${view === 'play' ? ' active' : ''}`}
-            onClick={() => setView('play')}
-          >
-            Play
-          </button>
-          <button
-            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
-            onClick={() => setView('leaderboard')}
-          >
-            🏆 Leaderboard
-          </button>
-        </div>
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Best (Fewest Moves)</h3>
-            <LeaderboardPanel gameId="magicsort" mode="endless" dateKey={dateKeyUTC()} ascending={true} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <div className="magicsort-hud">
               <span>Colors: {state.colors}</span>
@@ -133,14 +107,6 @@ export default function MagicSortGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>All-Time Best (Fewest Moves)</h3>
-                <LeaderboardPanel
-                  gameId="magicsort"
-                  mode="endless"
-                  dateKey={dateKeyUTC()}
-                  ascending={true}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
                     New puzzle

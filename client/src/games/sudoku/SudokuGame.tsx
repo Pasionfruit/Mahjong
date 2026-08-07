@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { dateKeyUTC } from '../../arcade/dailySeed';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
 import { CELLS, SIZE, boxOf, colOf, rowOf, sudokuModule } from './engine';
@@ -102,38 +100,8 @@ export default function SudokuGame() {
       <div className="arcade-card arcade-card-wide">
         <h1>🔢 Sudoku</h1>
 
-        <div className="arcade-tabs">
-          <button
-            className={`arcade-tab${view === 'play' ? ' active' : ''}`}
-            onClick={() => { setView('play'); void start('endless', { fresh: true }); }}
-          >
-            Play
-          </button>
-          <button
-            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
-            onClick={() => setView('leaderboard')}
-          >
-            🏆 Leaderboard
-          </button>
-        </div>
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Fastest (Endless)</h3>
-            <LeaderboardPanel
-              gameId="sudoku"
-              mode="endless"
-              dateKey={dateKeyUTC()}
-              ascending
-              formatScore={formatTime}
-            />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <div className="sudoku-status">
               <span>⏱ {formatTime(elapsedMs)}</span>
@@ -182,15 +150,6 @@ export default function SudokuGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>All-Time Fastest</h3>
-                <LeaderboardPanel
-                  gameId="sudoku"
-                  mode="endless"
-                  dateKey={dateKeyUTC()}
-                  ascending
-                  formatScore={formatTime}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
                     Play again

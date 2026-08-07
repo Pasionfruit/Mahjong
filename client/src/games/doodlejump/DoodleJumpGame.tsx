@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { ensureSignedIn } from '../../arcade/auth';
-import { dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import Countdown from '../../components/Countdown';
 import { useStore } from '../../store';
 import {
@@ -406,29 +404,8 @@ export default function DoodleJumpGame() {
           Bounce ever higher — never look down.
         </p>
 
-        <div className="arcade-tabs">
-          <button className={`arcade-tab${view === 'play' ? ' active' : ''}`} onClick={() => setView('play')}>
-            Play
-          </button>
-          <button
-            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
-            onClick={() => setView('leaderboard')}
-          >
-            🏆 Leaderboard
-          </button>
-        </div>
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Highest</h3>
-            <LeaderboardPanel gameId={GAME_ID} mode="endless" dateKey={dateKeyUTC()} ascending={false} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <canvas
               ref={canvasRef}
@@ -457,14 +434,6 @@ export default function DoodleJumpGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>All-Time Highest</h3>
-                <LeaderboardPanel
-                  gameId={GAME_ID}
-                  mode="endless"
-                  dateKey={dateKeyUTC()}
-                  ascending={false}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   <button className="btn btn-primary" onClick={restart}>
                     Play again

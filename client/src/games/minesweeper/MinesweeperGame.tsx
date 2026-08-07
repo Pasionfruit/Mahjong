@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
-import { dateKeyUTC } from '../../arcade/dailySeed';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import type { SoloMode } from '../../arcade/useSoloGame';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
@@ -73,12 +71,6 @@ export default function MinesweeperGame() {
           >
             Endless
           </button>
-          <button
-            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
-            onClick={() => setView('leaderboard')}
-          >
-            🏆 Leaderboard
-          </button>
         </div>
 
         {view === 'play' && mode === 'endless' && (
@@ -96,25 +88,7 @@ export default function MinesweeperGame() {
           </label>
         )}
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Fastest (Endless)</h3>
-            <LeaderboardPanel
-              gameId="minesweeper"
-              mode="endless"
-              dateKey={dateKeyUTC()}
-              ascending
-              formatScore={(s) => (s >= 999_999_999 ? 'DNF' : formatTime(s))}
-            />
-            <h3>🔥 Longest Daily Streaks</h3>
-            <LeaderboardPanel gameId="minesweeper" mode="streak" dateKey={dateKeyUTC()} ascending={false} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <div className="minesweeper-status">
               <span>💣 {state.mineCount - flaggedCount}</span>
@@ -188,15 +162,6 @@ export default function MinesweeperGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>{mode === 'daily' ? "Today's Fastest" : 'All-Time Fastest'}</h3>
-                <LeaderboardPanel
-                  gameId="minesweeper"
-                  mode={mode}
-                  dateKey={dateKeyUTC()}
-                  ascending
-                  formatScore={(s) => (s >= 999_999_999 ? 'DNF' : formatTime(s))}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
                     <p className="hint">{dailyDoneToday ? "Come back tomorrow for a new board!" : ''}</p>

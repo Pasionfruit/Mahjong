@@ -1031,6 +1031,31 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
   margin: 10px 0;
 }
 
+/* ── leaderboards card (all games' boards live here, not in the games) ── */
+
+.profile-board-select {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-strong);
+  color: var(--paper);
+  cursor: pointer;
+  margin-bottom: 6px;
+}
+
+.profile-board {
+  margin-top: 12px;
+}
+
+.profile-board-title {
+  margin: 0 0 4px;
+  font-size: 13.5px;
+  opacity: 0.85;
+}
+
 .mode-toggle {
   display: flex;
   gap: 10px;
@@ -1257,6 +1282,44 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 0.04em;
+}
+
+/* Finished-run panels pop over the board as a centered modal card, so
+   "Play again" is right there — no scrolling down past the game. The
+   giant first box-shadow doubles as the backdrop scrim. */
+.brickbreaker-result,
+.crossword-result,
+.dino-result,
+.doodlejump-result,
+.flappy-result,
+.magicsort-result,
+.minesweeper-result,
+.paintbynumber-result,
+.parkingjam-result,
+.peggle-result,
+.pogocat-result,
+.sandsort-result,
+.sudoku-result,
+.twenty48-result,
+.untangle-result,
+.wordguess-result,
+.wordsearch-result {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 56;
+  width: min(92vw, 440px);
+  max-height: 85dvh;
+  overflow: auto;
+  background: var(--felt-dark);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px 24px;
+  text-align: center;
+  box-shadow:
+    0 0 0 100vmax rgba(0, 0, 0, 0.55),
+    0 18px 60px rgba(0, 0, 0, 0.5);
 }
 
 .arcade-badge-synced { color: #6bd68a; }
@@ -1803,7 +1866,10 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
 
 /* ── leaderboard (top-left) ────────────────────────────────────────────── */
 
-.leaderboard {
+/* Scoped to the mahjong table: the arcade leaderboard list (LeaderboardPanel)
+   reuses the bare .leaderboard class and must NOT inherit this absolute
+   corner placement. */
+.game-table .leaderboard {
   position: absolute;
   top: 12px;
   left: 14px;
@@ -5527,9 +5593,10 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  /* Above game boards and HUDs, below the error toast (200) so a failure
-     can still surface over it. */
-  z-index: 90;
+  /* Above game boards and HUDs, but BELOW the back button (60) and the
+     phone nav (69/70) — a misclicked game must be escapable mid-count —
+     and below the error toast (200). */
+  z-index: 55;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(2px);
   /* Purely a visual gate — the game also refuses input underneath, but

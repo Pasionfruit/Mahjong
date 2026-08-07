@@ -4,7 +4,6 @@ import { dailySeed, dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useStore } from '../../store';
 import {
   BALLS_PER_GAME,
@@ -279,24 +278,9 @@ export default function PeggleGame() {
           >
             Endless
           </button>
-          <button className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`} onClick={() => setView('leaderboard')}>
-            🏆 Leaderboard
-          </button>
         </div>
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Best (Endless)</h3>
-            <LeaderboardPanel gameId={GAME_ID} mode="endless" dateKey={dateKeyUTC()} ascending={false} />
-            <h3>🔥 Longest Daily Streaks</h3>
-            <LeaderboardPanel gameId={GAME_ID} mode="streak" dateKey={dateKeyUTC()} ascending={false} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <div className="peggle-hud">
               {mode === 'endless' && <span className="peggle-hud-round">Map {round}</span>}
@@ -350,14 +334,6 @@ export default function PeggleGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>{mode === 'daily' ? "Today's Best" : 'All-Time Best'}</h3>
-                <LeaderboardPanel
-                  gameId={GAME_ID}
-                  mode={mode}
-                  dateKey={dateKeyUTC()}
-                  ascending={false}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
                     <p className="hint">Come back tomorrow for a new map!</p>

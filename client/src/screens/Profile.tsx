@@ -6,7 +6,9 @@ import { EMPTY_STREAK, nextStreakState, xpForResult, xpProgress, type StreakStat
 import { getUnsyncedResults } from '../arcade/storage/db';
 import { flushOutbox, getAllResults } from '../arcade/storage/outbox';
 import { isArcadeConfigured } from '../arcade/supabase';
+import { LEADERBOARDS } from '../arcade/leaderboardCatalog';
 import EmailAuthForm from '../arcade/ui/EmailAuthForm';
+import LeaderboardPanel from '../arcade/ui/LeaderboardPanel';
 import type { StoredResult } from '../arcade/types';
 import { GAMES, dailyGames } from '../games/catalog';
 import { IconMoon, IconSun, IconUser } from '../components/icons';
@@ -83,6 +85,8 @@ export default function Profile() {
   /** gameId → current streak, from the server (my_streaks RPC). Empty when
    *  signed out/unconfigured, in which case the local fold is used. */
   const [serverStreaks, setServerStreaks] = useState<Map<string, number>>(new Map());
+  /** Which game's leaderboards are open in the Leaderboards card. */
+  const [boardGame, setBoardGame] = useState(LEADERBOARDS[0]!.gameId);
 
   const refresh = useCallback(async () => {
     const [results, unsynced] = await Promise.all([getAllResults(), getUnsyncedResults()]);
@@ -260,6 +264,35 @@ export default function Profile() {
       {data && data.totalPlays === 0 && (
         <section className="profile-card">
           <p className="hint">No finished games yet — the Zen and Daily tabs are waiting.</p>
+        </section>
+      )}
+
+      {configured && (
+        <section className="profile-card">
+          <h3 className="profile-heading">Leaderboards</h3>
+          <select
+            className="profile-board-select"
+            value={boardGame}
+            onChange={(e) => setBoardGame(e.target.value)}
+          >
+            {LEADERBOARDS.map((g) => (
+              <option key={g.gameId} value={g.gameId}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+          {LEADERBOARDS.find((g) => g.gameId === boardGame)?.boards.map((b) => (
+            <div key={b.mode} className="profile-board">
+              <h4 className="profile-board-title">{b.label}</h4>
+              <LeaderboardPanel
+                gameId={boardGame}
+                mode={b.mode}
+                dateKey={dateKeyUTC()}
+                ascending={b.ascending}
+                formatScore={b.formatScore}
+              />
+            </div>
+          ))}
         </section>
       )}
 

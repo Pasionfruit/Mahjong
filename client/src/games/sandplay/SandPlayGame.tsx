@@ -4,7 +4,6 @@ import { dailySeed, dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import Countdown from '../../components/Countdown';
 import { useStore } from '../../store';
 import {
@@ -81,20 +80,25 @@ function redraw(
     ctx.fill();
   }
 
-  // ── the sand itself
+  // ── the sand itself: round grains, one dot per cell
+  const R = CELL / 2;
   for (let row = 0; row < SAND_ROWS; row++) {
     for (let col = 0; col < SAND_COLS; col++) {
       const color = grid[row * SAND_COLS + col];
       if (!color) continue;
       ctx.fillStyle = color;
-      ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
+      ctx.beginPath();
+      ctx.arc(col * CELL + R, row * CELL + R, R, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
   // ── grains in flight between the mouth and the bucket
   for (const g of falling) {
     ctx.fillStyle = g.color;
-    ctx.fillRect(g.x * CELL, g.y * CELL, CELL, CELL);
+    ctx.beginPath();
+    ctx.arc(g.x * CELL + R, g.y * CELL + R, R, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // ── the bucket
@@ -315,24 +319,9 @@ export default function SandPlayGame() {
           <button className={`arcade-tab${view === 'play' && mode === 'endless' ? ' active' : ''}`} onClick={() => startMode('endless')}>
             Endless
           </button>
-          <button className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`} onClick={() => setView('leaderboard')}>
-            🏆 Leaderboard
-          </button>
         </div>
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Fastest (Endless)</h3>
-            <LeaderboardPanel gameId={GAME_ID} mode="endless" dateKey={dateKeyUTC()} ascending formatScore={formatTime} />
-            <h3>🔥 Longest Daily Streaks</h3>
-            <LeaderboardPanel gameId={GAME_ID} mode="streak" dateKey={dateKeyUTC()} ascending={false} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <p className="sandsort-timer">
               {mode === 'endless' ? `Level ${endlessLevel} · ` : ''}⏱ {formatTime(elapsedMs)}
@@ -372,15 +361,6 @@ export default function SandPlayGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>{mode === 'daily' ? "Today's Fastest" : 'All-Time Fastest'}</h3>
-                <LeaderboardPanel
-                  gameId={GAME_ID}
-                  mode={mode}
-                  dateKey={dateKeyUTC()}
-                  ascending
-                  formatScore={formatTime}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
                     <p className="hint">Come back tomorrow for a new level!</p>

@@ -1,7 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type TouchEvent } from 'react';
-import { dateKeyUTC } from '../../arcade/dailySeed';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
 import { SIZE, twenty48Module, type Direction, type Tile } from './engine';
@@ -114,32 +112,8 @@ export default function Twenty48Game() {
       <div className="arcade-card arcade-card-wide">
         <h1>🔢 2048</h1>
 
-        <div className="arcade-tabs">
-          <button
-            className={`arcade-tab${view === 'play' ? ' active' : ''}`}
-            onClick={() => { setView('play'); void start('endless', { fresh: true }); }}
-          >
-            Play
-          </button>
-          <button
-            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
-            onClick={() => setView('leaderboard')}
-          >
-            🏆 Leaderboard
-          </button>
-        </div>
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Best (Endless)</h3>
-            <LeaderboardPanel gameId="twenty48" mode="endless" dateKey={dateKeyUTC()} ascending={false} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <p className="twenty48-score">Score: {state.score}</p>
             <p className="hint twenty48-hint">Use arrow keys (or WASD) — or swipe on mobile.</p>
@@ -187,14 +161,6 @@ export default function Twenty48Game() {
                     Force sync
                   </button>
                 </p>
-                <h3>All-Time Best</h3>
-                <LeaderboardPanel
-                  gameId="twenty48"
-                  mode="endless"
-                  dateKey={dateKeyUTC()}
-                  ascending={false}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   <button className="btn btn-primary" onClick={() => void start('endless', { fresh: true })}>
                     Play again

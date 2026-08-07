@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { dateKeyUTC } from '../../arcade/dailySeed';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import type { SoloMode } from '../../arcade/useSoloGame';
 import { useSoloGame } from '../../arcade/useSoloGame';
 import { useStore } from '../../store';
@@ -239,12 +237,6 @@ export default function CrosswordGame() {
           >
             Endless
           </button>
-          <button
-            className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`}
-            onClick={() => setView('leaderboard')}
-          >
-            🏆 Leaderboard
-          </button>
         </div>
 
         {view === 'play' && mode === 'endless' && (
@@ -261,25 +253,7 @@ export default function CrosswordGame() {
           </div>
         )}
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Fastest (Endless)</h3>
-            <LeaderboardPanel
-              gameId="crossword"
-              mode="endless"
-              dateKey={dateKeyUTC()}
-              ascending
-              formatScore={formatTime}
-            />
-            <h3>🔥 Longest Daily Streaks</h3>
-            <LeaderboardPanel gameId="crossword" mode="streak" dateKey={dateKeyUTC()} ascending={false} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <div className="crossword-status">
               <span>Mini #{state.puzzle + 1} of {PUZZLES.length}</span>
@@ -358,15 +332,6 @@ export default function CrosswordGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>{mode === 'daily' ? "Today's Fastest" : 'All-Time Fastest'}</h3>
-                <LeaderboardPanel
-                  gameId="crossword"
-                  mode={mode}
-                  dateKey={dateKeyUTC()}
-                  ascending
-                  formatScore={formatTime}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   {mode === 'daily' ? (
                     <p className="hint">{dailyDoneToday ? 'Come back tomorrow for a new mini!' : ''}</p>

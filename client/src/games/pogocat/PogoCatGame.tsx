@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { mulberry32 } from '@shared/rng';
 import { ensureSignedIn } from '../../arcade/auth';
-import { dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
 import AuthWidget from '../../arcade/ui/AuthWidget';
-import LeaderboardPanel from '../../arcade/ui/LeaderboardPanel';
 import Countdown from '../../components/Countdown';
 import { useStore } from '../../store';
 import {
@@ -439,26 +437,8 @@ export default function PogoCatGame() {
           Time each leap, land every platform, snag the fish.
         </p>
 
-        <div className="arcade-tabs">
-          <button className={`arcade-tab${view === 'play' ? ' active' : ''}`} onClick={() => setView('play')}>
-            Play
-          </button>
-          <button className={`arcade-tab${view === 'leaderboard' ? ' active' : ''}`} onClick={() => setView('leaderboard')}>
-            🏆 Leaderboard
-          </button>
-        </div>
 
-        {view === 'leaderboard' ? (
-          <div className="arcade-leaderboard-view">
-            <h3>All-Time Best</h3>
-            <LeaderboardPanel gameId={GAME_ID} mode="endless" dateKey={dateKeyUTC()} ascending={false} />
-            <div className="arcade-actions">
-              <button className="btn" onClick={() => setView('play')}>
-                Back to game
-              </button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <p className="pogocat-status">
               <span>Score {hud.score}</span>
@@ -493,14 +473,6 @@ export default function PogoCatGame() {
                     Force sync
                   </button>
                 </p>
-                <h3>All-Time Best</h3>
-                <LeaderboardPanel
-                  gameId={GAME_ID}
-                  mode="endless"
-                  dateKey={dateKeyUTC()}
-                  ascending={false}
-                  refreshKey={sync === 'synced' ? 1 : 0}
-                />
                 <div className="arcade-actions">
                   <button className="btn btn-primary" onClick={() => setRunId((n) => n + 1)}>
                     Play again

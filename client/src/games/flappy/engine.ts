@@ -37,7 +37,7 @@ export const MAX_SPEED = 190;
 const BASE_GAP = 158;
 export const MIN_GAP = 120;
 
-export type Phase = 'ready' | 'playing' | 'dead';
+export type Phase = 'ready' | 'playing' | 'dying' | 'dead';
 
 export interface Pipe {
   /** Left edge, logical px. */
@@ -109,6 +109,18 @@ export function step(state: RunState, input: StepInput, rand: () => number): Run
 
   const next: RunState = { ...state, pipes: state.pipes.map((p) => ({ ...p })), time: state.time + DT };
 
+  if (next.phase === 'dying') {
+    // Hit a pipe: the world freezes but the bird keeps falling — input is
+    // ignored and the run only truly ends when it thuds into the ground.
+    next.birdVy = Math.min(next.birdVy + GRAVITY * DT, MAX_FALL);
+    next.birdY += next.birdVy * DT;
+    if (hitsGround(next.birdY)) {
+      next.birdY = GROUND_Y - BIRD_R;
+      next.phase = 'dead';
+    }
+    return next;
+  }
+
   if (next.phase === 'ready') {
     if (!input.flap) return next; // idle: bird bobs (drawn from time), no gravity yet
     next.phase = 'playing';
@@ -151,7 +163,7 @@ export function step(state: RunState, input: StepInput, rand: () => number): Run
   }
   for (const p of next.pipes) {
     if (collidesWithPipe(next.birdY, p)) {
-      next.phase = 'dead';
+      next.phase = 'dying';
       return next;
     }
   }
