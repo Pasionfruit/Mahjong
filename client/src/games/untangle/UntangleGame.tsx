@@ -83,6 +83,16 @@ export default function UntangleGame() {
     return { crossed, count };
   }, [positions, level]);
 
+  /** Paint order = stacking order (SVG). Ropes tied to the pin being
+   *  dragged render last, so the rope you're moving always reads as the
+   *  one lying on top of the pile. */
+  const edgeOrder = useMemo(() => {
+    const order = level.edges.map((_, i) => i);
+    if (dragIdx === null) return order;
+    const touches = (i: number) => level.edges[i]!.a === dragIdx || level.edges[i]!.b === dragIdx;
+    return order.sort((x, y) => Number(touches(x)) - Number(touches(y)));
+  }, [level, dragIdx]);
+
   function applyLevel(next: UntangleLevel) {
     setLevel(next);
     setPositions(next.nodes);
@@ -207,20 +217,42 @@ export default function UntangleGame() {
 
             <div className="untangle-board-wrap">
               <svg ref={svgRef} className="untangle-board" viewBox="0 0 100 100">
-                {level.edges.map((e, i) => {
+                {edgeOrder.map((i) => {
+                  const e = level.edges[i]!;
                   const a = positions[e.a]!;
                   const b = positions[e.b]!;
+                  const x1 = a.x * 100;
+                  const y1 = a.y * 100;
+                  const x2 = b.x * 100;
+                  const y2 = b.y * 100;
+                  // Perpendicular offset for the highlight sheen — a thin
+                  // bright line riding just off-center makes the rope read
+                  // as a rounded cord instead of a flat stroke.
+                  const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+                  const ox = (-(y2 - y1) / len) * 0.38;
+                  const oy = ((x2 - x1) / len) * 0.38;
+                  const active =
+                    dragIdx !== null && (e.a === dragIdx || e.b === dragIdx);
                   return (
-                    <line
+                    <g
                       key={i}
-                      x1={a.x * 100}
-                      y1={a.y * 100}
-                      x2={b.x * 100}
-                      y2={b.y * 100}
                       className={`untangle-rope ${
                         crossings.crossed.has(i) ? 'untangle-rope-crossed' : 'untangle-rope-clear'
-                      }`}
-                    />
+                      }${active ? ' untangle-rope-active' : ''}`}
+                    >
+                      {/* Dark casing: at a crossing, the top rope's casing
+                          visibly severs the rope beneath — the over/under
+                          cue. Core and sheen stack inside it. */}
+                      <line className="untangle-rope-casing" x1={x1} y1={y1} x2={x2} y2={y2} />
+                      <line className="untangle-rope-core" x1={x1} y1={y1} x2={x2} y2={y2} />
+                      <line
+                        className="untangle-rope-sheen"
+                        x1={x1 + ox}
+                        y1={y1 + oy}
+                        x2={x2 + ox}
+                        y2={y2 + oy}
+                      />
+                    </g>
                   );
                 })}
                 {positions.map((pt, i) => (

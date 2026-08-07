@@ -29,18 +29,49 @@
   -webkit-user-select: none;
 }
 
-.untangle-rope {
-  stroke-width: 1.1;
+/* Each rope is three stacked strokes: a dark casing, a solid colored core,
+   and an off-center sheen. Because SVG paints in document order, the top
+   rope's casing visibly cuts the rope underneath at every crossing — you
+   can always tell which one is lying on top. */
+
+.untangle-rope-casing {
+  stroke: #0c1219;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.untangle-rope-core {
+  stroke-width: 1.5;
   stroke-linecap: round;
   transition: stroke 0.15s ease;
 }
 
-.untangle-rope-clear {
-  stroke: rgba(107, 214, 138, 0.75);
+.untangle-rope-sheen {
+  stroke: rgba(255, 255, 255, 0.32);
+  stroke-width: 0.42;
+  stroke-linecap: round;
 }
 
-.untangle-rope-crossed {
-  stroke: rgba(230, 106, 100, 0.85);
+.untangle-rope-clear .untangle-rope-core {
+  stroke: #45b56d;
+}
+
+.untangle-rope-crossed .untangle-rope-core {
+  stroke: #e05c55;
+}
+
+/* The rope being dragged: brighter core, slightly fatter — it also paints
+   last, so it always sits on top of the pile. */
+.untangle-rope-active .untangle-rope-core {
+  stroke-width: 1.7;
+}
+
+.untangle-rope-active.untangle-rope-clear .untangle-rope-core {
+  stroke: #5fd68a;
+}
+
+.untangle-rope-active.untangle-rope-crossed .untangle-rope-core {
+  stroke: #f0736c;
 }
 
 .untangle-pin {
