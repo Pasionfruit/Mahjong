@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { play } from '../../audio';
 import { ensureSignedIn } from '../../arcade/auth';
 import { dailySeed, dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
@@ -269,6 +270,7 @@ export default function SandPlayGame() {
   }
 
   async function finishLevel() {
+    play('win');
     const elapsed = Date.now() - startTimeRef.current;
     setSync('saving');
     const row = await recordResult({
@@ -342,7 +344,10 @@ export default function SandPlayGame() {
                   key={c}
                   className={`sandsort-bucket${activeColor === c ? ' active' : ''}`}
                   style={{ '--bucket-color': c } as CSSProperties}
-                  onClick={() => setActiveColor(c)}
+                  onClick={() => {
+                    play('bucket');
+                    setActiveColor(c);
+                  }}
                   disabled={cleared || !started}
                 >
                   <span className="sandsort-bucket-swatch" style={{ background: c }} />

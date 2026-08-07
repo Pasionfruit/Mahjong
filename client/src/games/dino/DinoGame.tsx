@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { play } from '../../audio';
 import { ensureSignedIn } from '../../arcade/auth';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
@@ -240,6 +241,7 @@ export default function DinoGame() {
         jumpRef.current = false;
         const next = step(prev, { jump, duck: duckRef.current }, Math.random);
         stateRef.current = next;
+        if (Math.floor(next.score / 100) > Math.floor(prev.score / 100)) play('point');
         if (next.phase === 'dead') {
           flashUntilRef.current = now + FLASH_MS;
           onDeath(next);
@@ -259,7 +261,10 @@ export default function DinoGame() {
       if (e.code === 'Space' || e.key === 'ArrowUp') {
         e.preventDefault();
         if (!startedRef.current) return;
-        if (stateRef.current.phase !== 'dead') jumpRef.current = true;
+        if (stateRef.current.phase !== 'dead') {
+          jumpRef.current = true;
+          play('jump');
+        }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
         if (startedRef.current) duckRef.current = true;
@@ -283,7 +288,10 @@ export default function DinoGame() {
     const rect = e.currentTarget.getBoundingClientRect();
     const frac = (e.clientY - rect.top) / rect.height;
     if (frac > 0.72) duckRef.current = true;
-    else jumpRef.current = true;
+    else {
+      jumpRef.current = true;
+      play('jump');
+    }
   }
 
   function onPointerUp() {
@@ -298,6 +306,7 @@ export default function DinoGame() {
   function onDeath(s: RunState) {
     if (recordedRef.current) return;
     recordedRef.current = true;
+    play('lose');
     deathTimerRef.current = window.setTimeout(() => {
       deathTimerRef.current = null;
       setFinalScore(s.score);

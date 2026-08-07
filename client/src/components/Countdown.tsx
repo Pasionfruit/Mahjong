@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { play } from '../audio';
 
 /**
  * A full-screen "3 … 2 … 1 … GO!" countdown overlay, shown before a round
@@ -32,6 +33,12 @@ export default function Countdown({
   useEffect(() => {
     onDoneRef.current = onDone;
   }, [onDone]);
+
+  // Each displayed tick gets its blip; "GO!" gets the start chirp.
+  useEffect(() => {
+    if (!waitFor) return;
+    play(n === 0 ? 'countdownGo' : 'countdownTick');
+  }, [n, waitFor]);
 
   useEffect(() => {
     if (!waitFor) return; // still settling — hold at 3

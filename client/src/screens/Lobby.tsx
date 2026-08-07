@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BOT_DIFFICULTIES } from '@shared/settings';
 import { addBot, leaveParty, removeBot, startGame } from '../socket';
+import { play } from '../audio';
 import { IconBot, IconClose, IconTrophy } from '../components/icons';
 import { useStore } from '../store';
 import { gameById } from '../games/catalog';
@@ -34,6 +35,7 @@ export default function Lobby() {
   const isWaiting = lobby.yourSeat < 0;
 
   async function handleStart() {
+    play('start');
     const r = await startGame();
     if (!r.ok) setError(r.error);
   }

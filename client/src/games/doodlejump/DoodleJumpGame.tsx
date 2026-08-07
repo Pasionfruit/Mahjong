@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { play } from '../../audio';
 import { ensureSignedIn } from '../../arcade/auth';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
@@ -339,6 +340,7 @@ export default function DoodleJumpGame() {
   function onDeath(s: DoodleState) {
     if (recordedRef.current) return;
     recordedRef.current = true;
+    play('lose');
     const meters = metersFromHeight(s.maxHeight);
     deathTimerRef.current = window.setTimeout(() => {
       deathTimerRef.current = null;

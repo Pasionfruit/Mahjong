@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { play } from '../../audio';
 import { ensureSignedIn } from '../../arcade/auth';
 import { dailySeed, dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
@@ -111,6 +112,7 @@ export default function UntangleGame() {
   }
 
   async function finishLevel(elapsed: number) {
+    play('win');
     setSync('saving');
     const row = await recordResult({
       gameId: GAME_ID,

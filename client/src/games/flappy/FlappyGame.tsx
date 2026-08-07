@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { play } from '../../audio';
 import { ensureSignedIn } from '../../arcade/auth';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
@@ -234,6 +235,7 @@ export default function FlappyGame() {
         flapRef.current = false;
         const next = step(prev, { flap }, Math.random);
         stateRef.current = next;
+        if (next.score > prev.score) play('point');
         // The run is over the moment the bird leaves 'playing' — via 'dying'
         // (pipe hit, still tumbling to the ground) or straight to 'dead'
         // (ground hit). The tumble keeps animating while the panel waits.
@@ -257,7 +259,10 @@ export default function FlappyGame() {
         e.preventDefault();
         if (!startedRef.current) return;
         const ph = stateRef.current.phase;
-        if (ph === 'ready' || ph === 'playing') flapRef.current = true;
+        if (ph === 'ready' || ph === 'playing') {
+          flapRef.current = true;
+          play('flap');
+        }
       }
     }
     window.addEventListener('keydown', onKey);
@@ -268,7 +273,10 @@ export default function FlappyGame() {
     e.preventDefault();
     if (!startedRef.current) return;
     const ph = stateRef.current.phase;
-    if (ph === 'ready' || ph === 'playing') flapRef.current = true;
+    if (ph === 'ready' || ph === 'playing') {
+      flapRef.current = true;
+      play('flap');
+    }
   }
 
   function beginPlay() {
@@ -279,6 +287,7 @@ export default function FlappyGame() {
   function onDeath(s: RunState) {
     if (recordedRef.current) return;
     recordedRef.current = true;
+    play('lose');
     deathTimerRef.current = window.setTimeout(() => {
       deathTimerRef.current = null;
       setFinalScore(s.score);

@@ -4,6 +4,8 @@ import { registerSW } from 'virtual:pwa-register';
 import '@fontsource-variable/inter';
 import App from './App';
 import './socket';
+// Side effects: app-wide click/hover sounds + background music unlock.
+import './audio';
 import './styles/app.css';
 
 // Install/refresh the service worker; autoUpdate silently swaps in new builds.

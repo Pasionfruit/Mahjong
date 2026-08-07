@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { GameId } from '@shared/games';
 import { createParty, joinParty } from '../socket';
 import { loadNickname } from '../session';
+import { play } from '../audio';
 import { useStore } from '../store';
 import { CATEGORY_LABELS, CATEGORY_ORDER, GAMES, dailyGames, type GameEntry } from '../games/catalog';
 import { useDailyProgress } from '../arcade/useDailyProgress';
@@ -57,6 +58,7 @@ export default function Home() {
     }
     if (game.local) {
       // Device-local game: no nickname, no room — straight to the table.
+      play('start');
       useStore.getState().setLocalGame(game.id);
       return;
     }

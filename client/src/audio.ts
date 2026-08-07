@@ -1,10 +1,13 @@
 // Sound effects with two layers:
-//  1. Custom files: drop mp3s into client/public/sounds/ (see the README there)
-//     named after each SoundName — they are used automatically when present.
+//  1. Custom files: drop mp3s (or wavs) into client/public/sounds/ (see the
+//     README there) named after each SoundName — they are used automatically
+//     when present. The repo ships synthesized placeholder .wav files for
+//     every name; replacing one is just dropping a real .mp3 next to it.
 //  2. Fallback: small WebAudio-synthesized tones, so the game has sound
-//     out of the box with no assets.
+//     even with no assets at all.
 
 export type SoundName =
+  // mahjong / rooms
   | 'tick'
   | 'draw'
   | 'discard'
@@ -14,12 +17,41 @@ export type SoundName =
   | 'win'
   | 'lose'
   | 'yourTurn'
+  // bomberman
   | 'bomb'
   | 'boom'
   | 'powerup'
   | 'hurt'
   | 'eliminated'
-  | 'gameOver';
+  | 'gameOver'
+  // app-wide UI
+  | 'hover'
+  | 'click'
+  | 'start'
+  | 'countdownTick'
+  | 'countdownGo'
+  // shared game actions (each arcade game picks from this kit)
+  | 'point'
+  | 'flap'
+  | 'jump'
+  | 'land'
+  | 'spring'
+  | 'bounce'
+  | 'brick'
+  | 'peg'
+  | 'merge'
+  | 'slide'
+  | 'place'
+  | 'reveal'
+  | 'flag'
+  | 'drain'
+  | 'bucket'
+  | 'pour'
+  | 'pop'
+  | 'error'
+  | 'car'
+  | 'letter'
+  | 'combo';
 
 export const SOUND_NAMES: SoundName[] = [
   'tick',
@@ -37,6 +69,32 @@ export const SOUND_NAMES: SoundName[] = [
   'hurt',
   'eliminated',
   'gameOver',
+  'hover',
+  'click',
+  'start',
+  'countdownTick',
+  'countdownGo',
+  'point',
+  'flap',
+  'jump',
+  'land',
+  'spring',
+  'bounce',
+  'brick',
+  'peg',
+  'merge',
+  'slide',
+  'place',
+  'reveal',
+  'flag',
+  'drain',
+  'bucket',
+  'pour',
+  'pop',
+  'error',
+  'car',
+  'letter',
+  'combo',
 ];
 
 const STORAGE_KEY = 'mahjong.audio';
@@ -66,18 +124,39 @@ export function getAudioState(): AudioState {
 export function setAudio(patch: Partial<AudioState>): void {
   state = { ...state, ...patch };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  // Volume slider / mute apply to the running background music immediately.
+  syncMusic();
 }
 
 // ── custom sound files ──────────────────────────────────────────────────────
 
 const customSounds = new Map<SoundName, HTMLAudioElement>();
 
-for (const name of SOUND_NAMES) {
-  const el = new Audio(`/sounds/${name}.mp3`);
+/** mp3 first (a real replacement), then wav (the shipped placeholder). A
+ *  missing file 404s / never canplays — the next extension, then synth. */
+function loadCustom(name: SoundName, exts: string[]): void {
+  const [ext, ...rest] = exts;
+  if (!ext) return;
+  const el = new Audio(`/sounds/${name}.${ext}`);
   el.preload = 'auto';
   el.addEventListener('canplaythrough', () => customSounds.set(name, el), { once: true });
-  // a missing file (404 or SPA-fallback HTML) fires error/never canplays — synth is used
+  el.addEventListener('error', () => loadCustom(name, rest), { once: true });
 }
+
+for (const name of SOUND_NAMES) loadCustom(name, ['mp3', 'wav']);
+
+/** Per-sound loudness trim for file playback — UI blips should sit well
+ *  under the game sounds even though the files are normalized. */
+const FILE_GAIN: Partial<Record<SoundName, number>> = {
+  hover: 0.14,
+  click: 0.3,
+  letter: 0.25,
+  reveal: 0.3,
+  slide: 0.3,
+  tick: 0.35,
+  countdownTick: 0.45,
+  drain: 0.3,
+};
 
 // ── synthesized fallbacks ───────────────────────────────────────────────────
 
@@ -195,6 +274,68 @@ const SYNTH: Record<SoundName, () => void> = {
       { freq: 220, at: 0, dur: 0.22, type: 'triangle', gain: 0.18 },
       { freq: 147, at: 0.2, dur: 0.4, type: 'triangle', gain: 0.2 },
     ]),
+  // app-wide UI
+  hover: () => playNotes([{ freq: 900, at: 0, dur: 0.04, gain: 0.03 }]),
+  click: () => playNotes([{ freq: 620, at: 0, dur: 0.05, type: 'triangle', gain: 0.08 }]),
+  start: () =>
+    playNotes([
+      { freq: 392, at: 0, dur: 0.1, type: 'triangle' },
+      { freq: 523, at: 0.09, dur: 0.1, type: 'triangle' },
+      { freq: 659, at: 0.18, dur: 0.2, type: 'triangle' },
+    ]),
+  countdownTick: () => playNotes([{ freq: 880, at: 0, dur: 0.07, type: 'square', gain: 0.09 }]),
+  countdownGo: () =>
+    playNotes([
+      { freq: 784, at: 0, dur: 0.1, type: 'square', gain: 0.12 },
+      { freq: 1175, at: 0.09, dur: 0.24, type: 'square', gain: 0.12 },
+    ]),
+  // shared game-action kit
+  point: () =>
+    playNotes([
+      { freq: 988, at: 0, dur: 0.06, type: 'square', gain: 0.1 },
+      { freq: 1319, at: 0.05, dur: 0.1, type: 'square', gain: 0.1 },
+    ]),
+  flap: () => playNotes([{ freq: 560, at: 0, dur: 0.08, gain: 0.12 }]),
+  jump: () => playNotes([{ freq: 380, at: 0, dur: 0.12, type: 'square', gain: 0.1 }]),
+  land: () => playNotes([{ freq: 130, at: 0, dur: 0.07, type: 'triangle', gain: 0.14 }]),
+  spring: () => playNotes([{ freq: 330, at: 0, dur: 0.18, type: 'triangle', gain: 0.14 }]),
+  bounce: () => playNotes([{ freq: 320, at: 0, dur: 0.06, gain: 0.12 }]),
+  brick: () => playNotes([{ freq: 720, at: 0, dur: 0.05, type: 'square', gain: 0.1 }]),
+  peg: () => playNotes([{ freq: 1100, at: 0, dur: 0.06, gain: 0.11 }]),
+  merge: () =>
+    playNotes([
+      { freq: 440, at: 0, dur: 0.07, type: 'triangle', gain: 0.12 },
+      { freq: 660, at: 0.05, dur: 0.12, type: 'triangle', gain: 0.13 },
+    ]),
+  slide: () => playNotes([{ freq: 240, at: 0, dur: 0.05, type: 'triangle', gain: 0.06 }]),
+  place: () => playNotes([{ freq: 260, at: 0, dur: 0.06, type: 'triangle', gain: 0.13 }]),
+  reveal: () => playNotes([{ freq: 700, at: 0, dur: 0.04, gain: 0.07 }]),
+  flag: () =>
+    playNotes([
+      { freq: 520, at: 0, dur: 0.05, type: 'square', gain: 0.09 },
+      { freq: 780, at: 0.05, dur: 0.06, type: 'square', gain: 0.09 },
+    ]),
+  drain: () => playNotes([{ freq: 200, at: 0, dur: 0.12, type: 'triangle', gain: 0.06 }]),
+  bucket: () =>
+    playNotes([
+      { freq: 330, at: 0, dur: 0.07, type: 'triangle', gain: 0.13 },
+      { freq: 495, at: 0.06, dur: 0.09, type: 'triangle', gain: 0.12 },
+    ]),
+  pour: () => playNotes([{ freq: 520, at: 0, dur: 0.2, gain: 0.08 }]),
+  pop: () => playNotes([{ freq: 520, at: 0, dur: 0.05, gain: 0.14 }]),
+  error: () =>
+    playNotes([
+      { freq: 220, at: 0, dur: 0.09, type: 'square', gain: 0.1 },
+      { freq: 185, at: 0.1, dur: 0.12, type: 'square', gain: 0.1 },
+    ]),
+  car: () => playNotes([{ freq: 150, at: 0, dur: 0.16, type: 'sawtooth', gain: 0.08 }]),
+  letter: () => playNotes([{ freq: 760, at: 0, dur: 0.04, type: 'triangle', gain: 0.06 }]),
+  combo: () =>
+    playNotes([
+      { freq: 660, at: 0, dur: 0.1, type: 'square', gain: 0.1 },
+      { freq: 880, at: 0.07, dur: 0.1, type: 'square', gain: 0.1 },
+      { freq: 1175, at: 0.14, dur: 0.12, type: 'square', gain: 0.1 },
+    ]),
 };
 
 export function play(name: SoundName): void {
@@ -202,7 +343,7 @@ export function play(name: SoundName): void {
   const custom = customSounds.get(name);
   if (custom) {
     const el = custom.cloneNode() as HTMLAudioElement;
-    el.volume = state.volume;
+    el.volume = Math.min(1, state.volume * (FILE_GAIN[name] ?? 1));
     void el.play().catch(() => {});
     return;
   }
@@ -212,3 +353,59 @@ export function play(name: SoundName): void {
     /* audio unavailable (e.g. pre-gesture) — stay silent */
   }
 }
+
+// ── background music ───────────────────────────────────────────────────────
+// /sounds/music.mp3 (or the shipped placeholder music.wav) loops app-wide,
+// well under the effects, following the same volume/mute state. Browsers
+// block autoplay, so it actually starts on the first user gesture.
+
+const MUSIC_GAIN = 0.3;
+let musicEl: HTMLAudioElement | null = null;
+
+function syncMusic(): void {
+  if (!musicEl) {
+    musicEl = new Audio('/sounds/music.mp3');
+    musicEl.loop = true;
+    // fall back to the placeholder wav if no real track was dropped in
+    musicEl.addEventListener(
+      'error',
+      () => {
+        if (musicEl) {
+          musicEl.src = '/sounds/music.wav';
+          syncMusic();
+        }
+      },
+      { once: true },
+    );
+  }
+  musicEl.volume = Math.min(1, state.volume * MUSIC_GAIN);
+  if (state.muted || state.volume <= 0) musicEl.pause();
+  else if (musicEl.paused) void musicEl.play().catch(() => {});
+}
+
+// ── app-wide UI sounds ─────────────────────────────────────────────────────
+// One pair of delegated listeners covers every button in the app — no
+// per-component wiring. Hover only fires for mouse pointers (touch would
+// double-fire it right before the click).
+
+document.addEventListener(
+  'click',
+  (e) => {
+    if ((e.target as Element | null)?.closest?.('button')) play('click');
+    // The click that just happened is a user gesture — the moment music is
+    // finally allowed to start (and to resume after unmute).
+    syncMusic();
+  },
+  true,
+);
+
+document.addEventListener(
+  'pointerover',
+  (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const to = (e.target as Element | null)?.closest?.('button');
+    const from = (e.relatedTarget as Element | null)?.closest?.('button');
+    if (to && to !== from && !(to as HTMLButtonElement).disabled) play('hover');
+  },
+  true,
+);

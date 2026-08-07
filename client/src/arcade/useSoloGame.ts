@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { play } from '../audio';
 import { ensureSignedIn } from './auth';
 import { dailySeed, dateKeyUTC } from './dailySeed';
 import { EMPTY_STREAK, nextStreakState, type StreakState } from './stats';
@@ -138,6 +139,16 @@ export function useSoloGame<TState, TMove, TSettings>(
 
   const status: SoloStatus = state ? module.status(state) : 'playing';
   const result: SoloResult | null = state ? module.result(state) : null;
+
+  // Fanfare on the playing → won/lost transition only — a finished game
+  // restored from a save (e.g. reopening today's daily) stays silent.
+  const prevStatusRef = useRef<SoloStatus>('playing');
+  useEffect(() => {
+    if (prevStatusRef.current === 'playing' && status !== 'playing') {
+      play(status === 'won' ? 'win' : 'lose');
+    }
+    prevStatusRef.current = status;
+  }, [status]);
 
   return {
     mode,

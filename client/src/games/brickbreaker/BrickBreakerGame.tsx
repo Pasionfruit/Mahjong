@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { mulberry32 } from '@shared/rng';
+import { play } from '../../audio';
 import { ensureSignedIn } from '../../arcade/auth';
 import { getUnsyncedResults } from '../../arcade/storage/db';
 import { flushOutbox, recordResult, startAutoSync } from '../../arcade/storage/outbox';
@@ -82,6 +83,7 @@ export default function BrickBreakerGame() {
   }
 
   async function finishRun(s: BrickBreakerState) {
+    play('lose');
     setSync('saving');
     const row = await recordResult({
       gameId: GAME_ID,

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { play } from '../../audio';
 import { ensureSignedIn } from '../../arcade/auth';
 import { dailySeed, dateKeyUTC } from '../../arcade/dailySeed';
 import { getUnsyncedResults } from '../../arcade/storage/db';
@@ -170,6 +171,7 @@ export default function PeggleGame() {
   }, []);
 
   async function finishGame(g: GameState) {
+    play(g.orangeRemaining === 0 ? 'win' : 'lose');
     setSync('saving');
     const row = await recordResult({
       gameId: GAME_ID,
