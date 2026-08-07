@@ -46,7 +46,6 @@ export default function BrickBreakerGame() {
   const viewRef = useRef<View>('play');
 
   const [view, setView] = useState<View>('play');
-  const [signedIn, setSignedIn] = useState(false);
   const [sync, setSync] = useState<SyncBadge>('idle');
   const [over, setOver] = useState(false);
   const [hud, setHud] = useState({ score: 0, level: 1, lives: START_LIVES });
@@ -57,7 +56,7 @@ export default function BrickBreakerGame() {
   const startedRef = useRef(false);
 
   useEffect(() => {
-    void ensureSignedIn().then((u) => setSignedIn(!!u));
+    void ensureSignedIn();
     return startAutoSync();
   }, []);
 
@@ -235,7 +234,7 @@ export default function BrickBreakerGame() {
       <div className="arcade-card arcade-card-wide">
         <h1>🧱 Brick Breaker</h1>
         <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'} · Smash every brick — 3 lives, endless levels.
+          Smash every brick — 3 lives, endless levels.
         </p>
 
         <div className="arcade-tabs">

@@ -198,11 +198,10 @@ export default function FlappyGame() {
   const startedRef = useRef(false);
   const [dead, setDead] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
-  const [signedIn, setSignedIn] = useState(false);
   const [sync, setSync] = useState<SyncBadge>('idle');
 
   useEffect(() => {
-    void ensureSignedIn().then((u) => setSignedIn(!!u));
+    void ensureSignedIn();
     return startAutoSync();
   }, []);
 
@@ -332,7 +331,7 @@ export default function FlappyGame() {
       <div className="arcade-card arcade-card-wide">
         <h1>🐤 Flappy Bird</h1>
         <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'} · Thread the pipes — every pair scores a point.
+          Thread the pipes — every pair scores a point.
         </p>
 
         <div className="arcade-tabs">

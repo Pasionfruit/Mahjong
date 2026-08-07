@@ -163,11 +163,10 @@ export default function PeggleGame() {
 
   const [hud, setHud] = useState({ ballsLeft: BALLS_PER_GAME, orangeLeft: DAILY_ORANGE_COUNT, score: 0 });
   const [status, setStatus] = useState<Status>('aiming');
-  const [signedIn, setSignedIn] = useState(false);
   const [sync, setSync] = useState<SyncBadge>('idle');
 
   useEffect(() => {
-    void ensureSignedIn().then((u) => setSignedIn(!!u));
+    void ensureSignedIn();
     return startAutoSync();
   }, []);
 
@@ -263,7 +262,7 @@ export default function PeggleGame() {
       <div className="arcade-card arcade-card-wide">
         <h1>🟠 Peggle</h1>
         <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'} · Aim with your mouse or finger, release to fire. Clear all{' '}
+          Aim with your mouse or finger, release to fire. Clear all{' '}
           {orangeTargetFor(mode)} orange pegs!
         </p>
 

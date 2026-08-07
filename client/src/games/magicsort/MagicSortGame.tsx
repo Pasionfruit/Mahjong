@@ -8,7 +8,7 @@ import { CAPACITY, PALETTE, magicSortModule } from './engine';
 import './styles.css';
 
 export default function MagicSortGame() {
-  const { seed, state, status, result, signedIn, sync, move, start, forceSync } = useSoloGame(
+  const { seed, state, status, result, sync, move, start, forceSync } = useSoloGame(
     magicSortModule,
     () => undefined,
   );
@@ -57,7 +57,6 @@ export default function MagicSortGame() {
       <AuthWidget />
       <div className="arcade-card arcade-card-wide">
         <h1>🧪 Magic Sort</h1>
-        <p className="hint arcade-head">{signedIn ? '✓ signed in' : 'signing in…'}</p>
 
         <div className="arcade-tabs">
           <button

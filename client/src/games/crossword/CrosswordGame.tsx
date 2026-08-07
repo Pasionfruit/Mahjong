@@ -41,7 +41,7 @@ export default function CrosswordGame() {
     (m: SoloMode): CrosswordSettings => ({ difficulty: m === 'endless' ? difficultyRef.current : null }),
     [],
   );
-  const { mode, state, status, result, signedIn, sync, streak, dailyDoneToday, move, start, forceSync } =
+  const { mode, state, status, result, sync, streak, dailyDoneToday, move, start, forceSync } =
     useSoloGame(crosswordModule, resolveSettings);
   const [view, setView] = useState<'play' | 'leaderboard'>('play');
   const [sel, setSel] = useState(0);
@@ -222,10 +222,9 @@ export default function CrosswordGame() {
       <AuthWidget />
       <div className="arcade-card arcade-card-wide">
         <h1>📝 Crossword Mini</h1>
-        <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'}
-          {mode === 'daily' && streak.streak > 0 ? ` · 🔥 ${streak.streak} day streak` : ''}
-        </p>
+        {mode === 'daily' && streak.streak > 0 && (
+          <p className="hint arcade-head">🔥 {streak.streak} day streak</p>
+        )}
 
         <div className="arcade-tabs">
           <button

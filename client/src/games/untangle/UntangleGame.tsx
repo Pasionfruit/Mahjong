@@ -50,7 +50,6 @@ export default function UntangleGame() {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [solved, setSolved] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [signedIn, setSignedIn] = useState(false);
   const [sync, setSync] = useState<SyncBadge>('idle');
 
   const positionsRef = useRef(positions);
@@ -59,7 +58,7 @@ export default function UntangleGame() {
   const startTimeRef = useRef(Date.now());
 
   useEffect(() => {
-    void ensureSignedIn().then((u) => setSignedIn(!!u));
+    void ensureSignedIn();
     return startAutoSync();
   }, []);
 
@@ -183,7 +182,7 @@ export default function UntangleGame() {
       <div className="arcade-card arcade-card-wide">
         <h1>🪢 Rope Untangle</h1>
         <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'} · Drag the pins until no two ropes cross.
+          Drag the pins until no two ropes cross.
         </p>
 
         <div className="arcade-tabs">

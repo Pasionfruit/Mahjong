@@ -28,7 +28,7 @@ export default function Twenty48Game() {
   // 2048 is endless-only — no daily mode (see the Daily section scope: only
   // easy/medium, quick-to-learn games belong there, and 2048's runs are
   // open-ended by design, a poor fit for a "finish today's" ritual).
-  const { seed, state, status, result, signedIn, sync, move, start, forceSync } = useSoloGame(
+  const { seed, state, status, result, sync, move, start, forceSync } = useSoloGame(
     twenty48Module,
     () => undefined,
     'endless',
@@ -113,7 +113,6 @@ export default function Twenty48Game() {
       <AuthWidget />
       <div className="arcade-card arcade-card-wide">
         <h1>🔢 2048</h1>
-        <p className="hint arcade-head">{signedIn ? '✓ signed in' : 'signing in…'}</p>
 
         <div className="arcade-tabs">
           <button

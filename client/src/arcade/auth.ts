@@ -21,22 +21,36 @@ async function ensureProfile(user: User): Promise<void> {
  * lazily, the first time a Brain Arcade game is actually opened — never on
  * general app launch, so multiplayer-only players never create a Supabase
  * session at all. Returns null when Brain Arcade isn't configured yet.
+ *
+ * Single-flight and cached: every game screen calls this on mount, and on
+ * a phone each call was re-awaiting the session (and racing a duplicate
+ * anonymous sign-up on first launch). One promise serves them all; only a
+ * failed attempt is forgotten so a later game open can retry.
  */
-export async function ensureSignedIn(): Promise<User | null> {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-  const { data: session } = await supabase.auth.getSession();
-  let user = session.session?.user ?? null;
-  if (!user) {
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      console.error('[arcade] anonymous sign-in failed', error);
-      return null;
+let signInFlight: Promise<User | null> | null = null;
+
+export function ensureSignedIn(): Promise<User | null> {
+  signInFlight ??= (async () => {
+    const supabase = getSupabase();
+    if (!supabase) return null;
+    const { data: session } = await supabase.auth.getSession();
+    let user = session.session?.user ?? null;
+    if (!user) {
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error) {
+        console.error('[arcade] anonymous sign-in failed', error);
+        signInFlight = null;
+        return null;
+      }
+      user = data.user;
     }
-    user = data.user;
-  }
-  if (user) void ensureProfile(user);
-  return user;
+    if (user) void ensureProfile(user);
+    return user;
+  })().catch((e) => {
+    signInFlight = null;
+    throw e;
+  });
+  return signInFlight;
 }
 
 export async function currentUser(): Promise<User | null> {
@@ -186,6 +200,7 @@ export async function signInWithPassword(email: string, password: string): Promi
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { ok: false, error: error.message };
   cachedDisplayName = null;
+  signInFlight = null; // different identity now — drop the cached one
   return { ok: true };
 }
 
@@ -195,5 +210,6 @@ export async function signOut(): Promise<void> {
   const supabase = getSupabase();
   if (!supabase) return;
   cachedDisplayName = null;
+  signInFlight = null;
   await supabase.auth.signOut();
 }

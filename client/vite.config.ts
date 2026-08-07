@@ -44,6 +44,9 @@ export default defineConfig({
     },
   },
   server: {
+    // Listen on the LAN too, so phones on the same Wi-Fi can playtest —
+    // the Network URL is printed in the startup banner.
+    host: true,
     proxy: {
       '/socket.io': {
         // 127.0.0.1 (not localhost) sidesteps IPv6-first resolution surprises.

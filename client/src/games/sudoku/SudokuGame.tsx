@@ -14,7 +14,7 @@ function formatTime(ms: number): string {
 export default function SudokuGame() {
   // Sudoku is endless-only — no daily mode (dropped from the Daily wing in
   // favor of Word Search / Rope Untangle; see the catalog comment).
-  const { state, status, result, signedIn, sync, move, start, forceSync } = useSoloGame(
+  const { state, status, result, sync, move, start, forceSync } = useSoloGame(
     sudokuModule,
     () => undefined,
     'endless',
@@ -101,7 +101,6 @@ export default function SudokuGame() {
       <AuthWidget />
       <div className="arcade-card arcade-card-wide">
         <h1>🔢 Sudoku</h1>
-        <p className="hint arcade-head">{signedIn ? '✓ signed in' : 'signing in…'}</p>
 
         <div className="arcade-tabs">
           <button

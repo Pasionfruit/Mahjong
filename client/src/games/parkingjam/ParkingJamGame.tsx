@@ -54,7 +54,7 @@ interface DragInfo {
 }
 
 export default function ParkingJamGame() {
-  const { seed, state, status, result, signedIn, sync, move, start, forceSync } = useSoloGame(
+  const { seed, state, status, result, sync, move, start, forceSync } = useSoloGame(
     parkingJamModule,
     () => undefined,
   );
@@ -152,7 +152,6 @@ export default function ParkingJamGame() {
       <AuthWidget />
       <div className="arcade-card arcade-card-wide">
         <h1>🚗 Parking Jam</h1>
-        <p className="hint arcade-head">{signedIn ? '✓ signed in' : 'signing in…'}</p>
 
         <div className="arcade-tabs">
           <button

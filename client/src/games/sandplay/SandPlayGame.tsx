@@ -23,14 +23,14 @@ import {
   type SandGrid,
 } from './engine';
 
-const CELL = 4;
+const CELL = 6;
 const TICK_MS = 40;
 const GAME_ID = 'sandplay';
 
 /** Extra canvas rows drawn BELOW the grid: the gap the drained grains fall
  *  through, plus the collecting bucket. Not part of the simulation. */
-const CHUTE_ROWS = 10;
-const BUCKET_ROWS = 14;
+const CHUTE_ROWS = 8;
+const BUCKET_ROWS = 12;
 const EXTRA_ROWS = CHUTE_ROWS + BUCKET_ROWS;
 const CANVAS_ROWS = SAND_ROWS + EXTRA_ROWS;
 
@@ -62,7 +62,8 @@ function redraw(
   activeColor: string | null,
 ) {
   const W = SAND_COLS * CELL;
-  ctx.fillStyle = '#0b1f17';
+  // Neutral dark slate (not green): every palette hue has to pop off it.
+  ctx.fillStyle = '#131a24';
   ctx.fillRect(0, 0, W, CANVAS_ROWS * CELL);
 
   // ── funnel walls: one filled path down each side, so the taper reads as
@@ -156,7 +157,6 @@ export default function SandPlayGame() {
   const [cleared, setCleared] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [signedIn, setSignedIn] = useState(false);
   const [sync, setSync] = useState<SyncBadge>('idle');
   /** Buckets stay locked until the opening avalanche has settled AND the
    *  countdown has finished — you shouldn't be draining a moving pile. */
@@ -165,7 +165,7 @@ export default function SandPlayGame() {
   const startedRef = useRef(false);
 
   useEffect(() => {
-    void ensureSignedIn().then((u) => setSignedIn(!!u));
+    void ensureSignedIn();
     return startAutoSync();
   }, []);
 
@@ -305,7 +305,7 @@ export default function SandPlayGame() {
       <div className="arcade-card arcade-card-wide">
         <h1>🪣 Sand Play</h1>
         <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'} · Open a bucket to drain that color. Clear the sand to win.
+          Open a bucket to drain that color. Clear the sand to win.
         </p>
 
         <div className="arcade-tabs">

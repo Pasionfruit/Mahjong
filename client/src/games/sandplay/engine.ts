@@ -17,19 +17,21 @@ import { mulberry32 } from '@shared/rng';
  * the same lower-level primitives useSoloGame itself calls.
  */
 
-export const SAND_COLS = 64;
-export const SAND_ROWS = 96;
+export const SAND_COLS = 48;
+export const SAND_ROWS = 72;
 
 /** null = empty; otherwise a CSS color string for that grain. */
 export type SandGrid = (string | null)[];
 
-export const PALETTE = ['#e8c15a', '#e08a8a', '#7fb8e8', '#6bd68a', '#b389e0', '#4fd0d0'];
+/** Widely-spaced hues (gold/red/blue/purple/green/pink — one green only,
+ *  no teal) so neighboring grains never read as shades of each other. */
+export const PALETTE = ['#f5c542', '#e8543f', '#3f8fe8', '#9b59f0', '#3ecf74', '#ee5fb0'];
 
 /** How many rows (from the top) a fresh level starts packed with sand.
  *  Tuned so a level clears in roughly 30-45s of active play — draining
  *  only happens one bottom-row's worth of grains per tick, so total
  *  volume directly drives level length. */
-const FILL_ROWS = 11;
+const FILL_ROWS = 14;
 
 export function emptyGrid(): SandGrid {
   return new Array(SAND_COLS * SAND_ROWS).fill(null);
@@ -41,12 +43,24 @@ function idx(col: number, row: number): number {
 
 /**
  * One physics tick: every grain falls straight down if it can, else to a
- * free diagonal (randomly chosen if both are free), else rests. Rows are
- * processed bottom-to-top so a grain that just moved down isn't moved
- * again in the same pass (it's only revisited on the *next* call).
+ * free diagonal (randomly chosen if both are free), else — if it's perched
+ * on a ledge (side open with a drop under it) — rolls one cell sideways,
+ * else rests. Rows are processed bottom-to-top so a grain that just moved
+ * down isn't moved again in the same pass (it's only revisited on the
+ * *next* call).
+ *
+ * The sideways roll caps the pile's angle of repose at ~27° instead of the
+ * diagonal-only 45°. Without it the end of a level drags: draining from
+ * the narrow center mouth digs a crater whose 45° walls are stable, so the
+ * last grains sit high along the container edges creeping inward one
+ * diagonal per tick. Rolling keeps the heap flowing toward the middle.
  */
 export function simulateStep(grid: SandGrid, rand: () => number = Math.random): SandGrid {
   const next = grid.slice();
+  // Grains that already moved sideways within the current row this tick —
+  // without this, a right-roll during a left-to-right scan would be
+  // re-processed at its landing column and skate across the whole shelf.
+  const rolled = new Set<number>();
   for (let row = SAND_ROWS - 2; row >= 0; row--) {
     // Alternate the horizontal scan direction per row. With a fixed
     // left-to-right scan, a grain that slides diagonally right lands in the
@@ -59,7 +73,7 @@ export function simulateStep(grid: SandGrid, rand: () => number = Math.random): 
       const col = leftToRight ? n : SAND_COLS - 1 - n;
       const i = idx(col, row);
       const color = next[i];
-      if (!color) continue;
+      if (!color || rolled.has(i)) continue;
       if (isOpen(next, col, row + 1)) {
         next[idx(col, row + 1)] = color;
         next[i] = null;
@@ -72,12 +86,29 @@ export function simulateStep(grid: SandGrid, rand: () => number = Math.random): 
         const target = rand() < 0.5 ? idx(col - 1, row + 1) : idx(col + 1, row + 1);
         next[target] = color;
         next[i] = null;
+        continue;
       } else if (leftOpen) {
         next[idx(col - 1, row + 1)] = color;
         next[i] = null;
+        continue;
       } else if (rightOpen) {
         next[idx(col + 1, row + 1)] = color;
         next[i] = null;
+        continue;
+      }
+      // Perched on a 45° shoulder: the side cell is open and there's a
+      // drop one column further out (the near diagonal is blocked, else
+      // we'd have taken it). Rolling there un-blocks a diagonal descent
+      // on the next tick; on slopes of 1/2 or shallower neither side
+      // qualifies, so flat layers and gentle heaps still come to rest.
+      const leftRoll = isOpen(next, col - 1, row) && isOpen(next, col - 2, row + 1);
+      const rightRoll = isOpen(next, col + 1, row) && isOpen(next, col + 2, row + 1);
+      if (leftRoll || rightRoll) {
+        const goLeft = leftRoll && (!rightRoll || rand() < 0.5);
+        const target = idx(goLeft ? col - 1 : col + 1, row);
+        next[target] = color;
+        next[i] = null;
+        rolled.add(target);
       }
       // else: boxed in, stays put this tick
     }
@@ -128,8 +159,9 @@ export function generateLevel(seed: number): Level {
 export const FUNNEL_WIDTH = 6;
 
 /** Row where the container stops being a straight-sided box and starts
- *  tapering inward. Everything above this is full width. */
-export const FUNNEL_TOP_ROW = 66;
+ *  tapering inward. Everything above this is full width. Placed so the
+ *  taper spans exactly maxInset rows — a clean 45°, one column per row. */
+export const FUNNEL_TOP_ROW = 50;
 
 /**
  * How many columns are solid wall on EACH side at `row` — 0 above the
@@ -220,6 +252,9 @@ export function isSettled(grid: SandGrid): boolean {
       if (isOpen(grid, col, row + 1)) return false;
       if (isOpen(grid, col - 1, row + 1)) return false;
       if (isOpen(grid, col + 1, row + 1)) return false;
+      // ...including the sideways roll off a 45° shoulder.
+      if (isOpen(grid, col - 1, row) && isOpen(grid, col - 2, row + 1)) return false;
+      if (isOpen(grid, col + 1, row) && isOpen(grid, col + 2, row + 1)) return false;
     }
   }
   return true;

@@ -12,7 +12,7 @@ function formatTime(ms: number): string {
 }
 
 export default function PaintByNumberGame() {
-  const { mode, seed, state, status, result, signedIn, sync, streak, dailyDoneToday, move, start, forceSync } =
+  const { mode, seed, state, status, result, sync, streak, dailyDoneToday, move, start, forceSync } =
     useSoloGame(paintByNumberModule, () => undefined);
   const [view, setView] = useState<'play' | 'leaderboard'>('play');
   const [selected, setSelected] = useState(0);
@@ -115,10 +115,9 @@ export default function PaintByNumberGame() {
       <AuthWidget />
       <div className="arcade-card arcade-card-wide">
         <h1>🎨 Paint by Number</h1>
-        <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'}
-          {mode === 'daily' && streak.streak > 0 ? ` · 🔥 ${streak.streak} day streak` : ''}
-        </p>
+        {mode === 'daily' && streak.streak > 0 && (
+          <p className="hint arcade-head">🔥 {streak.streak} day streak</p>
+        )}
 
         <div className="arcade-tabs">
           <button

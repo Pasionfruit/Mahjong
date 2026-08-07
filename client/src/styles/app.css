@@ -738,6 +738,13 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
     display: contents;
   }
 
+  /* The burger owns the top-right corner on phones — slide the widgets
+     that also lived there out from under it. */
+  .auth-widget,
+  .hud {
+    right: 60px;
+  }
+
   /* Small floating button, top-right, clear of the safe area. Top insets
      are well behaved on iOS in a way bottom ones are not. */
   .wing-burger {
@@ -5366,9 +5373,9 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
   width: 100%;
   max-width: 100%;
   height: auto;
-  /* 64 wide × (96 sim rows + 24 chute/bucket rows) — must track
+  /* 48 wide × (72 sim rows + 20 chute/bucket rows) — must track
      CANVAS_ROWS in SandPlayGame.tsx or the drawing gets letterboxed. */
-  aspect-ratio: 64 / 120;
+  aspect-ratio: 48 / 92;
   margin: 0 auto 12px;
   border-radius: 10px;
   border: 1px solid var(--line);

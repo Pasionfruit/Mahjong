@@ -33,7 +33,7 @@ function lineBetween(a: Cell, b: Cell): Cell[] | null {
 }
 
 export default function WordSearchGame() {
-  const { mode, state, status, result, signedIn, sync, streak, dailyDoneToday, move, start, forceSync } =
+  const { mode, state, status, result, sync, streak, dailyDoneToday, move, start, forceSync } =
     useSoloGame(wordSearchModule, () => undefined);
   const [view, setView] = useState<'play' | 'leaderboard'>('play');
   const [dragStart, setDragStart] = useState<Cell | null>(null);
@@ -98,10 +98,9 @@ export default function WordSearchGame() {
       <AuthWidget />
       <div className="arcade-card arcade-card-wide">
         <h1>🔍 Word Search</h1>
-        <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'}
-          {mode === 'daily' && streak.streak > 0 ? ` · 🔥 ${streak.streak} day streak` : ''}
-        </p>
+        {mode === 'daily' && streak.streak > 0 && (
+          <p className="hint arcade-head">🔥 {streak.streak} day streak</p>
+        )}
 
         <div className="arcade-tabs">
           <button

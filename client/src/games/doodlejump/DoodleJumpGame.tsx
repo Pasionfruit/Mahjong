@@ -234,11 +234,10 @@ export default function DoodleJumpGame() {
   const startedRef = useRef(false);
   const [dead, setDead] = useState(false);
   const [finalMeters, setFinalMeters] = useState(0);
-  const [signedIn, setSignedIn] = useState(false);
   const [sync, setSync] = useState<SyncBadge>('idle');
 
   useEffect(() => {
-    void ensureSignedIn().then((u) => setSignedIn(!!u));
+    void ensureSignedIn();
     return startAutoSync();
   }, []);
 
@@ -404,7 +403,7 @@ export default function DoodleJumpGame() {
       <div className="arcade-card arcade-card-wide">
         <h1>🐸 Doodle Jump</h1>
         <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'} · Bounce ever higher — never look down.
+          Bounce ever higher — never look down.
         </p>
 
         <div className="arcade-tabs">

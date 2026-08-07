@@ -25,7 +25,7 @@ function keyStates(guesses: string[], feedback: LetterState[][]): Record<string,
 }
 
 export default function WordGuessGame() {
-  const { mode, state, status, result, signedIn, sync, streak, dailyDoneToday, move, start, forceSync } =
+  const { mode, state, status, result, sync, streak, dailyDoneToday, move, start, forceSync } =
     useSoloGame(wordGuessModule, async (m: SoloMode, seed: number) =>
       m === 'daily' ? { answer: await fetchDailyAnswer(dateKeyUTC()) } : { answer: pickAnswer(mulberry32(seed)) },
     );
@@ -84,10 +84,9 @@ export default function WordGuessGame() {
       <AuthWidget />
       <div className="arcade-card">
         <h1>🔤 Word Guess</h1>
-        <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'}
-          {mode === 'daily' && streak.streak > 0 ? ` · 🔥 ${streak.streak} day streak` : ''}
-        </p>
+        {mode === 'daily' && streak.streak > 0 && (
+          <p className="hint arcade-head">🔥 {streak.streak} day streak</p>
+        )}
 
         <div className="arcade-tabs">
           <button

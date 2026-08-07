@@ -184,7 +184,6 @@ export default function PogoCatGame() {
   const spaceHeldRef = useRef(false);
 
   const [view, setView] = useState<View>('play');
-  const [signedIn, setSignedIn] = useState(false);
   const [sync, setSync] = useState<SyncBadge>('idle');
   const [over, setOver] = useState(false);
   const [hud, setHud] = useState({ score: 0, fish: 0 });
@@ -196,7 +195,7 @@ export default function PogoCatGame() {
   const startedRef = useRef(false);
 
   useEffect(() => {
-    void ensureSignedIn().then((u) => setSignedIn(!!u));
+    void ensureSignedIn();
     return startAutoSync();
   }, []);
 
@@ -437,7 +436,7 @@ export default function PogoCatGame() {
       <div className="arcade-card arcade-card-wide">
         <h1>🐱 Pogo Cat</h1>
         <p className="hint arcade-head">
-          {signedIn ? '✓ signed in' : 'signing in…'} · Time each leap, land every platform, snag the fish.
+          Time each leap, land every platform, snag the fish.
         </p>
 
         <div className="arcade-tabs">

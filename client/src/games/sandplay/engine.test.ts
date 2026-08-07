@@ -71,14 +71,33 @@ describe('simulateStep', () => {
     expect(grid[idx(C - 1, R + 1)]).toBe('red');
   });
 
-  it('stays put when directly below and both diagonals are blocked', () => {
+  it('stays put when below, both diagonals, and both roll-drops are blocked', () => {
     let grid = emptyGrid();
     grid[idx(C, R)] = 'red';
     grid[idx(C, R + 1)] = 'blue';
     grid[idx(C - 1, R + 1)] = 'blue';
     grid[idx(C + 1, R + 1)] = 'blue';
+    // Under the roll rule a grain on a one-cell tower shoulder rolls off,
+    // so a truly resting grain needs the shelf beside it filled too.
+    grid[idx(C - 2, R + 1)] = 'blue';
+    grid[idx(C + 2, R + 1)] = 'blue';
     grid = simulateStep(grid);
     expect(grid[idx(C, R)]).toBe('red');
+  });
+
+  it('rolls sideways off a 45° shoulder so it can descend next tick', () => {
+    let grid = emptyGrid();
+    grid[idx(C, R)] = 'red';
+    grid[idx(C, R + 1)] = 'blue'; // below blocked
+    grid[idx(C - 1, R + 1)] = 'blue'; // both diagonals blocked
+    grid[idx(C + 1, R + 1)] = 'blue';
+    grid[idx(C - 2, R + 1)] = 'blue'; // left roll-drop blocked…
+    // …but (C+2, R+1) is open: perched on the right shoulder.
+    grid = simulateStep(grid, () => 0.9);
+    expect(grid[idx(C, R)]).toBeNull();
+    expect(grid[idx(C + 1, R)]).toBe('red');
+    // And the roll is one cell per tick, not a skate across the shelf.
+    expect(grid[idx(C + 2, R)]).toBeNull();
   });
 
   it('is deterministic given a fixed rand function, choosing left when rand < 0.5', () => {
