@@ -214,17 +214,25 @@ html[data-mode='light'],
 
 .btn {
   font: inherit;
+  font-weight: 600;
   padding: 10px 18px;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid var(--line-strong);
   background: var(--control);
   color: var(--paper);
   cursor: pointer;
-  transition: background 0.15s;
+  /* soft top-light so every button reads slightly "raised" */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
 }
 
 .btn:hover:not(:disabled) {
   background: var(--control-hover);
+}
+
+/* Squish on press — the tactile mobile-game feel, app-wide. */
+.btn:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .btn:disabled {
@@ -233,15 +241,22 @@ html[data-mode='light'],
 }
 
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 88%, white) 0%,
+    var(--accent) 55%,
+    color-mix(in srgb, var(--accent) 88%, black) 100%
+  );
+  border-color: color-mix(in srgb, var(--accent) 70%, black);
   color: var(--on-accent);
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent);
-  filter: brightness(1.08);
+  filter: brightness(1.07);
 }
 
 .error {
@@ -382,6 +397,14 @@ html[data-mode='light'],
   gap: 12px;
 }
 
+/* Gradient wordmark — paper fading into the accent, mobile-game style. */
+.home-title-text {
+  background: linear-gradient(115deg, var(--paper) 30%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* The real app icon (cat asleep on a controller) fronts the title. */
 /* Wraps an inline outline icon (not the old raster tile) — .icon sizes
    itself to 1em, so the font-size here is what actually sets the mark's
@@ -424,24 +447,35 @@ html[data-mode='light'],
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: var(--surface);
+  background: linear-gradient(165deg, var(--surface) 0%, var(--surface-strong) 130%);
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 18px;
   padding: 12px;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 26px rgba(0, 0, 0, 0.28);
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
 .game-card:hover {
   border-color: var(--line-strong);
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 34px rgba(0, 0, 0, 0.34);
+}
+
+.game-card:active {
+  transform: scale(0.96);
 }
 
 .game-card.soon {
   opacity: 0.6;
 }
 
-/* Minimal line glyph in the accent ink, enlarged in the card's middle. */
+/* Minimal line glyph in the accent ink, enlarged in the card's middle,
+   floating on a soft accent halo. */
 .game-card-icon {
   flex: 1;
   display: flex;
@@ -450,6 +484,11 @@ html[data-mode='light'],
   font-size: 46px;
   color: var(--accent);
   min-height: 0;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--accent) 13%, transparent) 0%,
+    transparent 75%
+  );
 }
 
 .game-card-title {
@@ -481,19 +520,30 @@ html[data-mode='light'],
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  background: var(--control);
+  border: 1px solid color-mix(in srgb, var(--play) 30%, var(--line));
+  border-radius: 12px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--play) 16%, var(--control)) 0%,
+    color-mix(in srgb, var(--play) 7%, var(--control)) 100%
+  );
   color: var(--play);
   font-size: 21px;
   line-height: 0;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: background 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
 }
 
 .game-card-play:hover:not(:disabled) {
-  background: var(--control-hover);
-  border-color: color-mix(in srgb, var(--play) 55%, var(--line));
+  border-color: color-mix(in srgb, var(--play) 60%, var(--line));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 3px 12px color-mix(in srgb, var(--play) 30%, transparent);
+}
+
+.game-card-play:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .game-card-play:disabled {
@@ -698,7 +748,16 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
 
 .home-tab.active {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 26%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 13%, transparent) 100%
+  );
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+.home-tab:active {
+  transform: scale(0.94);
 }
 
 .home-empty {
@@ -1107,7 +1166,38 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 14px;
+}
+
+/* Compact shell so a whole game fits the viewport without scrolling. */
+.arcade-card h1 {
+  font-size: 22px;
+  margin: 0 0 2px;
+}
+
+.arcade-card .arcade-head {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.arcade-card .arcade-tabs {
+  margin: 0 0 10px;
+}
+
+/* Short viewports: drop the descriptive chrome — the game IS the screen. */
+@media (max-height: 780px) {
+  .arcade-screen {
+    padding: 8px;
+  }
+  .arcade-card {
+    padding: 12px 16px;
+  }
+  .arcade-card h1 {
+    font-size: 19px;
+  }
+  .arcade-card .arcade-head {
+    display: none;
+  }
 }
 
 .auth-widget {
@@ -1223,11 +1313,14 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
 
 .arcade-card {
   width: min(460px, 100%);
-  background: var(--surface);
+  background: linear-gradient(170deg, var(--surface) 0%, var(--surface-strong) 140%);
   border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: 20px;
+  padding: 18px 24px;
   text-align: center;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 14px 44px rgba(0, 0, 0, 0.3);
 }
 
 .arcade-head {
@@ -1254,10 +1347,23 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
   opacity: 0.65;
 }
 
+.arcade-tab {
+  transition: opacity 0.15s, border-color 0.15s, background 0.15s, transform 0.1s;
+}
+
+.arcade-tab:active {
+  transform: scale(0.94);
+}
+
 .arcade-tab.active {
   opacity: 1;
   border-color: var(--accent);
-  background: var(--control);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 24%, transparent) 0%,
+    color-mix(in srgb, var(--accent) 11%, transparent) 100%
+  );
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
 .arcade-actions {
@@ -5461,9 +5567,11 @@ html:not([data-mode='light']) .home-tab.active .home-tab-label {
 
 .sandplay-canvas {
   display: block;
-  width: 100%;
-  max-width: 100%;
+  width: auto;
   height: auto;
+  max-width: 100%;
+  max-height: 58dvh;
+  margin-inline: auto;
   /* 48 wide × (72 sim rows + 20 chute/bucket rows) — must track
      CANVAS_ROWS in SandPlayGame.tsx or the drawing gets letterboxed. */
   aspect-ratio: 48 / 92;

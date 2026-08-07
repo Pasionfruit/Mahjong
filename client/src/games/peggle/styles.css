@@ -5,6 +5,7 @@
   margin: 0 auto;
   max-width: 100%;
   height: auto;
+  max-height: 58dvh;
   border-radius: 12px;
   border: 1px solid var(--line);
   background: #0a1c15;

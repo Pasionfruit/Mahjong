@@ -151,6 +151,19 @@
   text-align: left;
 }
 
+/* Small screens: the cluebar already shows the active clue — the full list
+   scrolls inside its own box so the PAGE never scrolls. */
+@media (max-width: 640px), (max-height: 900px) {
+  .crossword-board {
+    width: min(300px, 100%, 42dvh);
+  }
+  .crossword-clues {
+    max-height: 20dvh;
+    overflow-y: auto;
+    margin-top: 10px;
+  }
+}
+
 .crossword-clue-group h4 {
   margin: 0 0 4px;
   font-size: 12px;

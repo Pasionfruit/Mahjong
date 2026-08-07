@@ -186,7 +186,7 @@ export default function Home() {
             <span className="home-logo">
               <IconCatOnController />
             </span>
-            LocalRot
+            <span className="home-title-text">LocalRot</span>
           </h1>
           <p className="home-sub">Party with friends, zen out solo, or clear today’s dailies.</p>
         </header>
