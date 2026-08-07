@@ -7,6 +7,7 @@ import {
   TETRIS_HIDDEN_ROWS,
   TETRIS_W,
   type PieceKind,
+  type TetrisClearedRow,
   type TetrisOp,
   type TetrisPlayerView,
   type TetrisView,
@@ -71,6 +72,90 @@ function drawCell(ctx: CanvasRenderingContext2D, x: number, y: number, color: st
   ctx.fillRect(px + 1, py + 1, CELL - 2, 4);
 }
 
+// ── multi-line clear animation ──────────────────────────────────────────────
+// Rows dissolve one at a time starting from the bottom-most cleared row,
+// each one melting outward from the column where the locking piece landed.
+
+const CLEAR_STAGGER_MS = 110;
+const CLEAR_DISSOLVE_MS = 220;
+
+interface ClearFxRun {
+  /** Cleared rows sorted bottom-most first — the removal order. */
+  rows: TetrisClearedRow[];
+  /** The stack as it stood before the collapse, rebuilt from the view. */
+  preGrid: string[];
+  start: number;
+  total: number;
+}
+
+function fxDuration(rowCount: number): number {
+  return (rowCount - 1) * CLEAR_STAGGER_MS + CLEAR_DISSOLVE_MS + 60;
+}
+
+/** The post-clear grid is [N fresh empty rows] + [old rows minus the cleared
+ *  ones]; weaving the captured cleared rows back in at their original y
+ *  reproduces the pre-collapse stack the animation plays over. */
+function rebuildPreGrid(post: string[], rows: TetrisClearedRow[]): string[] {
+  const byY = new Map(rows.map((r) => [r.y, r.cells]));
+  const pre: string[] = [];
+  let src = rows.length;
+  for (let y = 0; y < TETRIS_H; y++) {
+    const cleared = byY.get(y);
+    pre.push(cleared ?? post[src++] ?? '.'.repeat(TETRIS_W));
+  }
+  return pre;
+}
+
+function drawBoardFx(
+  canvas: HTMLCanvasElement,
+  p: TetrisPlayerView,
+  fx: ClearFxRun,
+  now: number,
+): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'rgba(0,0,0,0.42)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const clearedY = new Set(fx.rows.map((r) => r.y));
+  for (let y = TETRIS_HIDDEN_ROWS; y < TETRIS_H; y++) {
+    if (clearedY.has(y)) continue; // handled below with the dissolve
+    for (let x = 0; x < TETRIS_W; x++) {
+      const color = colorOf(fx.preGrid[y]![x]!);
+      if (color) drawCell(ctx, x, y, color);
+    }
+  }
+
+  fx.rows.forEach((row, order) => {
+    const progress = (now - fx.start - order * CLEAR_STAGGER_MS) / CLEAR_DISSOLVE_MS;
+    const maxDist = Math.max(row.x, TETRIS_W - 1 - row.x) + 1;
+    for (let x = 0; x < TETRIS_W; x++) {
+      const vanishAt = Math.abs(x - row.x) / maxDist;
+      if (progress >= vanishAt) continue; // gone
+      const color = colorOf(row.cells[x]!);
+      if (!color) continue;
+      drawCell(ctx, x, row.y, color);
+      // White-hot flush just before a cell melts away.
+      if (progress >= vanishAt - 0.35) {
+        const px = x * CELL;
+        const py = (row.y - TETRIS_HIDDEN_ROWS) * CELL;
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+      }
+    }
+  });
+
+  // The next live piece keeps falling on top (no ghost while the old stack
+  // is still on screen — it would point at the wrong floor).
+  if (p.active && p.alive) {
+    const color = PIECE_COLORS[p.active.kind];
+    for (const [cx, cy] of PIECE_CELLS[p.active.kind][p.active.rot & 3]!) {
+      drawCell(ctx, p.active.x + cx, p.active.y + cy, color);
+    }
+  }
+}
+
 function drawBoard(canvas: HTMLCanvasElement, p: TetrisPlayerView, mine: boolean): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -118,8 +203,44 @@ function BoardCanvas({
   onPointerUp?: (e: React.PointerEvent<HTMLCanvasElement>) => void;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
+  const fxRef = useRef<ClearFxRun | null>(null);
+  /** null until first render — a clear that predates mounting never replays. */
+  const seenSeqRef = useRef<number | null>(null);
+
   useEffect(() => {
-    if (ref.current) drawBoard(ref.current, player, mine);
+    const canvas = ref.current;
+    if (!canvas) return;
+
+    const lc = player.lastClear;
+    if (seenSeqRef.current === null) {
+      seenSeqRef.current = lc?.seq ?? 0;
+    } else if (lc && lc.seq !== seenSeqRef.current) {
+      seenSeqRef.current = lc.seq;
+      // Only multi-line clears get the staggered dissolve; singles stay snappy.
+      if (lc.rows.length >= 2) {
+        fxRef.current = {
+          rows: [...lc.rows].sort((a, b) => b.y - a.y),
+          preGrid: rebuildPreGrid(player.grid, lc.rows),
+          start: performance.now(),
+          total: fxDuration(lc.rows.length),
+        };
+        if (mine) play('combo');
+      }
+    }
+
+    let raf = 0;
+    const render = () => {
+      const fx = fxRef.current;
+      if (fx && performance.now() - fx.start < fx.total) {
+        drawBoardFx(canvas, player, fx, performance.now());
+        raf = requestAnimationFrame(render);
+      } else {
+        fxRef.current = null;
+        drawBoard(canvas, player, mine);
+      }
+    };
+    render();
+    return () => cancelAnimationFrame(raf);
   }, [player, mine]);
   return (
     <canvas

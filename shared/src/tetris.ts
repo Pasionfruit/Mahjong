@@ -146,6 +146,22 @@ export interface TetrisActivePiece {
   y: number;
 }
 
+/** One cleared row, captured before the stack collapsed: its absolute grid
+ *  row, its full 10 cells (for colors), and the column the locking piece
+ *  occupied in it — the origin the clear animation spreads from. */
+export interface TetrisClearedRow {
+  y: number;
+  x: number;
+  cells: string;
+}
+
+/** The most recent line clear, so clients can animate rows dissolving.
+ *  `seq` is unique per clear (the server tick it happened on). */
+export interface TetrisClearFx {
+  seq: number;
+  rows: TetrisClearedRow[];
+}
+
 export interface TetrisPlayerView {
   seat: number;
   nickname: string;
@@ -167,6 +183,8 @@ export interface TetrisPlayerView {
   /** Garbage rows queued to arrive when the current piece locks. */
   incoming: number;
   alive: boolean;
+  /** Most recent line clear (pre-collapse rows + spread origin), or null. */
+  lastClear: TetrisClearFx | null;
 }
 
 export interface TetrisView {

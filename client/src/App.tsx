@@ -1,8 +1,10 @@
+import { useEffect } from 'react';
 import { useStore, currentScreen } from './store';
 import Home from './screens/Home';
 import Lobby from './screens/Lobby';
 import { gameById } from './games/catalog';
 import { useMode } from './mode';
+import { setMusicScene } from './audio';
 import WingNav from './components/WingNav';
 
 export default function App() {
@@ -13,6 +15,12 @@ export default function App() {
   const mode = useMode();
   const screen = currentScreen(lobby, game);
   const theme = lobby && 'theme' in lobby.settings ? lobby.settings.theme : 'jade';
+
+  // Intense loop only while a party match is actually being played — zen
+  // and daily solo games (localGame) are deliberately kept on the calm one.
+  useEffect(() => {
+    setMusicScene(screen === 'game' ? 'game' : 'menu');
+  }, [screen]);
 
   const LocalGame = localGame ? gameById(localGame)?.Game : undefined;
   const Game = lobby ? gameById(lobby.gameId)?.Game : undefined;

@@ -187,6 +187,35 @@ describe('line clears, scoring, garbage', () => {
     expect(bottom.filter((v) => v !== 0)).toHaveLength(1);
   });
 
+  it('records the pre-collapse cleared rows and the spread origin for the client fx', () => {
+    const s = newGame(1);
+    const p = s.players[0]!;
+    // Two full bottom rows once a vertical I fills column 0 of both… plus
+    // its two remnant cells above.
+    fillRow(s, 0, TETRIS_H - 1, [0]);
+    fillRow(s, 0, TETRIS_H - 2, [0]);
+    p.active = { kind: 0, rot: 1, x: -2, y: 0 }; // vertical I in column 0
+    applyTetrisInput(s, 0, 'hard');
+    expect(p.lines).toBe(2);
+    const fx = p.lastClear!;
+    expect(fx).not.toBeNull();
+    // Both cleared rows captured at their original y, full 10 cells each,
+    // spreading from column 0 where the I landed.
+    expect(fx.rows.map((r) => r.y).sort((a, b) => a - b)).toEqual([TETRIS_H - 2, TETRIS_H - 1]);
+    for (const row of fx.rows) {
+      expect(row.cells).toHaveLength(TETRIS_W);
+      expect(row.cells.includes('.')).toBe(false);
+      expect(row.x).toBe(0);
+    }
+  });
+
+  it('leaves lastClear untouched when a lock clears nothing', () => {
+    const s = newGame(1);
+    const p = s.players[0]!;
+    applyTetrisInput(s, 0, 'hard'); // empty board — nothing clears
+    expect(p.lastClear).toBeNull();
+  });
+
   it('multi-line clears send garbage to every living opponent', () => {
     const s = newGame(3);
     const p = s.players[0]!;

@@ -10,6 +10,7 @@ import {
   type PieceKind,
   type TetrisOp,
   type TetrisSettings,
+  type TetrisClearFx,
 } from '@shared/tetris';
 import type { GameEvent } from '@shared/view';
 import { mulberry32 } from '../../engine/rng';
@@ -48,6 +49,8 @@ export interface TetrisPlayer {
   score: number;
   pendingGarbage: number;
   alive: boolean;
+  /** Most recent clear (pre-collapse rows + spread origin) for client fx. */
+  lastClear: TetrisClearFx | null;
 }
 
 export interface TetrisState {
@@ -158,6 +161,7 @@ export function newTetrisGame(
       score: 0,
       pendingGarbage: 0,
       alive: true,
+      lastClear: null,
     };
     s.players.push(p);
     spawnPiece(s, p);
@@ -166,6 +170,36 @@ export function newTetrisGame(
 }
 
 // ── locking, clearing, garbage ──────────────────────────────────────────────
+
+const FX_CELL_CHARS = ['.', 'I', 'O', 'T', 'S', 'Z', 'J', 'L', 'G'] as const;
+
+/** Full rows right now (pre-collapse), each with its cells and the column
+ *  the just-locked piece occupied in it — the spread origin for the client
+ *  clear animation. Rows the piece doesn't touch spread from its center. */
+function capturePendingClears(p: TetrisPlayer, a: ActivePiece): TetrisClearFx['rows'] {
+  const rows: TetrisClearFx['rows'] = [];
+  const pieceCells = CELLS[a.kind]![a.rot & 3]!;
+  const centerX = Math.round(a.x + pieceCells.reduce((sum, [cx]) => sum + cx, 0) / pieceCells.length);
+  for (let row = 0; row < TETRIS_H; row++) {
+    let full = true;
+    let cells = '';
+    for (let col = 0; col < TETRIS_W; col++) {
+      const code = p.grid[row * TETRIS_W + col]!;
+      if (code === 0) {
+        full = false;
+        break;
+      }
+      cells += FX_CELL_CHARS[code]!;
+    }
+    if (!full) continue;
+    const inRow = pieceCells.filter(([, cy]) => a.y + cy === row);
+    const x = inRow.length
+      ? Math.round(inRow.reduce((sum, [cx]) => sum + a.x + cx, 0) / inRow.length)
+      : centerX;
+    rows.push({ y: row, x, cells });
+  }
+  return rows;
+}
 
 function clearFullRows(p: TetrisPlayer): number {
   let cleared = 0;
@@ -223,7 +257,12 @@ function lockPiece(s: TetrisState, p: TetrisPlayer, events: GameEvent[]): void {
   }
   p.active = null;
 
+  // Snapshot the rows about to clear BEFORE the collapse — the client
+  // animates them dissolving outward from where this piece landed.
+  const fxRows = capturePendingClears(p, a);
+
   const cleared = clearFullRows(p);
+  if (cleared > 0) p.lastClear = { seq: s.tick, rows: fxRows };
   if (cleared > 0) {
     p.lines += cleared;
     p.score += LINE_SCORES[cleared]! * p.level;

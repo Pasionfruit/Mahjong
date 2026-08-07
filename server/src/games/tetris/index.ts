@@ -93,6 +93,7 @@ function playerView(s: TetrisState, p: TetrisPlayer, meta: SeatMeta): TetrisPlay
     score: p.score,
     incoming: p.pendingGarbage,
     alive: p.alive,
+    lastClear: p.lastClear,
   };
 }
 

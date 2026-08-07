@@ -10,7 +10,8 @@ the user's volume. `music` loops forever, so make sure it loops cleanly.
 
 | File                | Played when                                     |
 | ------------------- | ----------------------------------------------- |
-| `music.wav`         | background music, looping (starts on first tap) |
+| `music.wav`         | calm background loop: menus, zen and daily games |
+| `music-game.wav`    | driving loop while a party match is being played |
 | `hover.wav`         | mouse hovers any button                         |
 | `click.wav`         | any button is clicked                           |
 | `start.wav`         | a game is launched                              |

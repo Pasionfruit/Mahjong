@@ -355,32 +355,55 @@ export function play(name: SoundName): void {
 }
 
 // ── background music ───────────────────────────────────────────────────────
-// /sounds/music.mp3 (or the shipped placeholder music.wav) loops app-wide,
-// well under the effects, following the same volume/mute state. Browsers
-// block autoplay, so it actually starts on the first user gesture.
+// Two looping tracks, both following the same volume/mute state: the calm
+// 'menu' loop for browsing, zen games, and dailies; the driving 'game' loop
+// while a party/room match is actually being played. Drop music.mp3 /
+// music-game.mp3 in /sounds to replace the shipped placeholder wavs.
+// Browsers block autoplay, so playback actually starts on the first gesture.
 
-const MUSIC_GAIN = 0.3;
-let musicEl: HTMLAudioElement | null = null;
+type MusicScene = 'menu' | 'game';
 
-function syncMusic(): void {
-  if (!musicEl) {
-    musicEl = new Audio('/sounds/music.mp3');
-    musicEl.loop = true;
+const MUSIC_GAIN: Record<MusicScene, number> = { menu: 0.3, game: 0.38 };
+const MUSIC_BASE: Record<MusicScene, string> = { menu: 'music', game: 'music-game' };
+
+let musicScene: MusicScene = 'menu';
+const musicEls = new Map<MusicScene, HTMLAudioElement>();
+
+function musicElFor(scene: MusicScene): HTMLAudioElement {
+  let el = musicEls.get(scene);
+  if (!el) {
+    el = new Audio(`/sounds/${MUSIC_BASE[scene]}.mp3`);
+    el.loop = true;
     // fall back to the placeholder wav if no real track was dropped in
-    musicEl.addEventListener(
+    el.addEventListener(
       'error',
       () => {
-        if (musicEl) {
-          musicEl.src = '/sounds/music.wav';
-          syncMusic();
-        }
+        el!.src = `/sounds/${MUSIC_BASE[scene]}.wav`;
+        syncMusic();
       },
       { once: true },
     );
+    musicEls.set(scene, el);
   }
-  musicEl.volume = Math.min(1, state.volume * MUSIC_GAIN);
-  if (state.muted || state.volume <= 0) musicEl.pause();
-  else if (musicEl.paused) void musicEl.play().catch(() => {});
+  return el;
+}
+
+function syncMusic(): void {
+  for (const [scene, el] of musicEls) {
+    if (scene !== musicScene && !el.paused) el.pause();
+  }
+  const el = musicElFor(musicScene);
+  el.volume = Math.min(1, state.volume * MUSIC_GAIN[musicScene]);
+  if (state.muted || state.volume <= 0) el.pause();
+  else if (el.paused) void el.play().catch(() => {});
+}
+
+/** Swap between the calm menu loop and the intense in-game loop. Safe to
+ *  call repeatedly; actual playback still waits for a user gesture. */
+export function setMusicScene(scene: MusicScene): void {
+  if (scene === musicScene) return;
+  musicScene = scene;
+  syncMusic();
 }
 
 // ── app-wide UI sounds ─────────────────────────────────────────────────────
